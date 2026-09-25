@@ -1,0 +1,181 @@
+// Inicializar íconos de Lucide al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+  if (window.lucide) {
+    lucide.createIcons();
+  }
+});
+
+// Control de Pestañas
+function switchTab(tabId) {
+  const tabs = ['dashboard', 'conciliador', 'cta-corriente', 'cruzador-iva', 'calc-retenciones'];
+  
+  tabs.forEach(t => {
+    const sec = document.getElementById(`tab-${t}`);
+    const btn = document.getElementById(`nav-${t}`);
+    
+    if (sec) sec.classList.add('hidden');
+    if (btn) {
+      btn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200";
+    }
+  });
+
+  const targetSec = document.getElementById(`tab-${tabId}`);
+  const targetBtn = document.getElementById(`nav-${tabId}`);
+  
+  if (targetSec) targetSec.classList.remove('hidden');
+  if (targetBtn) {
+    targetBtn.className = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white shadow-sm";
+  }
+}
+
+// -------------------------------------------------------------
+// MOTOR 1: CONCILIADOR BANCARIO (Demo)
+// -------------------------------------------------------------
+function runConciliationDemo() {
+  const bankData = [
+    { id: 'b1', date: '2026-09-10', concept: 'DEP. TRANSFERENCIA 458', amount: 150000 },
+    { id: 'b2', date: '2026-09-12', concept: 'PAGO PROVEEDOR REX', amount: -45000 }
+  ];
+
+  const bookData = [
+    { id: 'l1', date: '2026-09-10', concept: 'Cobro Cliente Perez', amount: 150000 },
+    { id: 'l2', date: '2026-09-15', concept: 'Pago REX Pinturas', amount: -45000 }
+  ];
+
+  const container = document.getElementById('conciliador-results');
+  container.innerHTML = `
+    <div class="space-y-4">
+      <div class="p-3 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 font-semibold text-xs">
+        ✅ Conciliación completada: 2 de 2 registros procesados correctamente.
+      </div>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b font-semibold text-slate-600">
+            <th class="p-2">Extracto Banco</th>
+            <th class="p-2">Libro Diario</th>
+            <th class="p-2 text-right">Importe</th>
+            <th class="p-2 text-center">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          <tr>
+            <td class="p-2">${bankData[0].concept}</td>
+            <td class="p-2">${bookData[0].concept}</td>
+            <td class="p-2 text-right font-bold text-slate-800">$ 150.000,00</td>
+            <td class="p-2 text-center"><span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px]">Conciliado</span></td>
+          </tr>
+          <tr>
+            <td class="p-2">${bankData[1].concept}</td>
+            <td class="p-2">${bookData[1].concept}</td>
+            <td class="p-2 text-right font-bold text-slate-800">-$ 45.000,00</td>
+            <td class="p-2 text-center"><span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px]">Diferencia Fecha</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// MOTOR 2: CUENTAS CORRIENTES (Demo)
+// -------------------------------------------------------------
+function runCtaCorrienteDemo() {
+  const container = document.getElementById('cta-corriente-results');
+  container.innerHTML = `
+    <table class="w-full text-left text-xs border-collapse">
+      <thead>
+        <tr class="border-b font-semibold text-slate-600">
+          <th class="p-2">Cliente / Proveedor</th>
+          <th class="p-2 text-right">Facturado</th>
+          <th class="p-2 text-right">Cobrado</th>
+          <th class="p-2 text-right">Saldo Pendiente</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y">
+        <tr>
+          <td class="p-2 font-medium text-slate-800">DISTRIBUIDORA PEREZ SRL</td>
+          <td class="p-2 text-right">$ 850.000,00</td>
+          <td class="p-2 text-right">$ 500.000,00</td>
+          <td class="p-2 text-right font-bold text-amber-600">$ 350.000,00</td>
+        </tr>
+        <tr>
+          <td class="p-2 font-medium text-slate-800">CONSTRUCCIONES DEL SUR SA</td>
+          <td class="p-2 text-right">$ 1.200.000,00</td>
+          <td class="p-2 text-right">$ 1.200.000,00</td>
+          <td class="p-2 text-right font-bold text-emerald-600">$ 0,00</td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+// -------------------------------------------------------------
+// MOTOR 3: CRUZADOR IVA DIGITAL (Demo)
+// -------------------------------------------------------------
+function runCruzadorIvaDemo() {
+  const container = document.getElementById('cruzador-iva-results');
+  container.innerHTML = `
+    <div class="space-y-3">
+      <div class="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs font-semibold">
+        ⚠️ Se detectó 1 comprobante presente en ARCA que NO fue cargado en el sistema interno.
+      </div>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b font-semibold text-slate-600">
+            <th class="p-2">CUIT</th>
+            <th class="p-2">Razón Social</th>
+            <th class="p-2">Comprobante</th>
+            <th class="p-2 text-right">Total ARCA</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="bg-rose-50/50">
+            <td class="p-2 font-mono">30-71123456-8</td>
+            <td class="p-2 font-medium">TELECOM ARGENTINA SA</td>
+            <td class="p-2">FC A 00012-00045892</td>
+            <td class="p-2 text-right font-bold">$ 54.450,00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// MOTOR 4: CALC RETENCIONES (Demo Interactivo)
+// -------------------------------------------------------------
+function calculateRetentionsUI() {
+  const net = parseFloat(document.getElementById('ret-neto').value) || 0;
+  const nonTaxableBase = 67200; // Servicios RG 830
+  
+  const taxableBase = Math.max(0, net - nonTaxableBase);
+  const ganancias = taxableBase * 0.02;
+  const iibb = net * 0.025;
+  const totalRet = ganancias + iibb;
+  const netToPay = net - totalRet;
+
+  const container = document.getElementById('retenciones-results');
+  container.innerHTML = `
+    <div>
+      <h3 class="text-xs uppercase text-slate-400 font-semibold mb-4">Resultado Liquidación</h3>
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between border-b border-slate-800 pb-2">
+          <span class="text-slate-400">Neto Comprobante:</span>
+          <span>$ ${net.toLocaleString('es-AR')}</span>
+        </div>
+        <div class="flex justify-between text-amber-400">
+          <span>Ret. Ganancias (2%):</span>
+          <span>-$ ${ganancias.toLocaleString('es-AR')}</span>
+        </div>
+        <div class="flex justify-between text-amber-400 border-b border-slate-800 pb-2">
+          <span>Ret. IIBB (2.5%):</span>
+          <span>-$ ${iibb.toLocaleString('es-AR')}</span>
+        </div>
+        <div class="flex justify-between text-base font-bold pt-2 text-emerald-400">
+          <span>Neto a Pagar:</span>
+          <span>$ ${netToPay.toLocaleString('es-AR')}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
