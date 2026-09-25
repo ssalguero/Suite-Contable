@@ -11,7 +11,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Ejemplo: Función para guardar una retención calculada en la base de datos
+// Función para guardar retención calculada en Supabase
 async function guardarRetencionBD(neto, acumulado, retencion, alicuota) {
   const { data, error } = await db
     .from('retenciones_emitidas')
@@ -168,10 +168,11 @@ function runCruzadorIvaDemo() {
 }
 
 // -------------------------------------------------------------
-// MOTOR 4: CALC RETENCIONES (Demo Interactivo)
+// MOTOR 4: CALC RETENCIONES (Interactivo + Guardado en BD)
 // -------------------------------------------------------------
-function calculateRetentionsUI() {
+async function calculateRetentionsUI() {
   const net = parseFloat(document.getElementById('ret-neto').value) || 0;
+  const acum = parseFloat(document.getElementById('ret-acum').value) || 0;
   const nonTaxableBase = 67200; // Servicios RG 830
   
   const taxableBase = Math.max(0, net - nonTaxableBase);
@@ -180,6 +181,7 @@ function calculateRetentionsUI() {
   const totalRet = ganancias + iibb;
   const netToPay = net - totalRet;
 
+  // Renderizar resultado en UI
   const container = document.getElementById('retenciones-results');
   container.innerHTML = `
     <div>
@@ -202,6 +204,19 @@ function calculateRetentionsUI() {
           <span>$ ${netToPay.toLocaleString('es-AR')}</span>
         </div>
       </div>
+      <p id="save-status" class="mt-4 text-[11px] text-slate-400 italic">Guardando registro en Supabase...</p>
     </div>
   `;
+
+  // Guardar en la base de datos automáticamente
+  try {
+    await guardarRetencionBD(net, acum, totalRet, 2.0);
+    const statusEl = document.getElementById('save-status');
+    if (statusEl) {
+      statusEl.textContent = '✓ Registrado en la base de datos de Supabase';
+      statusEl.className = 'mt-4 text-[11px] text-emerald-400 font-medium';
+    }
+  } catch (err) {
+    console.error(err);
+  }
 }
