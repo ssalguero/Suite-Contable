@@ -204,16 +204,16 @@ async function calculateRetentionsUI() {
           <span>$ ${netToPay.toLocaleString('es-AR')}</span>
         </div>
       </div>
-        <p id="save-status" class="mt-4 text-[11px] text-slate-400 italic">Guardando registro en Supabase...</p>
-        <div class="mt-4 grid grid-cols-2 gap-2">
-          <button onclick="downloadPDF(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1">
-            📄 Exportar PDF
-          </button>
-          <button onclick="downloadCSV(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1">
-            📊 Exportar CSV
-          </button>
-        </div>
+      <p id="save-status" class="mt-4 text-[11px] text-slate-400 italic">Guardando registro en Supabase...</p>
+      <div class="mt-4 grid grid-cols-2 gap-2">
+        <button onclick="downloadPDF(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1">
+          📄 Exportar PDF
+        </button>
+        <button onclick="downloadCSV(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1">
+          📊 Exportar CSV
+        </button>
       </div>
+    </div>
   `;
 
   // Guardar en la base de datos automáticamente
@@ -227,7 +227,9 @@ async function calculateRetentionsUI() {
   } catch (err) {
     console.error(err);
   }
-  // Función para generar y descargar el Certificado en PDF
+}
+
+// Función para generar y descargar el Certificado en PDF
 function downloadPDF(neto, ganancias, iibb, netoPagar) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -272,5 +274,4 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-}
 }
