@@ -204,8 +204,16 @@ async function calculateRetentionsUI() {
           <span>$ ${netToPay.toLocaleString('es-AR')}</span>
         </div>
       </div>
-      <p id="save-status" class="mt-4 text-[11px] text-slate-400 italic">Guardando registro en Supabase...</p>
-    </div>
+        <p id="save-status" class="mt-4 text-[11px] text-slate-400 italic">Guardando registro en Supabase...</p>
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button onclick="downloadPDF(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1">
+            📄 Exportar PDF
+          </button>
+          <button onclick="downloadCSV(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1">
+            📊 Exportar CSV
+          </button>
+        </div>
+      </div>
   `;
 
   // Guardar en la base de datos automáticamente
@@ -219,4 +227,50 @@ async function calculateRetentionsUI() {
   } catch (err) {
     console.error(err);
   }
+  // Función para generar y descargar el Certificado en PDF
+function downloadPDF(neto, ganancias, iibb, netoPagar) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.setTextColor(30, 41, 59);
+  doc.text("Certificado de Retención", 105, 20, { align: "center" });
+
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`, 14, 30);
+  doc.text(`Empresa: Demostración SA`, 14, 36);
+
+  doc.autoTable({
+    startY: 45,
+    head: [['Concepto', 'Monto ($)']],
+    body: [
+      ['Neto Comprobante', `$ ${neto.toLocaleString('es-AR')}`],
+      ['Retención Ganancias (2%)', `-$ ${ganancias.toLocaleString('es-AR')}`],
+      ['Retención IIBB (2.5%)', `-$ ${iibb.toLocaleString('es-AR')}`],
+      ['Neto a Pagar', `$ ${netoPagar.toLocaleString('es-AR')}`]
+    ],
+    headStyles: { fillColor: [79, 70, 229] },
+  });
+
+  doc.save(`Certificado_Retencion_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+// Función para generar y descargar el reporte en CSV / Excel
+function downloadCSV(neto, ganancias, iibb, netoPagar) {
+  const csvContent = "data:text/csv;charset=utf-8," 
+    + "Concepto,Monto\n"
+    + `Neto Comprobante,${neto}\n`
+    + `Retencion Ganancias,${ganancias}\n`
+    + `Retencion IIBB,${iibb}\n`
+    + `Neto a Pagar,${netoPagar}\n`;
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `Retencion_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 }
