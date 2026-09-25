@@ -5,6 +5,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// Inicialización de Supabase
+const SUPABASE_URL = 'https://ippdmibozcpxzsczvpqn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwcGRtaWJvemNweHpzY3p2cHFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNDI1MDUsImV4cCI6MjEwNTkxODUwNX0.6izD8ivkoovQdX1RE8MarIZbgVumzuavl7FB6P0boLU';
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Ejemplo: Función para guardar una retención calculada en la base de datos
+async function guardarRetencionBD(neto, acumulado, retencion, alicuota) {
+  const { data, error } = await db
+    .from('retenciones_emitidas')
+    .insert([
+      {
+        neto_comprobante: neto,
+        acumulado_mes: acumulado,
+        monto_retencion: retencion,
+        alicuota_aplicada: alicuota
+      }
+    ]);
+
+  if (error) {
+    console.error('Error al guardar en Supabase:', error.message);
+  } else {
+    console.log('Registro guardado exitosamente en Supabase:', data);
+  }
+}
+
 // Control de Pestañas
 function switchTab(tabId) {
   const tabs = ['dashboard', 'conciliador', 'cta-corriente', 'cruzador-iva', 'calc-retenciones'];
