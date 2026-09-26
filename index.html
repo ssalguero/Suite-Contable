@@ -20,41 +20,43 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="h-full font-sans antialiased text-slate-900 flex overflow-hidden">
+
   <!-- Modal de Autenticación / Login -->
-<div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
-    <div class="bg-slate-900 p-6 text-white text-center border-b border-slate-800">
-      <div class="inline-flex bg-indigo-600/20 p-3 rounded-2xl text-indigo-400 border border-indigo-500/30 mb-3">
-        <i data-lucide="shield-check" class="w-6 h-6"></i>
+  <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="bg-slate-900 p-6 text-white text-center border-b border-slate-800">
+        <div class="inline-flex bg-indigo-600/20 p-3 rounded-2xl text-indigo-400 border border-indigo-500/30 mb-3">
+          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        </div>
+        <h2 class="text-xl font-bold">Suite Contable Auxiliar</h2>
+        <p class="text-xs text-slate-400 mt-1">Ingresá a tu panel operativo local</p>
       </div>
-      <h2 class="text-xl font-bold">Suite Contable Auxiliar</h2>
-      <p class="text-xs text-slate-400 mt-1">Ingresá a tu panel operativo local</p>
+
+      <form id="auth-form" onsubmit="handleAuth(event)" class="p-6 space-y-4">
+        <div id="auth-error" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-medium"></div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Correo Electrónico</label>
+          <input id="auth-email" type="email" required placeholder="auxiliar@empresa.com" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Contraseña</label>
+          <input id="auth-password" type="password" required placeholder="••••••••" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="submit" id="btn-login" onclick="setAuthMode('login')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-sm cursor-pointer">
+            Iniciar Sesión
+          </button>
+          <button type="submit" id="btn-signup" onclick="setAuthMode('signup')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm py-2.5 rounded-lg transition border border-slate-300 cursor-pointer">
+            Registrarse
+          </button>
+        </div>
+      </form>
     </div>
-
-    <form id="auth-form" onsubmit="handleAuth(event)" class="p-6 space-y-4">
-      <div id="auth-error" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg text-xs font-medium"></div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Correo Electrónico</label>
-        <input id="auth-email" type="email" required placeholder="auxiliar@empresa.com" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
-      </div>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Contraseña</label>
-        <input id="auth-password" type="password" required placeholder="••••••••" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
-      </div>
-
-      <div class="flex gap-2 pt-2">
-        <button type="button" id="btn-login" onclick="setAuthMode('login')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-sm">
-          Iniciar Sesión
-        </button>
-        <button type="button" id="btn-signup" onclick="setAuthMode('signup')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm py-2.5 rounded-lg transition border border-slate-300">
-          Registrarse
-        </button>
-      </div>
-    </form>
   </div>
-</div>
+
   <!-- Sidebar / Barra Lateral -->
   <aside class="bg-slate-900 text-slate-300 w-64 min-h-screen flex flex-col justify-between border-r border-slate-800 shrink-0">
     <div>
@@ -73,37 +75,36 @@
 
       <!-- Menú de Navegación -->
       <nav class="p-3 space-y-1" id="main-nav">
-        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white shadow-sm">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white shadow-sm cursor-pointer">
           <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
           <span>Dashboard</span>
         </button>
-        <button onclick="switchTab('conciliador')" id="nav-conciliador" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+        <button onclick="switchTab('conciliador')" id="nav-conciliador" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="scale" class="w-4 h-4"></i>
           <span>Conciliador Bancario</span>
         </button>
-        <button onclick="switchTab('cta-corriente')" id="nav-cta-corriente" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+        <button onclick="switchTab('cta-corriente')" id="nav-cta-corriente" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="wallet" class="w-4 h-4"></i>
           <span>Cuentas Corrientes</span>
         </button>
-        <button onclick="switchTab('cruzador-iva')" id="nav-cruzador-iva" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+        <button onclick="switchTab('cruzador-iva')" id="nav-cruzador-iva" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="file-check-2" class="w-4 h-4"></i>
           <span>Cruzador IVA Digital</span>
         </button>
-        <button onclick="switchTab('calc-retenciones')" id="nav-calc-retenciones" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
+        <button onclick="switchTab('calc-retenciones')" id="nav-calc-retenciones" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="calculator" class="w-4 h-4"></i>
           <span>Calc. Retenciones</span>
         </button>
-        <!-- Menú Lateral: Nuevos Módulos -->
-        <button id="nav-fondo-fijo" onclick="switchTab('fondo-fijo')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <i data-lucide="receipt"></i>
+        <button id="nav-fondo-fijo" onclick="switchTab('fondo-fijo')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="receipt" class="w-4 h-4"></i>
           <span>Fondo Fijo / Caja Chica</span>
         </button>
-        <button id="nav-ordenes-pago" onclick="switchTab('ordenes-pago')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <i data-lucide="file-check"></i>
+        <button id="nav-ordenes-pago" onclick="switchTab('ordenes-pago')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="file-check" class="w-4 h-4"></i>
           <span>Órdenes de Pago (OP)</span>
         </button>
-        <button id="nav-libro-diario" onclick="switchTab('libro-diario')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200">
-          <i data-lucide="book-open"></i>
+        <button id="nav-libro-diario" onclick="switchTab('libro-diario')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
           <span>Libro Diario y Asientos</span>
         </button>
       </nav>
@@ -120,34 +121,34 @@
 
   <!-- Area Principal de Contenido -->
   <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-<!-- Header Superior -->
-<header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10 shadow-xs">
-  <div class="flex items-center gap-2">
-    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-      Estado: Operativo Local
-    </span>
-    <span class="text-xs text-slate-400">|</span>
-    <span class="text-xs font-medium text-slate-500">
-      Empresa: <strong class="text-slate-700">Demostración SA</strong>
-    </span>
-  </div>
+    <!-- Header Superior -->
+    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10 shadow-xs">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Estado: Operativo Local
+        </span>
+        <span class="text-xs text-slate-400">|</span>
+        <span class="text-xs font-medium text-slate-500">
+          Empresa: <strong class="text-slate-700">Demostración SA</strong>
+        </span>
+      </div>
 
-  <!-- PASO 2 AGREGADO AQUÍ: Estado de Usuario / Cerrar Sesión -->
-  <div class="flex items-center gap-4">
-    <div class="text-xs text-slate-500 font-mono hidden md:block">
-      Costo Servidor: <strong class="text-emerald-600">$0,00 ARS</strong>
-    </div>
-    <div class="h-4 w-px bg-slate-200 hidden md:block"></div>
-    <div class="flex items-center gap-2">
-      <span id="user-display-email" class="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-        Cargando usuario...
-      </span>
-      <button onclick="logout()" title="Cerrar Sesión" class="text-xs bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 hover:border-rose-200 px-2.5 py-1 rounded-md transition font-medium flex items-center gap-1 cursor-pointer">
-        <span>Salir</span>
-      </button>
-    </div>
-  </div>
-</header>
+      <!-- Estado de Usuario / Cerrar Sesión -->
+      <div class="flex items-center gap-4">
+        <div class="text-xs text-slate-500 font-mono hidden md:block">
+          Costo Servidor: <strong class="text-emerald-600">$0,00 ARS</strong>
+        </div>
+        <div class="h-4 w-px bg-slate-200 hidden md:block"></div>
+        <div class="flex items-center gap-2">
+          <span id="user-display-email" class="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+            Cargando usuario...
+          </span>
+          <button onclick="logout()" title="Cerrar Sesión" class="text-xs bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 hover:border-rose-200 px-2.5 py-1 rounded-md transition font-medium flex items-center gap-1 cursor-pointer">
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </header>
 
     <!-- Secciones de Contenido -->
     <main class="flex-1 p-6">
@@ -203,7 +204,7 @@
             <h2 class="text-2xl font-bold text-slate-800">Conciliador Bancario</h2>
             <p class="text-sm text-slate-500">Cruza extracto bancario con libro diario interno</p>
           </div>
-          <button onclick="runConciliationDemo()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm">
+          <button onclick="runConciliationDemo()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm cursor-pointer">
             Ejecutar Demo de Cruce
           </button>
         </div>
@@ -220,7 +221,7 @@
             <h2 class="text-2xl font-bold text-slate-800">Gestor de Cuentas Corrientes</h2>
             <p class="text-sm text-slate-500">Imputación de pagos por antigüedad (FIFO)</p>
           </div>
-          <button onclick="runCtaCorrienteDemo()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm">
+          <button onclick="runCtaCorrienteDemo()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm cursor-pointer">
             Calcular Saldos
           </button>
         </div>
@@ -237,7 +238,7 @@
             <h2 class="text-2xl font-bold text-slate-800">Cruzador IVA Digital</h2>
             <p class="text-sm text-slate-500">Auditoría fiscal ARCA/AFIP vs. Registro Interno</p>
           </div>
-          <button onclick="runCruzadorIvaDemo()" class="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm">
+          <button onclick="runCruzadorIvaDemo()" class="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm cursor-pointer">
             Auditar Comprobantes
           </button>
         </div>
@@ -269,7 +270,7 @@
                 <input id="ret-acum" type="number" value="120000" class="w-full text-sm border border-slate-300 rounded-lg p-2 text-slate-600">
               </div>
             </div>
-            <button onclick="calculateRetentionsUI()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg">
+            <button onclick="calculateRetentionsUI()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg cursor-pointer">
               Calcular Retención
             </button>
           </div>
@@ -290,189 +291,176 @@
           </div>
         </div>
       </section>
-    <!-- ========================================== -->
-<!-- PESTAÑA: FONDO FIJO / CAJA CHICA -->
-<!-- ========================================== -->
-<section id="tab-fondo-fijo" class="hidden space-y-6">
-  <div class="flex justify-between items-center">
-    <div>
-      <h2 class="text-xl font-bold text-slate-100">Fondo Fijo / Caja Chica</h2>
-      <p class="text-xs text-slate-400">Registro rápido de comprobantes menores, vales y rindes por centro de costo.</p>
-    </div>
-  </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Formulario de Carga -->
-    <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
-      <h3 class="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-2">Nuevo Comprobante / Vale</h3>
-      
-      <div>
-        <label class="block text-xs text-slate-400 mb-1">Concepto / Detalle</label>
-        <input type="text" id="ff-concepto" placeholder="Ej: Compra de insumos de librería" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Monto ($)</label>
-          <input type="number" id="ff-monto" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
+      <!-- VISTA 5: FONDO FIJO / CAJA CHICA -->
+      <section id="tab-fondo-fijo" class="hidden space-y-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-800">Fondo Fijo / Caja Chica</h2>
+            <p class="text-sm text-slate-500">Registro rápido de comprobantes menores, vales y rindes por centro de costo.</p>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Tipo Doc.</label>
-          <select id="ff-tipo" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
-            <option value="Factura B">Factura B</option>
-            <option value="Factura C">Factura C</option>
-            <option value="Ticket">Ticket Fiscal</option>
-            <option value="Vale de Caja">Vale de Caja</option>
-          </select>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-800 border-b pb-2">Nuevo Comprobante / Vale</h3>
+            
+            <div>
+              <label class="block text-xs text-slate-500 font-semibold mb-1">Concepto / Detalle</label>
+              <input type="text" id="ff-concepto" placeholder="Ej: Compra de insumos de librería" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-slate-500 font-semibold mb-1">Monto ($)</label>
+                <input type="number" id="ff-monto" placeholder="0.00" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-500 font-semibold mb-1">Tipo Doc.</label>
+                <select id="ff-tipo" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="Factura B">Factura B</option>
+                  <option value="Factura C">Factura C</option>
+                  <option value="Ticket">Ticket Fiscal</option>
+                  <option value="Vale de Caja">Vale de Caja</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs text-slate-500 font-semibold mb-1">Centro de Costo</label>
+              <select id="ff-centro" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="Administración">Administración</option>
+                <option value="Comercial / Ventas">Comercial / Ventas</option>
+                <option value="Operaciones / Planta">Operaciones / Planta</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+              </select>
+            </div>
+
+            <button onclick="agregarGastoCajaChica(document.getElementById('ff-concepto').value, document.getElementById('ff-monto').value, document.getElementById('ff-centro').value, document.getElementById('ff-tipo').value)" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2.5 rounded-lg transition-all shadow cursor-pointer">
+              + Registrar en Rinde
+            </button>
+          </div>
+
+          <div class="lg:col-span-2 bg-white border border-slate-200 p-5 rounded-xl shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-800 mb-4">Resumen del Rinde Activo</h3>
+            <div id="fondo-fijo-results" class="text-xs text-slate-500 text-center py-8">
+              No hay comprobantes cargados en el rinde actual.
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <label class="block text-xs text-slate-400 mb-1">Centro de Costo</label>
-        <select id="ff-centro" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
-          <option value="Administración">Administración</option>
-          <option value="Comercial / Ventas">Comercial / Ventas</option>
-          <option value="Operaciones / Planta">Operaciones / Planta</option>
-          <option value="Mantenimiento">Mantenimiento</option>
-        </select>
-      </div>
-
-      <button onclick="agregarGastoCajaChica(document.getElementById('ff-concepto').value, document.getElementById('ff-monto').value, document.getElementById('ff-centro').value, document.getElementById('ff-tipo').value)" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2.5 rounded-lg transition-all shadow">
-        + Registrar en Rinde
-      </button>
-    </div>
-
-    <!-- Tabla / Planilla de Rinde -->
-    <div class="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-xl">
-      <h3 class="text-sm font-semibold text-slate-200 mb-4">Resumen del Rinde Activo</h3>
-      <div id="fondo-fijo-results" class="text-xs text-slate-500 text-center py-8">
-        No hay comprobantes cargados en el rinde actual.
-      </div>
-    </div>
-  </div>
-</section>
-
-
-<!-- ========================================== -->
-<!-- PESTAÑA: GESTOR DE ÓRDENES DE PAGO (OP) -->
-<!-- ========================================== -->
-<section id="tab-ordenes-pago" class="hidden space-y-6">
-  <div class="flex justify-between items-center">
-    <div>
-      <h2 class="text-xl font-bold text-slate-100">Gestor de Órdenes de Pago (OP)</h2>
-      <p class="text-xs text-slate-400">Vinculación de facturas, medios de pago y aplicación de certificados de retención.</p>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Formulario OP -->
-    <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
-      <h3 class="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-2">Generar Órden de Pago</h3>
-
-      <div>
-        <label class="block text-xs text-slate-400 mb-1">Proveedor / Razón Social</label>
-        <input type="text" id="op-proveedor" placeholder="Ej: Pinturerías Rex SA" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Monto Factura ($)</label>
-          <input type="number" id="op-monto-factura" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
+      <!-- VISTA 6: GESTOR DE ÓRDENES DE PAGO (OP) -->
+      <section id="tab-ordenes-pago" class="hidden space-y-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-800">Gestor de Órdenes de Pago (OP)</h2>
+            <p class="text-sm text-slate-500">Vinculación de facturas, medios de pago y aplicación de certificados de retención.</p>
+          </div>
         </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Retención Aplicada ($)</label>
-          <input type="number" id="op-monto-retencion" placeholder="0.00" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-800 border-b pb-2">Generar Órden de Pago</h3>
+
+            <div>
+              <label class="block text-xs text-slate-500 font-semibold mb-1">Proveedor / Razón Social</label>
+              <input type="text" id="op-proveedor" placeholder="Ej: Pinturerías Rex SA" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-slate-500 font-semibold mb-1">Monto Factura ($)</label>
+                <input type="number" id="op-monto-factura" placeholder="0.00" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div>
+                <label class="block text-xs text-slate-500 font-semibold mb-1">Retención Aplicada ($)</label>
+                <input type="number" id="op-monto-retencion" placeholder="0.00" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs text-slate-500 font-semibold mb-1">Medio de Pago Principal</label>
+              <select id="op-medio-pago" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+                <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                <option value="eCheq / Cheque Diferido">eCheq / Cheque Diferido</option>
+                <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
+                <option value="Mixto (Transferencia + Cheque)">Mixto (Transferencia + Cheque)</option>
+              </select>
+            </div>
+
+            <button onclick="generarOrdenPago(document.getElementById('op-proveedor').value, parseFloat(document.getElementById('op-monto-factura').value)||0, parseFloat(document.getElementById('op-monto-retencion').value)||0, document.getElementById('op-medio-pago').value)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2.5 rounded-lg transition-all shadow cursor-pointer">
+              📄 Emitir Órden de Pago
+            </button>
+          </div>
+
+          <div class="bg-white border border-slate-200 p-5 rounded-xl shadow-sm">
+            <h3 class="text-sm font-semibold text-slate-800 mb-4">Vista Previa de la OP</h3>
+            <div id="op-results" class="text-xs text-slate-500 text-center py-8">
+              Completa el formulario para previsualizar y emitir la Órden de Pago.
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <label class="block text-xs text-slate-400 mb-1">Medio de Pago Principal</label>
-        <select id="op-medio-pago" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2.5 focus:border-indigo-500 focus:outline-none">
-          <option value="Transferencia Bancaria">Transferencia Bancaria</option>
-          <option value="eCheq / Cheque Diferido">eCheq / Cheque Diferido</option>
-          <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
-          <option value="Mixto (Transferencia + Cheque)">Mixto (Transferencia + Cheque)</option>
-        </select>
-      </div>
-
-      <button onclick="generarOrdenPago(document.getElementById('op-proveedor').value, parseFloat(document.getElementById('op-monto-factura').value)||0, parseFloat(document.getElementById('op-monto-retencion').value)||0, document.getElementById('op-medio-pago').value)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs py-2.5 rounded-lg transition-all shadow">
-        📄 Emitir Órden de Pago
-      </button>
-    </div>
-
-    <!-- Vista Previa / Comprobante OP -->
-    <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-      <h3 class="text-sm font-semibold text-slate-200 mb-4">Vista Previa de la OP</h3>
-      <div id="op-results" class="text-xs text-slate-500 text-center py-8">
-        Completa el formulario para previsualizar y emitir la Órden de Pago.
-      </div>
-    </div>
-  </div>
-</section>
-
-
-<!-- ========================================== -->
-<!-- PESTAÑA: LIBRO DIARIO Y ASIENTOS MANUALES -->
-<!-- ========================================== -->
-<section id="tab-libro-diario" class="hidden space-y-6">
-  <div class="flex justify-between items-center">
-    <div>
-      <h2 class="text-xl font-bold text-slate-100">Libro Diario y Asientos Manuales</h2>
-      <p class="text-xs text-slate-400">Registro de asientos con validación automática de balanceo (Debe = Haber).</p>
-    </div>
-  </div>
-
-  <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
-    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-      <h3 class="text-sm font-semibold text-slate-200">Nuevo Asiento Contable</h3>
-      <span class="text-xs text-slate-400">Verificación estricta de Partida Doble</span>
-    </div>
-
-    <div class="space-y-3">
-      <!-- Fila 1 del Asiento -->
-      <div class="grid grid-cols-12 gap-2 items-center">
-        <div class="col-span-6">
-          <input type="text" id="asiento-cuenta-1" placeholder="Cuenta Contable (ej: Gastos de Administración)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:border-indigo-500 focus:outline-none">
+      <!-- VISTA 7: LIBRO DIARIO Y ASIENTOS MANUALES -->
+      <section id="tab-libro-diario" class="hidden space-y-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-2xl font-bold text-slate-800">Libro Diario y Asientos Manuales</h2>
+            <p class="text-sm text-slate-500">Registro de asientos con validación automática de balanceo (Debe = Haber).</p>
+          </div>
         </div>
-        <div class="col-span-3">
-          <input type="number" id="asiento-debe-1" placeholder="Debe ($)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:border-indigo-500 focus:outline-none">
-        </div>
-        <div class="col-span-3">
-          <input type="number" id="asiento-haber-1" placeholder="Haber ($)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:border-indigo-500 focus:outline-none">
-        </div>
-      </div>
 
-      <!-- Fila 2 del Asiento -->
-      <div class="grid grid-cols-12 gap-2 items-center">
-        <div class="col-span-6">
-          <input type="text" id="asiento-cuenta-2" placeholder="Cuenta Contable (ej: Banco Nación Cta Cte)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:border-indigo-500 focus:outline-none">
-        </div>
-        <div class="col-span-3">
-          <input type="number" id="asiento-debe-2" placeholder="Debe ($)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:border-indigo-500 focus:outline-none">
-        </div>
-        <div class="col-span-3">
-          <input type="number" id="asiento-haber-2" placeholder="Haber ($)" class="w-full bg-slate-950 border border-slate-800 text-slate-100 text-xs rounded-lg p-2 focus:border-indigo-500 focus:outline-none">
-        </div>
-      </div>
-    </div>
+        <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="text-sm font-semibold text-slate-800">Nuevo Asiento Contable</h3>
+            <span class="text-xs text-slate-400 font-medium">Verificación estricta de Partida Doble</span>
+          </div>
 
-    <!-- Botón de Registrar -->
-    <div class="pt-2 flex gap-3">
-      <button onclick="validarYGuardarAsiento([
-        { cuenta: document.getElementById('asiento-cuenta-1').value, debe: document.getElementById('asiento-debe-1').value, haber: document.getElementById('asiento-haber-1').value },
-        { cuenta: document.getElementById('asiento-cuenta-2').value, debe: document.getElementById('asiento-debe-2').value, haber: document.getElementById('asiento-haber-2').value }
-      ])" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all shadow">
-        Validar y Guardar Asiento
-      </button>
-    </div>
+          <div class="space-y-3">
+            <div class="grid grid-cols-12 gap-2 items-center">
+              <div class="col-span-6">
+                <input type="text" id="asiento-cuenta-1" placeholder="Cuenta Contable (ej: Gastos de Administración)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div class="col-span-3">
+                <input type="number" id="asiento-debe-1" placeholder="Debe ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div class="col-span-3">
+                <input type="number" id="asiento-haber-1" placeholder="Haber ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+            </div>
 
-    <!-- Mensaje de Validación / Error / Éxito -->
-    <div id="asiento-validation-status" class="mt-4"></div>
-  </div>
-</section>
+            <div class="grid grid-cols-12 gap-2 items-center">
+              <div class="col-span-6">
+                <input type="text" id="asiento-cuenta-2" placeholder="Cuenta Contable (ej: Banco Nación Cta Cte)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div class="col-span-3">
+                <input type="number" id="asiento-debe-2" placeholder="Debe ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+              <div class="col-span-3">
+                <input type="number" id="asiento-haber-2" placeholder="Haber ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2 flex gap-3">
+            <button onclick="validarYGuardarAsiento([
+              { cuenta: document.getElementById('asiento-cuenta-1').value, debe: document.getElementById('asiento-debe-1').value, haber: document.getElementById('asiento-haber-1').value },
+              { cuenta: document.getElementById('asiento-cuenta-2').value, debe: document.getElementById('asiento-debe-2').value, haber: document.getElementById('asiento-haber-2').value }
+            ])" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all shadow cursor-pointer">
+              Validar y Guardar Asiento
+            </button>
+          </div>
+
+          <div id="asiento-validation-status" class="mt-4"></div>
+        </div>
+      </section>
+
     </main>
   </div>
-  <!-- 1. Cargar todas las librerías externas (CDNs) PRIMERO -->
+
+  <!-- Carga de librerías externas (CDNs) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
