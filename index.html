@@ -232,22 +232,53 @@
       </section>
 
       <!-- VISTA 3: CRUZADOR IVA -->
-      <section id="tab-cruzador-iva" class="hidden space-y-6">
-        <div class="flex justify-between items-center">
-          <div>
-            <h2 class="text-2xl font-bold text-slate-800">Cruzador IVA Digital</h2>
-            <p class="text-sm text-slate-500">Auditoría fiscal ARCA/AFIP vs. Registro Interno</p>
-          </div>
-          <button onclick="runCruzadorIvaDemo()" class="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm cursor-pointer">
-            Auditar Comprobantes
-          </button>
-        </div>
+     <!-- VISTA 3: CRUZADOR IVA DIGITAL -->
+<section id="tab-cruzador-iva" class="hidden space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800">Cruzador IVA Digital</h2>
+      <p class="text-sm text-slate-500">Auditoría fiscal ARCA/AFIP vs. Registro Interno</p>
+    </div>
+  </div>
 
-        <div id="cruzador-iva-results" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-slate-500 text-sm">
-          Presioná "Auditar Comprobantes" para detectar facturas omitidas en el sistema.
-        </div>
-      </section>
+  <!-- Panel de Importación de Archivos -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Archivo ARCA -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+      <div class="flex items-center gap-2 border-b pb-2">
+        <i data-lucide="file-text" class="w-5 h-5 text-sky-600"></i>
+        <h3 class="font-bold text-slate-700 text-sm">1. Archivo Mis Comprobantes (ARCA)</h3>
+      </div>
+      <p class="text-xs text-slate-500">Subí el CSV / TXT oficial descargado del portal de ARCA/AFIP.</p>
+      <input type="file" id="file-arca-iva" accept=".csv, .txt" onchange="procesarArchivoArca(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer border border-slate-200 rounded-lg p-1">
+      <span id="status-arca-file" class="block text-[11px] text-slate-400 italic">Esperando archivo ARCA...</span>
+    </div>
 
+    <!-- Archivo Libro IVA Interno -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+      <div class="flex items-center gap-2 border-b pb-2">
+        <i data-lucide="file-spreadsheet" class="w-5 h-5 text-indigo-600"></i>
+        <h3 class="font-bold text-slate-700 text-sm">2. Planilla/CSV IVA Interno</h3>
+      </div>
+      <p class="text-xs text-slate-500">Subí el CSV exportado de tu sistema contable o Excel interno.</p>
+      <input type="file" id="file-interno-iva" accept=".csv, .txt" onchange="procesarArchivoInternoIVA(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1">
+      <span id="status-interno-file" class="block text-[11px] text-slate-400 italic">Esperando archivo Interno...</span>
+    </div>
+  </div>
+
+  <!-- Botón de Ejecutar Cruce -->
+  <div class="flex justify-end">
+    <button onclick="ejecutarCruceIvaReal()" class="bg-sky-600 hover:bg-sky-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer">
+      <i data-lucide="search-check" class="w-4 h-4"></i>
+      <span>Auditar y Cruzar Registros</span>
+    </button>
+  </div>
+
+  <!-- Contenedor de Resultados -->
+  <div id="cruzador-iva-results" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-slate-500 text-sm">
+    Cargá ambos archivos CSV y presioná "Auditar y Cruzar Registros" para detectar inconsistencias.
+  </div>
+</section>
       <!-- VISTA 4: CALC RETENCIONES -->
       <section id="tab-calc-retenciones" class="hidden space-y-6">
         <div class="flex justify-between items-center">
