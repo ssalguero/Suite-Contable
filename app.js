@@ -499,4 +499,101 @@ function parseCSV(text, delimiter = ',') {
     });
     return rowObj;
   });
+  // Variables de estado para los registros cargados
+let datosArcaIVA = [];
+let datosInternoIVA = [];
+
+// Procesar CSV de ARCA (delimitador punto y coma ';')
+function procesarArchivoArca(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('status-arca-file');
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const content = e.target.result;
+    datosArcaIVA = parseCSV(content, ';'); // ARCA exporta separado por ';'
+    if (statusEl) {
+      statusEl.textContent = `✓ ${datosArcaIVA.length} comprobantes cargados correctamente de ARCA.`;
+      statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
+    }
+  };
+
+  reader.readAsText(file, 'ISO-8859-1'); // Codificación habitual de AFIP/ARCA
+}
+
+// Procesar CSV Interno (delimitador coma ',')
+function procesarArchivoInternoIVA(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('status-interno-file');
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const content = e.target.result;
+    datosInternoIVA = parseCSV(content, ',');
+    if (statusEl) {
+      statusEl.textContent = `✓ ${datosInternoIVA.length} registros cargados del sistema interno.`;
+      statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+// Cruzar registros reales entre ARCA e Interno
+function ejecutarCruceIvaReal() {
+  const container = document.getElementById('cruzador-iva-results');
+  if (!container) return;
+
+  if (datosArcaIVA.length === 0 && datosInternoIVA.length === 0) {
+    runCruzadorIvaDemo(); // Si no hay archivos, ejecuta el demo por defecto
+    return;
+  }
+
+  // Comparar comprobantes presentes en ARCA que no estén en el sistema interno
+  const noCargados = datosArcaIVA.filter(arca => {
+    return !datosInternoIVA.some(interno => 
+      (interno['CUIT'] || interno['cuit']) === (arca['Nro. Doc. Emisor'] || arca['CUIT']) &&
+      (interno['Numero'] || interno['comprobante']) === (arca['Número de Comprobante'] || arca['Numero'])
+    );
+  });
+
+  container.innerHTML = `
+    <div class="space-y-4">
+      <div class="p-3 ${noCargados.length > 0 ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'} rounded-lg border text-xs font-semibold">
+        ${noCargados.length > 0 
+          ? `⚠️ Se detectaron ${noCargados.length} comprobantes en ARCA no cargados en el sistema interno.` 
+          : '✅ Auditoría perfecta: Todos los comprobantes de ARCA coinciden con el registro interno.'}
+      </div>
+
+      ${noCargados.length > 0 ? `
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b font-semibold text-slate-600">
+              <th class="p-2">Fecha</th>
+              <th class="p-2">CUIT</th>
+              <th class="p-2">Denominación Emisor</th>
+              <th class="p-2">Comprobante</th>
+              <th class="p-2 text-right">Total ARCA</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            ${noCargados.map(item => `
+              <tr class="bg-rose-50/40">
+                <td class="p-2 text-slate-600">${item['Fecha'] || '-'}</td>
+                <td class="p-2 font-mono text-slate-700">${item['Nro. Doc. Emisor'] || item['CUIT'] || '-'}</td>
+                <td class="p-2 font-medium text-slate-800">${item['Denominación Emisor'] || item['Razon Social'] || '-'}</td>
+                <td class="p-2 text-slate-600">${item['Tipo de Comprobante'] || ''} N° ${item['Número de Comprobante'] || item['Numero'] || '-'}</td>
+                <td class="p-2 text-right font-bold text-slate-800">$ ${item['Imp. Total'] || item['Total'] || '0,00'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : ''}
+    </div>
+  `;
+}
 }
