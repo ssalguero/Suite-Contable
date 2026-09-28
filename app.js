@@ -776,4 +776,38 @@ function ejecularCalculoCtaCorriente() {
     </table>
   `;
 }
+  function procesarArchivoFondoFijo(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('status-ff-file');
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const content = e.target.result;
+    const datosImportados = parseCSV(content, ',');
+
+    datosImportados.forEach(item => {
+      if (item['Concepto'] || item['monto']) {
+        fondoFijoMovimientos.push({
+          id: Date.now() + Math.random(),
+          fecha: item['Fecha'] || new Date().toLocaleDateString('es-AR'),
+          concepto: item['Concepto'] || 'Gasto Variado',
+          monto: parseFloat(item['Monto'] || item['monto'] || 0),
+          centroCosto: item['Centro'] || item['CentroCosto'] || 'Administración',
+          tipoDoc: item['Tipo'] || 'Factura C'
+        });
+      }
+    });
+
+    renderFondoFijo();
+
+    if (statusEl) {
+      statusEl.textContent = `✓ ${datosImportados.length} comprobantes agregados al rinde.`;
+      statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
+    }
+  };
+
+  reader.readAsText(file);
+}
 }
