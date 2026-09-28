@@ -198,22 +198,56 @@
       </section>
 
       <!-- VISTA 1: CONCILIADOR BANCARIO -->
-      <section id="tab-conciliador" class="hidden space-y-6">
-        <div class="flex justify-between items-center">
-          <div>
-            <h2 class="text-2xl font-bold text-slate-800">Conciliador Bancario</h2>
-            <p class="text-sm text-slate-500">Cruza extracto bancario con libro diario interno</p>
-          </div>
-          <button onclick="runConciliationDemo()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm cursor-pointer">
-            Ejecutar Demo de Cruce
-          </button>
-        </div>
+      <!-- VISTA 1: CONCILIADOR BANCARIO -->
+<section id="tab-conciliador" class="hidden space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800">Conciliador Bancario</h2>
+      <p class="text-sm text-slate-500">Cruza extracto bancario con libro diario interno mediante coincidencia difusa (Fuzzy Match)</p>
+    </div>
+  </div>
 
-        <div id="conciliador-results" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-slate-500 text-sm">
-          Presioná "Ejecutar Demo de Cruce" para procesar la prueba en vivo del algoritmo Fuzzy.
-        </div>
-      </section>
+  <!-- Panel de Importación de Archivos Bancarios -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Extracto Bancario -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+      <div class="flex items-center gap-2 border-b pb-2">
+        <i data-lucide="building-2" class="w-5 h-5 text-indigo-600"></i>
+        <h3 class="font-bold text-slate-700 text-sm">1. Extracto del Banco (CSV/Excel)</h3>
+      </div>
+      <p class="text-xs text-slate-500">Subí el extracto bancario exportado de tu Homebanking o sistema.</p>
+      <input type="file" id="file-banco" accept=".csv, .txt" onchange="procesarArchivoBanco(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1">
+      <span id="status-banco-file" class="block text-[11px] text-slate-400 italic">Esperando extracto bancario...</span>
+    </div>
 
+    <!-- Libro Diario Interno -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+      <div class="flex items-center gap-2 border-b pb-2">
+        <i data-lucide="book-open" class="w-5 h-5 text-emerald-600"></i>
+        <h3 class="font-bold text-slate-700 text-sm">2. Libro Diario Interno (CSV)</h3>
+      </div>
+      <p class="text-xs text-slate-500">Subí la planilla de movimientos del libro diario o sistema contable.</p>
+      <input type="file" id="file-libro" accept=".csv, .txt" onchange="procesarArchivoLibro(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-slate-200 rounded-lg p-1">
+      <span id="status-libro-file" class="block text-[11px] text-slate-400 italic">Esperando libro diario...</span>
+    </div>
+  </div>
+
+  <!-- Botón de Ejecutar Cruce Bancario -->
+  <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+    <div class="text-xs text-slate-500">
+      * Si no cargás archivos, podés hacer clic en el botón para ejecutar una demostración con datos de prueba.
+    </div>
+    <button onclick="ejecutarConciliacionBancaria()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer">
+      <i data-lucide="scale" class="w-4 h-4"></i>
+      <span>Ejecutar Conciliación</span>
+    </button>
+  </div>
+
+  <!-- Contenedor de Resultados -->
+  <div id="conciliador-results" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-slate-500 text-sm">
+    Presioná "Ejecutar Conciliación" para procesar la coincidencia de movimientos.
+  </div>
+</section>
       <!-- VISTA 2: CUENTAS CORRIENTES -->
       <section id="tab-cta-corriente" class="hidden space-y-6">
         <div class="flex justify-between items-center">
