@@ -697,4 +697,83 @@ function ejecutarConciliacionBancaria() {
     </div>
   `;
 }
+  // Variable de estado para Cuentas Corrientes
+let datosCtaCorriente = [];
+
+function procesarArchivoCtaCorriente(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('status-cta-file');
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const content = e.target.result;
+    datosCtaCorriente = parseCSV(content, ',');
+    if (statusEl) {
+      statusEl.textContent = `✓ ${datosCtaCorriente.length} comprobantes cargados correctamente.`;
+      statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function ejecularCalculoCtaCorriente() {
+  const container = document.getElementById('cta-corriente-results');
+  if (!container) return;
+
+  if (datosCtaCorriente.length === 0) {
+    runCtaCorrienteDemo();
+    return;
+  }
+
+  // Agrupar saldos por Entidad/Cliente
+  const saldosPorCliente = {};
+
+  datosCtaCorriente.forEach(item => {
+    const cliente = item['Cliente'] || item['Proveedor'] || item['Razon Social'] || 'Cliente Genérico';
+    const debe = parseFloat(item['Debe'] || item['Facturado'] || item['monto'] || 0);
+    const haber = parseFloat(item['Haber'] || item['Cobrado'] || 0);
+
+    if (!saldosPorCliente[cliente]) {
+      saldosPorCliente[cliente] = { facturado: 0, cobrado: 0 };
+    }
+
+    saldosPorCliente[cliente].facturado += debe;
+    saldosPorCliente[cliente].cobrado += haber;
+  });
+
+  const filasHTML = Object.keys(saldosPorCliente).map(cliente => {
+    const data = saldosPorCliente[cliente];
+    const saldo = data.facturado - data.cobrado;
+
+    return `
+      <tr>
+        <td class="p-2 font-medium text-slate-800">${cliente}</td>
+        <td class="p-2 text-right text-slate-600">$ ${data.facturado.toLocaleString('es-AR')}</td>
+        <td class="p-2 text-right text-slate-600">$ ${data.cobrado.toLocaleString('es-AR')}</td>
+        <td class="p-2 text-right font-bold ${saldo > 0 ? 'text-amber-600' : 'text-emerald-600'}">
+          $ ${saldo.toLocaleString('es-AR')}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="w-full text-left text-xs border-collapse">
+      <thead>
+        <tr class="border-b font-semibold text-slate-600">
+          <th class="p-2">Cliente / Proveedor</th>
+          <th class="p-2 text-right">Facturado ($)</th>
+          <th class="p-2 text-right">Cobrado/Pagado ($)</th>
+          <th class="p-2 text-right">Saldo Pendiente ($)</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        ${filasHTML}
+      </tbody>
+    </table>
+  `;
+}
 }
