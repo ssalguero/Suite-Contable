@@ -596,4 +596,105 @@ function ejecutarCruceIvaReal() {
     </div>
   `;
 }
+  // Variables de estado para el conciliador
+let datosExtractoBanco = [];
+let datosLibroDiario = [];
+
+function procesarArchivoBanco(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('status-banco-file');
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const content = e.target.result;
+    datosExtractoBanco = parseCSV(content, ',');
+    if (statusEl) {
+      statusEl.textContent = `✓ ${datosExtractoBanco.length} movimientos cargados del extracto bancario.`;
+      statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function procesarArchivoLibro(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('status-libro-file');
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const content = e.target.result;
+    datosLibroDiario = parseCSV(content, ',');
+    if (statusEl) {
+      statusEl.textContent = `✓ ${datosLibroDiario.length} registros cargados del libro diario.`;
+      statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function ejecutarConciliacionBancaria() {
+  const container = document.getElementById('conciliador-results');
+  if (!container) return;
+
+  // Si no hay archivos subidos, ejecuta la demostración por defecto
+  if (datosExtractoBanco.length === 0 && datosLibroDiario.length === 0) {
+    runConciliationDemo();
+    return;
+  }
+
+  // Lógica de comparación de importes entre Extracto y Libro
+  let conciliadosCount = 0;
+  const resultadosHTML = datosExtractoBanco.map(banco => {
+    const montoBanco = parseFloat(banco['Monto'] || banco['Importe'] || banco['monto'] || 0);
+    const conceptoBanco = banco['Concepto'] || banco['Descripcion'] || banco['concepto'] || 'Movimiento Banco';
+
+    // Buscar coincidencia exacta o cercana en importe en el Libro Diario
+    const coincidencia = datosLibroDiario.find(libro => {
+      const montoLibro = parseFloat(libro['Monto'] || libro['Importe'] || libro['monto'] || 0);
+      return Math.abs(montoBanco - montoLibro) < 0.01;
+    });
+
+    if (coincidencia) conciliadosCount++;
+
+    return `
+      <tr>
+        <td class="p-2 font-medium text-slate-800">${conceptoBanco}</td>
+        <td class="p-2 text-slate-600">${coincidencia ? (coincidencia['Concepto'] || coincidencia['concepto'] || 'Coincidencia Interna') : '<span class="text-rose-500 italic">No encontrado en Libro Diario</span>'}</td>
+        <td class="p-2 text-right font-bold text-slate-800">$ ${montoBanco.toLocaleString('es-AR')}</td>
+        <td class="p-2 text-center">
+          ${coincidencia 
+            ? '<span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-medium">Conciliado</span>' 
+            : '<span class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[10px] font-medium">Pendiente</span>'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="space-y-4">
+      <div class="p-3 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 font-semibold text-xs">
+        ✅ Procesamiento finalizado: ${conciliadosCount} de ${datosExtractoBanco.length} registros conciliados.
+      </div>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="border-b font-semibold text-slate-600">
+            <th class="p-2">Extracto Banco</th>
+            <th class="p-2">Libro Diario</th>
+            <th class="p-2 text-right">Importe</th>
+            <th class="p-2 text-center">Estado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          ${resultadosHTML}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
 }
