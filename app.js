@@ -883,7 +883,7 @@ async function calculateRetentionsUI() {
       </div>
     `;
   }
-}
+
   // Guardar en Supabase asociando al usuario
   try {
     const payload = {
@@ -893,20 +893,29 @@ async function calculateRetentionsUI() {
       alicuota_aplicada: 2.0
     };
 
-    if (currentUser) {
+    if (typeof currentUser !== 'undefined' && currentUser) {
       payload.user_id = currentUser.id;
     }
 
-    const { error } = await db.from('retenciones_emitidas').insert([payload]);
+    // Verificamos si db existe antes de intentar guardar
+    if (typeof db !== 'undefined' && db) {
+      const { error } = await db.from('retenciones_emitidas').insert([payload]);
 
-    const statusEl = document.getElementById('save-status');
-    if (statusEl) {
-      if (error) {
-        statusEl.textContent = '⚠️ Error al guardar en Supabase: ' + error.message;
-        statusEl.className = 'mt-4 text-[11px] text-rose-400 font-medium';
-      } else {
-        statusEl.textContent = '✓ Registrado en la base de datos de Supabase';
-        statusEl.className = 'mt-4 text-[11px] text-emerald-400 font-medium';
+      const statusEl = document.getElementById('save-status');
+      if (statusEl) {
+        if (error) {
+          statusEl.textContent = '⚠️ Error al guardar: ' + error.message;
+          statusEl.className = 'text-rose-400 font-medium';
+        } else {
+          statusEl.textContent = '✓ Registrado en Supabase';
+          statusEl.className = 'text-emerald-400 font-medium';
+        }
+      }
+    } else {
+      const statusEl = document.getElementById('save-status');
+      if (statusEl) {
+        statusEl.textContent = '✓ Cálculo local listo (sin conexión DB)';
+        statusEl.className = 'text-slate-400 font-medium';
       }
     }
   } catch (err) {
@@ -916,6 +925,10 @@ async function calculateRetentionsUI() {
 
 // Exportación en PDF
 function downloadPDF(neto, ganancias, iibb, netoPagar) {
+  if (!window.jspdf) {
+    alert("La librería jsPDF no está cargada.");
+    return;
+  }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -928,17 +941,19 @@ function downloadPDF(neto, ganancias, iibb, netoPagar) {
   doc.text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`, 14, 30);
   doc.text(`Empresa: Demostración SA`, 14, 36);
 
-  doc.autoTable({
-    startY: 45,
-    head: [['Concepto', 'Monto ($)']],
-    body: [
-      ['Neto Comprobante', `$ ${neto.toLocaleString('es-AR')}`],
-      ['Retención Ganancias (2%)', `-$ ${ganancias.toLocaleString('es-AR')}`],
-      ['Retención IIBB (2.5%)', `-$ ${iibb.toLocaleString('es-AR')}`],
-      ['Neto a Pagar', `$ ${netoPagar.toLocaleString('es-AR')}`]
-    ],
-    headStyles: { fillColor: [79, 70, 229] },
-  });
+  if (doc.autoTable) {
+    doc.autoTable({
+      startY: 45,
+      head: [['Concepto', 'Monto ($)']],
+      body: [
+        ['Neto Comprobante', `$ ${neto.toLocaleString('es-AR', {minimumFractionDigits: 2})}`],
+        ['Retención Ganancias (2%)', `-$ ${ganancias.toLocaleString('es-AR', {minimumFractionDigits: 2})}`],
+        ['Retención IIBB (2.5%)', `-$ ${iibb.toLocaleString('es-AR', {minimumFractionDigits: 2})}`],
+        ['Neto a Pagar', `$ ${netoPagar.toLocaleString('es-AR', {minimumFractionDigits: 2})}`]
+      ],
+      headStyles: { fillColor: [79, 70, 229] },
+    });
+  }
 
   doc.save(`Certificado_Retencion_${new Date().toISOString().slice(0,10)}.pdf`);
 }
@@ -960,7 +975,6 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
   link.click();
   document.body.removeChild(link);
 }
-
 // -------------------------------------------------------------
 // FONDO FIJO / CAJA CHICA
 // -------------------------------------------------------------
