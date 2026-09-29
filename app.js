@@ -983,184 +983,482 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
   link.click();
   document.body.removeChild(link);
 }
-// -------------------------------------------------------------
-// MOTOR 5: FONDO FIJO / CAJA CHICA (Conexión Supabase + Dashboard)
-// -------------------------------------------------------------
-let fondoFijoMovimientos = [];
+// ==========================================
+// MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
+// ==========================================
 
-// Cargar movimientos desde Supabase al iniciar
-async function fetchFondoFijo() {
-  if (typeof db !== 'undefined' && db) {
-    try {
-      const { data, error } = await db.from('fondo_fijo').select('*').order('id', { ascending: false });
-      if (!error && data) {
-        fondoFijoMovimientos = data.map(item => ({
-          id: item.id,
-          fecha: item.fecha || new Date(item.created_at).toLocaleDateString('es-AR'),
-          concepto: item.concepto,
-          monto: parseFloat(item.monto),
-          centroCosto: item.centro_costo,
-          tipoDoc: item.tipo_doc
-        }));
-      }
-    } catch (err) {
-      console.error("Error al cargar Fondo Fijo desde Supabase:", err);
+// Configuración de Estado Local para Fondo Fijo
+const estadoFondoFijo = {
+    registros: [],
+    filtros: {
+        busqueda: '',
+        centroCosto: 'TODOS',
+        tipoDoc: 'TODOS',
+        fechaDesde: '',
+        fechaHasta: '',
+        estadoRinde: 'ACTIVO' // ACTIVO o RENDIDO
+    },
+    paginacion: {
+        paginaActual: 1,
+        registrosPorPagina: 10
+    },
+    empresaIdActual: 'demo-empresa-id', // Cambiar según la sesión o selector de empresa
+    registroEnEdicion: null
+};
+
+// ------------------------------------------
+// 1. SISTEMA DE TOAST Y NOTIFICACIONES
+// ------------------------------------------
+function showToast(mensaje, tipo = 'exito') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none';
+        document.body.appendChild(container);
     }
-  }
-  renderFondoFijo();
-  updateDashboardMetrics(); // Sincroniza métricas en el Dashboard
-}
 
-async function agregarGastoCajaChica(concepto, monto, centroCosto, tipoDoc) {
-  if (!concepto || !monto || parseFloat(monto) <= 0) {
-    alert("Por favor ingrese un concepto y un monto válido.");
-    return;
-  }
-
-  const nuevoMov = {
-    fecha: new Date().toLocaleDateString('es-AR'),
-    concepto: concepto.trim(),
-    monto: parseFloat(monto),
-    centro_costo: centroCosto || 'General',
-    tipo_doc: tipoDoc || 'Factura B'
-  };
-
-  if (typeof currentUser !== 'undefined' && currentUser) {
-    nuevoMov.user_id = currentUser.id;
-  }
-
-  // Guardar en Supabase si está disponible
-  if (typeof db !== 'undefined' && db) {
-    try {
-      const { data, error } = await db.from('fondo_fijo').insert([nuevoMov]).select();
-      if (error) {
-        console.error("Error al guardar gasto:", error.message);
-      } else if (data && data.length > 0) {
-        nuevoMov.id = data[0].id;
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  if (!nuevoMov.id) nuevoMov.id = Date.now();
-
-  fondoFijoMovimientos.unshift({
-    id: nuevoMov.id,
-    fecha: nuevoMov.fecha,
-    concepto: nuevoMov.concepto,
-    monto: nuevoMov.monto,
-    centroCosto: nuevoMov.centro_costo,
-    tipoDoc: nuevoMov.tipo_doc
-  });
-
-  renderFondoFijo();
-  updateDashboardMetrics();
-
-  // Limpiar inputs
-  const inputConcepto = document.getElementById('ff-concepto');
-  const inputMonto = document.getElementById('ff-monto');
-  if (inputConcepto) inputConcepto.value = '';
-  if (inputMonto) inputMonto.value = '';
-}
-
-async function eliminarGastoCajaChica(id) {
-  if (typeof db !== 'undefined' && db) {
-    try {
-      await db.from('fondo_fijo').delete().eq('id', id);
-    } catch (err) {
-      console.error("Error al eliminar registro:", err);
-    }
-  }
-  fondoFijoMovimientos = fondoFijoMovimientos.filter(m => m.id !== id);
-  renderFondoFijo();
-  updateDashboardMetrics();
-}
-
-function renderFondoFijo() {
-  const container = document.getElementById('fondo-fijo-results');
-  if (!container) return;
-
-  if (fondoFijoMovimientos.length === 0) {
-    container.innerHTML = `
-      <div class="flex flex-col items-center justify-center h-48 text-slate-400 text-xs">
-        <svg class="w-8 h-8 mb-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-        </svg>
-        No hay comprobantes cargados en el rinde actual.
-      </div>
+    const colorBg = tipo === 'exito' ? 'bg-emerald-600' : tipo === 'error' ? 'bg-rose-600' : 'bg-blue-600';
+    const toast = document.createElement('div');
+    toast.className = `${colorBg} text-white px-4 py-3 rounded-lg shadow-xl text-sm font-medium flex items-center gap-2 transform transition-all duration-300 translate-y-5 opacity-0 pointer-events-auto`;
+    toast.innerHTML = `
+        <span>${tipo === 'exito' ? '✅' : tipo === 'error' ? '❌' : 'ℹ️'}</span>
+        <span>${mensaje}</span>
     `;
-    return;
-  }
 
-  const totalGastado = fondoFijoMovimientos.reduce((acc, m) => acc + m.monto, 0);
+    container.appendChild(toast);
 
-  container.innerHTML = `
-    <div class="space-y-4">
-      <div class="flex justify-between items-center p-3.5 bg-slate-900 rounded-xl border border-slate-800 shadow-sm">
-        <div>
-          <span class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold block">Total Rinde Caja Chica</span>
-          <span class="text-xs text-slate-500">${fondoFijoMovimientos.length} comprobantes cargados</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-lg font-bold text-emerald-400">$ ${totalGastado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-      </div>
+    setTimeout(() => {
+        toast.classList.remove('translate-y-5', 'opacity-0');
+    }, 10);
 
-      <div class="overflow-x-auto rounded-xl border border-slate-800">
-        <table class="w-full text-left text-xs border-collapse bg-slate-900/50">
-          <thead>
-            <tr class="border-b border-slate-800 font-semibold text-slate-400 bg-slate-900">
-              <th class="p-2.5">Fecha</th>
-              <th class="p-2.5">Concepto</th>
-              <th class="p-2.5">Doc.</th>
-              <th class="p-2.5">Centro Costo</th>
-              <th class="p-2.5 text-right">Monto</th>
-              <th class="p-2.5 text-center w-8"></th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800/60">
-            ${fondoFijoMovimientos.map(m => `
-              <tr class="hover:bg-slate-800/40 transition-colors">
-                <td class="p-2.5 text-slate-400 text-[11px] whitespace-nowrap">${m.fecha}</td>
-                <td class="p-2.5 text-slate-200 font-medium">${m.concepto}</td>
-                <td class="p-2.5 text-slate-400 text-[11px]">${m.tipoDoc}</td>
-                <td class="p-2.5">
-                  <span class="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded text-[10px] border border-indigo-500/20 font-medium">
-                    ${m.centroCosto}                   </span>                 </td>                 <td class="p-2.5 text-right font-semibold text-slate-100 whitespace-nowrap">                   $ ${m.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                </td>
-                <td class="p-2.5 text-center">
-                  <button onclick="eliminarGastoCajaChica(${m.id})" title="Eliminar ítem" class="text-slate-500 hover:text-rose-400 transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </button>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
 }
 
-// Actualizar las tarjetas del Dashboard
-function updateDashboardMetrics() {
-  const totalFondoFijo = fondoFijoMovimientos.reduce((acc, m) => acc + m.monto, 0);
-  const cantComprobantes = fondoFijoMovimientos.length;
+// ------------------------------------------
+// 2. REGISTRO MANUAL Y RESET
+// ------------------------------------------
+async function registrarComprobanteFondoFijo(e) {
+    if (e) e.preventDefault();
 
-  // Buscar elementos del Dashboard
-  const cardFondoFijo = document.querySelector('[data-metric="fondo-fijo-monto"]');
-  const cardFondoFijoSub = document.querySelector('[data-metric="fondo-fijo-cant"]');
+    const form = document.getElementById('form-fondo-fijo');
+    if (!form) return;
 
-  if (cardFondoFijo) {
-    cardFondoFijo.textContent = `$ ${totalFondoFijo.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-  }
-  if (cardFondoFijoSub) {
-    cardFondoFijoSub.textContent = `${cantComprobantes} comprobantes cargados`;
-  }
+    const fecha = document.getElementById('ff-fecha').value;
+    const concepto = document.getElementById('ff-concepto').value.trim();
+    const monto = parseFloat(document.getElementById('ff-monto').value);
+    const centroCosto = document.getElementById('ff-centro-costo').value;
+    const tipoDoc = document.getElementById('ff-tipo-doc').value;
+
+    if (!fecha || !concepto || isNaN(monto) || monto <= 0) {
+        showToast('Por favor, completá todos los campos requeridos correctamente.', 'error');
+        return;
+    }
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const nuevoRegistro = {
+            fecha,
+            concepto,
+            monto,
+            centro_costo: centroCosto,
+            tipo_doc: tipoDoc,
+            user_id: user?.id || null,
+            empresa_id: estadoFondoFijo.empresaIdActual,
+            estado_rinde: 'ACTIVO'
+        };
+
+        const { data, error } = await supabase
+            .from('fondo_fijo')
+            .insert([nuevoRegistro])
+            .select();
+
+        if (error) throw error;
+
+        // Reset del formulario
+        form.reset();
+        document.getElementById('ff-fecha').valueAsDate = new Date();
+
+        showToast('Comprobante registrado con éxito en el rinde activo.');
+        await cargarRegistrosFondoFijo();
+
+    } catch (err) {
+        console.error('Error al registrar comprobante:', err);
+        showToast('Ocurrió un error al guardar el comprobante en Supabase.', 'error');
+    }
 }
+
+// ------------------------------------------
+// 3. IMPORTACIÓN CSV Y PLANTILLA
+// ------------------------------------------
+function descargarPlantillaCSV() {
+    const encabezados = ['fecha', 'concepto', 'monto', 'tipo_doc', 'centro_costo'];
+    const ejemplo = [
+        '2026-03-30,"Limp. y Mantenimiento",15500.50,"Factura B","Administración"',
+        '2026-03-30,"Librería e Insumos",8200.00,"Factura C","Comercial"'
+    ];
+
+    const contenido = [encabezados.join(','), ...ejemplo].join('\n');
+    const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plantilla_fondo_fijo.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Plantilla CSV descargada con éxito.');
+}
+
+async function importarCSVFondoFijo(file) {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const texto = e.target.result;
+            const lineas = texto.split(/\r\n|\n/).filter(line => line.trim() !== '');
+            if (lineas.length <= 1) {
+                showToast('El archivo CSV está vacío o no contiene filas de datos.', 'error');
+                return;
+            }
+
+            const { data: { user } } = await supabase.auth.getUser();
+            const registrosInsertar = [];
+
+            // Saltar la primera fila (encabezados)
+            for (let i = 1; i < lineas.length; i++) {
+                // Regex para manejar comas dentro de comillas
+                const cols = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lineas[i].split(',');
+
+                if (cols.length >= 3) {
+                    const fecha = cols[0]?.replace(/"/g, '').trim();
+                    const concepto = cols[1]?.replace(/"/g, '').trim();
+                    const monto = parseFloat(cols[2]?.replace(/"/g, '').trim());
+                    const tipo_doc = cols[3]?.replace(/"/g, '').trim() || 'Ticket';
+                    const centro_costo = cols[4]?.replace(/"/g, '').trim() || 'General';
+
+                    if (fecha && concepto && !isNaN(monto)) {
+                        registrosInsertar.push({
+                            fecha,
+                            concepto,
+                            monto,
+                            tipo_doc,
+                            centro_costo,
+                            user_id: user?.id || null,
+                            empresa_id: estadoFondoFijo.empresaIdActual,
+                            estado_rinde: 'ACTIVO'
+                        });
+                    }
+                }
+            }
+
+            if (registrosInsertar.length === 0) {
+                showToast('No se pudieron parsear registros válidos del CSV.', 'error');
+                return;
+            }
+
+            // Bulk Insert a Supabase
+            const { error } = await supabase
+                .from('fondo_fijo')
+                .insert(registrosInsertar);
+
+            if (error) throw error;
+
+            showToast(`Se importaron ${registrosInsertar.length} comprobantes correctamente.`);
+            await cargarRegistrosFondoFijo();
+
+        } catch (err) {
+            console.error('Error al importar CSV:', err);
+            showToast('Error al procesar el archivo CSV.', 'error');
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+// ------------------------------------------
+// 4. CONSULTA Y FILTRADO DESDE SUPABASE
+// ------------------------------------------
+async function cargarRegistrosFondoFijo() {
+    try {
+        let query = supabase
+            .from('fondo_fijo')
+            .select('*', { count: 'exact' })
+            .order('fecha', { ascending: false });
+
+        // Aplicar filtros dinámicos
+        if (estadoFondoFijo.filtros.estadoRinde) {
+            query = query.eq('estado_rinde', estadoFondoFijo.filtros.estadoRinde);
+        }
+        if (estadoFondoFijo.filtros.centroCosto !== 'TODOS') {
+            query = query.eq('centro_costo', estadoFondoFijo.filtros.centroCosto);
+        }
+        if (estadoFondoFijo.filtros.tipoDoc !== 'TODOS') {
+            query = query.eq('tipo_doc', estadoFondoFijo.filtros.tipoDoc);
+        }
+        if (estadoFondoFijo.filtros.fechaDesde) {
+            query = query.gte('fecha', estadoFondoFijo.filtros.fechaDesde);
+        }
+        if (estadoFondoFijo.filtros.fechaHasta) {
+            query = query.lte('fecha', estadoFondoFijo.filtros.fechaHasta);
+        }
+        if (estadoFondoFijo.filtros.busqueda) {
+            query = query.ilike('concepto', `%${estadoFondoFijo.filtros.busqueda}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        estadoFondoFijo.registros = data || [];
+        renderizarTablaFondoFijo();
+        actualizarMetricasDashboard();
+
+    } catch (err) {
+        console.error('Error cargando fondo fijo:', err);
+        showToast('Error al cargar la tabla de rendición.', 'error');
+    }
+}
+
+// ------------------------------------------
+// 5. RENDERING DE TABLA Y PAGINACIÓN
+// ------------------------------------------
+function renderizarTablaFondoFijo() {
+    const tbody = document.getElementById('tabla-fondo-fijo-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    const { paginaActual, registrosPorPagina } = estadoFondoFijo.paginacion;
+    const inicio = (paginaActual - 1) * registrosPorPagina;
+    const fin = inicio + registrosPorPagina;
+    const paginados = estadoFondoFijo.registros.slice(inicio, fin);
+
+    if (paginados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-slate-400">
+                    No hay comprobantes registrados en este rinde con los filtros seleccionados.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    paginados.forEach(reg => {
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-700/50 hover:bg-slate-800/40 transition-colors text-sm';
+        tr.innerHTML = `
+            <td class="px-4 py-3 text-slate-300 whitespace-nowrap">${reg.fecha}</td>
+            <td class="px-4 py-3 text-slate-200 font-medium">${reg.concepto}</td>
+            <td class="px-4 py-3 text-slate-400">${reg.tipo_doc || '-'}</td>
+            <td class="px-4 py-3"><span class="px-2 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${reg.centro_costo || 'General'}</span></td>
+            <td class="px-4 py-3 text-right font-semibold text-emerald-400 whitespace-nowrap">$ ${parseFloat(reg.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+                <button onclick="prepararEdicionFondoFijo('${reg.id}')" class="text-blue-400 hover:text-blue-300 p-1 mr-2" title="Editar">✏️</button>
+                <button onclick="eliminarRegistroFondoFijo('${reg.id}')" class="text-rose-400 hover:text-rose-300 p-1" title="Eliminar">🗑️</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    renderizarPaginador();
+}
+
+function renderizarPaginador() {
+    const paginadorContainer = document.getElementById('ff-paginador');
+    if (!paginadorContainer) return;
+
+    const totalPaginas = Math.ceil(estadoFondoFijo.registros.length / estadoFondoFijo.paginacion.registrosPorPagina) || 1;
+    const { paginaActual } = estadoFondoFijo.paginacion;
+
+    paginadorContainer.innerHTML = `
+        <div class="flex justify-between items-center px-4 py-3 text-xs text-slate-400">
+            <span>Total: ${estadoFondoFijo.registros.length} registros (Página ${paginaActual} de ${totalPaginas})</span>
+            <div class="flex gap-2">
+                <button onclick="cambiarPaginaFF(${paginaActual - 1})" ${paginaActual === 1 ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-200"'}>Anterior</button>
+                <button onclick="cambiarPaginaFF(${paginaActual + 1})" ${paginaActual >= totalPaginas ? 'disabled class="opacity-40 cursor-not-allowed"' : 'class="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded text-slate-200"'}>Siguiente</button>
+            </div>
+        </div>
+    `;
+}
+
+function cambiarPaginaFF(nuevaPagina) {
+    const totalPaginas = Math.ceil(estadoFondoFijo.registros.length / estadoFondoFijo.paginacion.registrosPorPagina);
+    if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+        estadoFondoFijo.paginacion.paginaActual = nuevaPagina;
+        renderizarTablaFondoFijo();
+    }
+}
+
+// ------------------------------------------
+// 6. EDICIÓN Y ELIMINACIÓN DE REGISTROS
+// ------------------------------------------
+function prepararEdicionFondoFijo(id) {
+    const reg = estadoFondoFijo.registros.find(r => r.id === id);
+    if (!reg) return;
+
+    estadoFondoFijo.registroEnEdicion = id;
+    document.getElementById('ff-fecha').value = reg.fecha;
+    document.getElementById('ff-concepto').value = reg.concepto;
+    document.getElementById('ff-monto').value = reg.monto;
+    document.getElementById('ff-centro-costo').value = reg.centro_costo;
+    document.getElementById('ff-tipo-doc').value = reg.tipo_doc;
+
+    const btnSubmit = document.getElementById('btn-registrar-ff');
+    if (btnSubmit) btnSubmit.textContent = '💾 Actualizar Registro';
+}
+
+async function eliminarRegistroFondoFijo(id) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este comprobante del rinde?')) return;
+
+    try {
+        const { error } = await supabase
+            .from('fondo_fijo')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        showToast('Comprobante eliminado con éxito.');
+        await cargarRegistrosFondoFijo();
+    } catch (err) {
+        console.error('Error al eliminar registro:', err);
+        showToast('Error al eliminar el comprobante.', 'error');
+    }
+}
+
+// ------------------------------------------
+// 7. CIERRE Y RENDICIÓN CONTABLE
+// ------------------------------------------
+async function cerrarYRendirFondoFijo() {
+    if (estadoFondoFijo.registros.length === 0) {
+        showToast('No hay comprobantes activos para rendir.', 'error');
+        return;
+    }
+
+    const totalRendicion = estadoFondoFijo.registros.reduce((sum, r) => sum + parseFloat(r.monto), 0);
+
+    if (!confirm(`¿Confirmás el Cierre y Rendición del Fondo Fijo por un total de $ ${totalRendicion.toLocaleString('es-AR')}?`)) return;
+
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const idsActivos = estadoFondoFijo.registros.map(r => r.id);
+
+        // 1. Marcar registros de fondo fijo como RENDIDO
+        const { error: errUpdate } = await supabase
+            .from('fondo_fijo')
+            .update({ estado_rinde: 'RENDIDO' })
+            .in('id', idsActivos);
+
+        if (errUpdate) throw errUpdate;
+
+        // 2. Generar Asiento Contable Automático en la tabla 'asientos' (o equivalente)
+        const asientoContable = {
+            fecha: new Date().toISOString().split('T')[0],
+            concepto: `Reposición de Fondo Fijo - Rendición del ${new Date().toLocaleDateString('es-AR')}`,
+            user_id: user?.id || null,
+            empresa_id: estadoFondoFijo.empresaIdActual,
+            debe: totalRendicion,
+            haber: totalRendicion,
+            detalles: 'Asiento generado automáticamente por cierre de rinde de caja chica.'
+        };
+
+        const { error: errAsiento } = await supabase
+            .from('asientos')
+            .insert([asientoContable]);
+
+        if (errAsiento) console.warn('Atención: Se rindió el fondo pero no se pudo generar el asiento automático:', errAsiento);
+
+        showToast('Fondo Fijo cerrado y rendido exitosamente. Asiento generado.');
+        await cargarRegistrosFondoFijo();
+
+    } catch (err) {
+        console.error('Error al rendir Fondo Fijo:', err);
+        showToast('Error al procesar el cierre del Fondo Fijo.', 'error');
+    }
+}
+
+// ------------------------------------------
+// 8. EXPORTACIÓN DE INFORMACIÓN
+// ------------------------------------------
+function exportarRindeCSV() {
+    if (estadoFondoFijo.registros.length === 0) {
+        showToast('No hay datos para exportar.', 'error');
+        return;
+    }
+
+    const columnas = ['Fecha', 'Concepto', 'Tipo Doc', 'Centro Costo', 'Monto'];
+    const filas = estadoFondoFijo.registros.map(r => [
+        r.fecha,
+        `"${r.concepto.replace(/"/g, '""')}"`,
+        `"${r.tipo_doc || ''}"`,
+        `"${r.centro_costo || ''}"`,
+        r.monto
+    ]);
+
+    const csvContent = [columnas.join(','), ...filas.map(f => f.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Rendicion_Fondo_Fijo_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast('Exportación a CSV generada.');
+}
+
+// ------------------------------------------
+// 9. MÉTRICAS PARA DASHBOARD
+// ------------------------------------------
+function actualizarMetricasDashboard() {
+    const totalMonto = estadoFondoFijo.registros.reduce((acc, r) => acc + parseFloat(r.monto), 0);
+    const cantComprobantes = estadoFondoFijo.registros.length;
+
+    const elTotal = document.getElementById('dash-ff-total');
+    const elCant = document.getElementById('dash-ff-cantidad');
+
+    if (elTotal) elTotal.textContent = `$ ${totalMonto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+    if (elCant) elCant.textContent = cantComprobantes;
+}
+
+// ------------------------------------------
+// 10. LISTENERS E INICIALIZACIÓN
+// ------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    // Listener del Formulario Principal
+    const form = document.getElementById('form-fondo-fijo');
+    if (form) form.addEventListener('submit', registrarComprobanteFondoFijo);
+
+    // Listener de Input CSV
+    const inputCSV = document.getElementById('ff-input-csv');
+    if (inputCSV) {
+        inputCSV.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                importarCSVFondoFijo(e.target.files[0]);
+            }
+        });
+    }
+
+    // Listeners de Filtros
+    const inputBusqueda = document.getElementById('ff-filtro-busqueda');
+    if (inputBusqueda) {
+        inputBusqueda.addEventListener('input', (e) => {
+            estadoFondoFijo.filtros.busqueda = e.target.value.trim();
+            estadoFondoFijo.paginacion.paginaActual = 1;
+            cargarRegistrosFondoFijo();
+        });
+    }
+
+    // Carga inicial
+    cargarRegistrosFondoFijo();
+});
 // -------------------------------------------------------------
 // LIBRO DIARIO Y ASIENTOS (Verificación Debe = Haber)
 // -------------------------------------------------------------
