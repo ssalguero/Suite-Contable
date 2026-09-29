@@ -123,53 +123,237 @@ function switchTab(tabId) {
 }
 
 // -------------------------------------------------------------
-// MOTOR 1: CONCILIADOR BANCARIO (Demo)
+// MOTOR 1: CONCILIADOR BANCARIO (Fuzzy Engine & Export)
 // -------------------------------------------------------------
+let resultadoConciliacionGlobal = null;
+
+function ejecutarConciliacionBancaria() {
+  const fileBanco = document.getElementById('file-banco-csv')?.files[0];
+  const fileLibro = document.getElementById('file-libro-csv')?.files[0];
+
+  if (fileBanco && fileLibro) {
+    // Procesar archivos reales CSV
+    Promise.all([leerArchivoCSV(fileBanco), leerArchivoCSV(fileLibro)])
+      .then(([datosBanco, datosLibro]) => {
+        procesarCruzeFuzzy(datosBanco, datosLibro);
+      })
+      .catch(err => alert("Error al leer los archivos: " + err));
+  } else {
+    // Ejecutar datos de demostración si no hay archivos cargados
+    runConciliationDemo();
+  }
+}
+
+function leerArchivoCSV(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lineas = e.target.result.split('\n').filter(l => l.trim().length > 0);
+      const registros = lineas.slice(1).map(l => {
+        const cols = l.split(',').map(c => c.replace(/"/g, '').trim());
+        return {
+          fecha: cols[0] || '',
+          concepto: cols[1] || 'Sin concepto',
+          monto: parseFloat(cols[2]) || 0
+        };
+      });
+      resolve(registros);
+    };
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
 function runConciliationDemo() {
   const bankData = [
-    { id: 'b1', date: '2026-09-10', concept: 'DEP. TRANSFERENCIA 458', amount: 150000 },
-    { id: 'b2', date: '2026-09-12', concept: 'PAGO PROVEEDOR REX', amount: -45000 }
+    { fecha: '2026-09-10', concepto: 'DEP. TRANSFERENCIA 458', monto: 150000.00 },
+    { fecha: '2026-09-12', concepto: 'PAGO PROVEEDOR REX', monto: -45000.00 },
+    { fecha: '2026-09-18', concepto: 'COMISION BANCARIA MANTENIMIENTO', monto: -4500.00 },
+    { fecha: '2026-09-20', concepto: 'DEPOSITO CHEQUE 48HS', monto: 88000.00 }
   ];
 
   const bookData = [
-    { id: 'l1', date: '2026-09-10', concept: 'Cobro Cliente Perez', amount: 150000 },
-    { id: 'l2', date: '2026-09-15', concept: 'Pago REX Pinturas', amount: -45000 }
+    { fecha: '2026-09-10', concepto: 'Cobro Cliente Perez', monto: 150000.00 },
+    { fecha: '2026-09-15', concepto: 'Pago REX Pinturas', monto: -45000.00 },
+    { fecha: '2026-09-22', concepto: 'Transferencia emitida Sueldos', monto: -210000.00 }
   ];
 
-  const container = document.getElementById('conciliador-results');
-  if (!container) return;
+  procesarCruzeFuzzy(bankData, bookData);
+}
+
+function calcularSimilitudTexto(str1, str2) {
+  const s1 = (str1 || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const s2 = (str2 || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   
-  container.innerHTML = `
-    <div class="space-y-4">
-      <div class="p-3 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 font-semibold text-xs">
-        ✅ Conciliación completada: 2 de 2 registros procesados correctamente.
-      </div>
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="border-b font-semibold text-slate-600">
-            <th class="p-2">Extracto Banco</th>
-            <th class="p-2">Libro Diario</th>
-            <th class="p-2 text-right">Importe</th>
-            <th class="p-2 text-center">Estado</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y">
-          <tr>
-            <td class="p-2">${bankData[0].concept}</td>
-            <td class="p-2">${bookData[0].concept}</td>
-            <td class="p-2 text-right font-bold text-slate-800">$ 150.000,00</td>
-            <td class="p-2 text-center"><span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px]">Conciliado</span></td>
-          </tr>
-          <tr>
-            <td class="p-2">${bankData[1].concept}</td>
-            <td class="p-2">${bookData[1].concept}</td>
-            <td class="p-2 text-right font-bold text-slate-800">-$ 45.000,00</td>
-            <td class="p-2 text-center"><span class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[10px]">Diferencia Fecha</span></td>
-          </tr>
-        </tbody>
-      </table>
+  if (s1 === s2) return 100;
+  
+  const palabras1 = s1.split(' ');
+  let coincidencias = 0;
+
+  palabras1.forEach(p1 => {
+    if (p1.length > 2 && s2.includes(p1)) coincidencias++;
+  });
+
+  return Math.min(100, Math.round((coincidencias / Math.max(palabras1.length, 1)) * 100));
+}
+
+function procesarCruzeFuzzy(banco, libro) {
+  const umbralTexto = parseInt(document.getElementById('param-umbral-texto')?.value || '80');
+  const margenDias = parseInt(document.getElementById('param-margen-dias')?.value || '3');
+
+  const coincidentes = [];
+  const pendientesBanco = [];
+  const libroCopia = [...libro];
+
+  banco.forEach(itemB => {
+    let matchIndex = -1;
+
+    for (let i = 0; i < libroCopia.length; i++) {
+      const itemL = libroCopia[i];
+      
+      // Condición 1: Coincidencia en Monto Exacto
+      if (Math.abs(itemB.monto - itemL.monto) < 0.01) {
+        // Condición 2: Margen de Fechas
+        const diffDias = Math.abs(new Date(itemB.fecha) - new Date(itemL.fecha)) / (1000 * 60 * 60 * 24);
+        
+        if (isNaN(diffDias) || diffDias <= margenDias) {
+          // Condición 3: Texto similar
+          const sim = calcularSimilitudTexto(itemB.concepto, itemL.concepto);
+          if (sim >= (umbralTexto - 30)) { 
+            matchIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    if (matchIndex !== -1) {
+      coincidentes.push({ banco: itemB, libro: libroCopia[matchIndex] });
+      libroCopia.splice(matchIndex, 1);
+    } else {
+      pendientesBanco.push(itemB);
+    }
+  });
+
+  resultadoConciliacionGlobal = {
+    coincidentes,
+    pendientesBanco,
+    pendientesLibro: libroCopia
+  };
+
+  renderResultadosConciliacion();
+}
+
+function renderResultadosConciliacion() {
+  if (!resultadoConciliacionGlobal) return;
+
+  const { coincidentes, pendientesBanco, pendientesLibro } = resultadoConciliacionGlobal;
+
+  // Actualizar Cards de Métricas
+  const panelResumen = document.getElementById('panel-resumen-conciliacion');
+  if (panelResumen) panelResumen.classList.remove('hidden');
+
+  const elStatCoinc = document.getElementById('stat-coincidentes');
+  const elStatPendB = document.getElementById('stat-pend-banco');
+  const elStatPendL = document.getElementById('stat-pend-libro');
+
+  if (elStatCoinc) elStatCoinc.textContent = coincidentes.length;
+  if (elStatPendB) elStatPendB.textContent = pendientesBanco.length;
+  if (elStatPendL) elStatPendL.textContent = pendientesLibro.length;
+
+  // Habilitar botón Exportar
+  const btnExp = document.getElementById('btn-exportar-conciliacion');
+  if (btnExp) {
+    btnExp.disabled = false;
+    btnExp.className = "bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm";
+  }
+
+  // Soporte para ambos IDs de contenedor (nuevo y anterior)
+  const contenedor = document.getElementById('contenedor-resultado-conciliacion') || document.getElementById('conciliador-results');
+  if (!contenedor) return;
+
+  contenedor.className = "bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100 text-xs";
+
+  let html = `
+    <div class="p-4 bg-slate-50 font-bold text-slate-700 flex justify-between items-center">
+      <span>Detalle del Resultado de la Conciliación</span>
+      <span class="text-[11px] font-normal text-slate-500">Muestreo comparativo</span>
     </div>
   `;
+
+  // Sección 1: Coincidentes
+  html += `<div class="p-3 bg-emerald-50/50 font-semibold text-emerald-800 flex items-center gap-2"><span>✅ Coincidencias Confirmadas</span> <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px]">${coincidentes.length}</span></div>`;
+  if (coincidentes.length === 0) {
+    html += `<div class="p-3 text-slate-400 italic">No se encontraron movimientos coincidentes.</div>`;
+  } else {
+    coincidentes.forEach(c => {
+      html += `
+        <div class="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 border-b border-slate-100">
+          <div class="text-slate-700"><strong>Banco:</strong> ${c.banco.fecha} | ${c.banco.concepto} | <span class="font-mono font-bold text-slate-900">$ ${c.banco.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span></div>
+          <div class="text-slate-700"><strong>Libro:</strong> ${c.libro.fecha} | ${c.libro.concepto} | <span class="font-mono font-bold text-slate-900">$ ${c.libro.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span></div>
+        </div>
+      `;
+    });
+  }
+
+  // Sección 2: Solo en Banco
+  html += `<div class="p-3 bg-amber-50/50 font-semibold text-amber-800 flex items-center gap-2"><span>⚠️ Solo en Extracto Bancario - Pendientes Contabilizar</span> <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px]">${pendientesBanco.length}</span></div>`;
+  if (pendientesBanco.length === 0) {
+    html += `<div class="p-3 text-slate-400 italic">No hay movimientos pendientes en el banco.</div>`;
+  } else {
+    pendientesBanco.forEach(b => {
+      html += `
+        <div class="p-3 flex justify-between items-center text-slate-700 border-b border-slate-100">
+          <span>${b.fecha} - ${b.concepto}</span>
+          <span class="font-mono font-bold">$ ${b.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+        </div>
+      `;
+    });
+  }
+
+  // Sección 3: Solo en Libro Contable
+  html += `<div class="p-3 bg-rose-50/50 font-semibold text-rose-800 flex items-center gap-2"><span>⚠️ Solo en Libro Contable - Pendientes Acreditar/Debitar</span> <span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full text-[10px]">${pendientesLibro.length}</span></div>`;
+  if (pendientesLibro.length === 0) {
+    html += `<div class="p-3 text-slate-400 italic">No hay movimientos pendientes en el libro.</div>`;
+  } else {
+    pendientesLibro.forEach(l => {
+      html += `
+        <div class="p-3 flex justify-between items-center text-slate-700 border-b border-slate-100">
+          <span>${l.fecha} - ${l.concepto}</span>
+          <span class="font-mono font-bold">$ ${l.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+        </div>
+      `;
+    });
+  }
+
+  contenedor.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+}
+
+function exportarInformeConciliacionCSV() {
+  if (!resultadoConciliacionGlobal) return;
+
+  let csv = 'Estado,Origen,Fecha,Concepto,Monto\n';
+
+  resultadoConciliacionGlobal.coincidentes.forEach(c => {
+    csv += `"Coincidente","Banco",${c.banco.fecha},"${c.banco.concepto}",${c.banco.monto}\n`;
+    csv += `"Coincidente","Libro",${c.libro.fecha},"${c.libro.concepto}",${c.libro.monto}\n`;
+  });
+
+  resultadoConciliacionGlobal.pendientesBanco.forEach(b => {
+    csv += `"Pendiente Banco","Banco",${b.fecha},"${b.concepto}",${b.monto}\n`;
+  });
+
+  resultadoConciliacionGlobal.pendientesLibro.forEach(l => {
+    csv += `"Pendiente Libro","Libro",${l.fecha},"${l.concepto}",${l.monto}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('href', url);
+  a.setAttribute('download', `Papel_Trabajo_Conciliacion_${new Date().toISOString().slice(0,10)}.csv`);
+  a.click();
 }
 
 // -------------------------------------------------------------
