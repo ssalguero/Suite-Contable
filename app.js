@@ -552,39 +552,262 @@ function exportarCtaCteCSV() {
   a.click();
 }
 // -------------------------------------------------------------
-// MOTOR 3: CRUZADOR IVA DIGITAL (Demo)
+// MOTOR 3: CRUZADOR IVA DIGITAL (ARCA vs. Interno)
 // -------------------------------------------------------------
+let datosArcaIVA = [];
+let datosInternoIVA = [];
+
+// Parseador genérico de CSV / TXT tabulado o separado por comas
+function parsearCSV(texto) {
+  const lineas = texto.split(/\r\n|\n/).filter(l => l.trim().length > 0);
+  if (lineas.length === 0) return [];
+  
+  const separador = lineas[0].includes(';') ? ';' : lineas[0].includes('\t') ? '\t' : ',';
+  const cabeceras = lineas[0].split(separador).map(c => c.trim().replace(/^["']|["']$/g, '').toLowerCase());
+
+  return lineas.slice(1).map(linea => {
+    const valores = linea.split(separador).map(v => v.trim().replace(/^["']|["']$/g, ''));
+    let obj = {};
+    cabeceras.forEach((cab, i) => {
+      obj[cab] = valores[i] || '';
+    });
+    return obj;
+  });
+}
+
+// Handler cuando el usuario sube el archivo de ARCA
+function procesarArchivoArca(input) {
+  const file = input.files[0];
+  const statusEl = document.getElementById('status-arca-file');
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      datosArcaIVA = parsearCSV(e.target.result);
+      if (statusEl) {
+        statusEl.textContent = `✓ Archivo cargado: ${file.name} (${datosArcaIVA.length} registros)`;
+        statusEl.className = "block text-[11px] text-emerald-600 font-medium italic";
+      }
+    } catch (err) {
+      if (statusEl) {
+        statusEl.textContent = "Error al leer el archivo de ARCA.";
+        statusEl.className = "block text-[11px] text-rose-500 font-medium italic";
+      }
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Handler cuando el usuario sube el archivo Interno
+function procesarArchivoInternoIVA(input) {
+  const file = input.files[0];
+  const statusEl = document.getElementById('status-interno-file');
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      datosInternoIVA = parsearCSV(e.target.result);
+      if (statusEl) {
+        statusEl.textContent = `✓ Archivo cargado: ${file.name} (${datosInternoIVA.length} registros)`;
+        statusEl.className = "block text-[11px] text-indigo-600 font-medium italic";
+      }
+    } catch (err) {
+      if (statusEl) {
+        statusEl.textContent = "Error al leer el archivo Interno.";
+        statusEl.className = "block text-[11px] text-rose-500 font-medium italic";
+      }
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Helpers para normalizar campos e importes
+function obtenerValorCampo(obj, posiblesNombres) {
+  for (let nombre of posiblesNombres) {
+    const clave = Object.keys(obj).find(k => k.includes(nombre));
+    if (clave && obj[clave] !== undefined) return obj[clave];
+  }
+  return '';
+}
+
+function parsearMonto(val) {
+  if (!val) return 0;
+  const numLimpio = val.toString().replace(/\$/g, '').replace(/\./g, '').replace(',', '.').trim();
+  return parseFloat(numLimpio) || 0;
+}
+
+// Función ejecutada por el botón "Auditar y Cruzar Registros"
+function ejecutarCruceIvaReal() {
+  const resultsContainer = document.getElementById('cruzador-iva-results');
+  if (!resultsContainer) return;
+
+  // Si no se cargó ningún archivo, ejecutamos la simulación con datos de prueba
+  if (datosArcaIVA.length === 0 && datosInternoIVA.length === 0) {
+    runCruzadorIvaDemo();
+    return;
+  }
+
+  let concuerdan = [];
+  let soloEnArca = [];
+  let soloEnInterno = [];
+  let diferenciasMonto = [];
+
+  const mapaArca = new Map();
+  datosArcaIVA.forEach((reg, idx) => {
+    const cuit = obtenerValorCampo(reg, ['cuit', 'doc', 'documento']);
+    const numero = obtenerValorCampo(reg, ['numero', 'comprobante', 'nro']);
+    const razonSocial = obtenerValorCampo(reg, ['nombre', 'razon', 'denominacion', 'proveedor', 'cliente']);
+    const monto = parsearMonto(obtenerValorCampo(reg, ['total', 'monto', 'importe']));
+    const clave = `${cuit}-${numero}`;
+    
+    mapaArca.set(clave, { reg, monto, razonSocial, cuit, numero, index: idx });
+  });
+
+  const procesadosArcaKeys = new Set();
+
+  datosInternoIVA.forEach(regInt => {
+    const cuitInt = obtenerValorCampo(regInt, ['cuit', 'doc', 'documento']);
+    const numeroInt = obtenerValorCampo(regInt, ['numero', 'comprobante', 'nro']);
+    const razonInt = obtenerValorCampo(regInt, ['nombre', 'razon', 'denominacion', 'proveedor', 'cliente']);
+    const montoInt = parsearMonto(obtenerValorCampo(regInt, ['total', 'monto', 'importe']));
+    const claveInt = `${cuitInt}-${numeroInt}`;
+
+    if (mapaArca.has(claveInt)) {
+      procesadosArcaKeys.add(claveInt);
+      const coeArca = mapaArca.get(claveInt);
+      const dif = Math.abs(coeArca.monto - montoInt);
+
+      if (dif < 0.01) {
+        concuerdan.push({ cuit: cuitInt, numero: numeroInt, razonSocial: razonInt || coeArca.razonSocial, monto: montoInt });
+      } else {
+        diferenciasMonto.push({ 
+          cuit: cuitInt, 
+          numero: numeroInt, 
+          razonSocial: razonInt || coeArca.razonSocial,
+          montoArca: coeArca.monto, 
+          montoInterno: montoInt,
+          diferencia: coeArca.monto - montoInt
+        });
+      }
+    } else {
+      soloEnInterno.push({ cuit: cuitInt, numero: numeroInt, razonSocial: razonInt, monto: montoInt });
+    }
+  });
+
+  mapaArca.forEach((val, clave) => {
+    if (!procesadosArcaKeys.has(clave)) {
+      soloEnArca.push({ cuit: val.cuit, numero: val.numero, razonSocial: val.razonSocial, monto: val.monto });
+    }
+  });
+
+  renderizarResultadosCruce(resultsContainer, concuerdan, soloEnArca, soloEnInterno, diferenciasMonto);
+}
+
+// Función demo (fallback)
 function runCruzadorIvaDemo() {
   const container = document.getElementById('cruzador-iva-results');
   if (!container) return;
 
-  container.innerHTML = `
-    <div class="space-y-3">
-      <div class="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs font-semibold">
-        ⚠️ Se detectó 1 comprobante presente en ARCA que NO fue cargado en el sistema interno.
+  const concuerdan = [
+    { cuit: '30-70891234-9', numero: 'FC-A 00001-00004512', razonSocial: 'YPF SA', monto: 125000.00 },
+    { cuit: '30-50001091-2', numero: 'FC-A 00003-00018900', razonSocial: 'TELECOM ARGENTINA SA', monto: 84300.00 }
+  ];
+  const soloArca = [
+    { cuit: '30-71123456-8', numero: 'FC-A 00012-00045892', razonSocial: 'TELECOM ARGENTINA SA', monto: 54450.00 }
+  ];
+  const soloInterno = [
+    { cuit: '30-61002003-4', numero: 'FC-C 00002-00000114', razonSocial: 'IMPRENTA LA PLATA', monto: 18500.00 }
+  ];
+  const difMonto = [
+    { cuit: '30-54123987-1', numero: 'FC-A 00005-00001200', razonSocial: 'SODIMAC ARGENTINA SA', montoArca: 100000.00, montoInterno: 105000.00, diferencia: -5000.00 }
+  ];
+
+  renderizarResultadosCruce(container, concuerdan, soloArca, soloInterno, difMonto);
+}
+
+// Renderizador visual de resultados de la auditoría
+function renderizarResultadosCruce(contenedor, concuerdan, soloArca, soloInterno, difMonto) {
+  const totalInconsistencias = soloArca.length + soloInterno.length + difMonto.length;
+
+  contenedor.innerHTML = `
+    <div class="space-y-6">
+      <!-- Tarjetas Resumen -->
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+          <p class="text-xs font-semibold text-emerald-700">Concuerdan Exactos</p>
+          <h4 class="text-2xl font-bold text-emerald-800 mt-1">${concuerdan.length}</h4>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl">
+          <p class="text-xs font-semibold text-amber-700">Diferencia de Importe</p>
+          <h4 class="text-2xl font-bold text-amber-800 mt-1">${difMonto.length}</h4>
+        </div>
+        <div class="bg-sky-50 border border-sky-200 p-4 rounded-xl">
+          <p class="text-xs font-semibold text-sky-700">Solo en ARCA (Falta Interno)</p>
+          <h4 class="text-2xl font-bold text-sky-800 mt-1">${soloArca.length}</h4>
+        </div>
+        <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl">
+          <p class="text-xs font-semibold text-rose-700">Solo en Interno (Falta ARCA)</p>
+          <h4 class="text-2xl font-bold text-rose-800 mt-1">${soloInterno.length}</h4>
+        </div>
       </div>
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="border-b font-semibold text-slate-600">
-            <th class="p-2">CUIT</th>
-            <th class="p-2">Razón Social</th>
-            <th class="p-2">Comprobante</th>
-            <th class="p-2 text-right">Total ARCA</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="bg-rose-50/50">
-            <td class="p-2 font-mono">30-71123456-8</td>
-            <td class="p-2 font-medium">TELECOM ARGENTINA SA</td>
-            <td class="p-2">FC A 00012-00045892</td>
-            <td class="p-2 text-right font-bold">$ 54.450,00</td>
-          </tr>
-        </tbody>
-      </table>
+
+      <!-- Detalle Inconsistencias -->
+      ${totalInconsistencias > 0 ? `
+        <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 font-bold text-xs text-slate-700">
+            Inconsistencias y Auditoría Detectada
+          </div>
+          <div class="divide-y divide-slate-100 text-xs">
+            ${difMonto.map(item => `
+              <div class="p-3 flex justify-between items-center bg-amber-50/50">
+                <div>
+                  <span class="font-semibold text-slate-800">${item.razonSocial || 'Desconocido'}</span>
+                  <p class="text-[11px] text-amber-700">CUIT: ${item.cuit} | Comp: ${item.numero} — Diferencia en monto</p>
+                </div>
+                <div class="text-right">
+                  <span class="font-mono text-slate-600">ARCA: $${item.montoArca.toLocaleString('es-AR', {minimumFractionDigits: 2})} | Int: $${item.montoInterno.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+                  <p class="text-[11px] font-bold text-amber-700">Dif: $${item.diferencia.toLocaleString('es-AR', {minimumFractionDigits: 2})}</p>
+                </div>
+              </div>
+            `).join('')}
+
+            ${soloArca.map(item => `
+              <div class="p-3 flex justify-between items-center bg-sky-50/50">
+                <div>
+                  <span class="font-semibold text-slate-800">${item.razonSocial || 'Desconocido'}</span>
+                  <p class="text-[11px] text-sky-700">CUIT: ${item.cuit} | Comp: ${item.numero} — Presente en ARCA, omitido internamente</p>
+                </div>
+                <div class="text-right font-mono font-bold text-sky-800">
+                  $ ${item.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}
+                </div>
+              </div>
+            `).join('')}
+
+            ${soloInterno.map(item => `
+              <div class="p-3 flex justify-between items-center bg-rose-50/50">
+                <div>
+                  <span class="font-semibold text-slate-800">${item.razonSocial || 'Desconocido'}</span>
+                  <p class="text-[11px] text-rose-700">CUIT: ${item.cuit} | Comp: ${item.numero} — Cargado internamente sin respaldo en ARCA</p>
+                </div>
+                <div class="text-right font-mono font-bold text-rose-800">
+                  $ ${item.monto.toLocaleString('es-AR', {minimumFractionDigits: 2})}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : `
+        <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium text-center">
+          ✓ Todos los comprobantes coinciden perfectamente entre el registro de ARCA y el Libro IVA Interno.
+        </div>
+      `}
     </div>
   `;
 }
-
 // -------------------------------------------------------------
 // MOTOR 4: CALC RETENCIONES (Interactivo + Guardado en BD)
 // -------------------------------------------------------------
