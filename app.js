@@ -1041,10 +1041,6 @@ function parseCSV(text, delimiter = ',') {
   });
 }
 
-// Variables de estado para los registros cargados
-let datosArcaIVA = [];
-let datosInternoIVA = [];
-
 // Procesar CSV de ARCA (delimitador punto y coma ';')
 function procesarArchivoArca(input) {
   const file = input.files[0];
