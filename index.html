@@ -287,56 +287,102 @@
 
 </section>
 
-      <!-- VISTA 1: CONCILIADOR BANCARIO -->
+<!-- VISTA 2: CONCILIADOR BANCARIO Y CRUZADOR -->
 <section id="tab-conciliador" class="hidden space-y-6">
-  <div class="flex justify-between items-center">
+
+  <!-- Encabezado y Acciones de Exportación -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h2 class="text-2xl font-bold text-slate-800">Conciliador Bancario</h2>
-      <p class="text-sm text-slate-500">Cruza extracto bancario con libro diario interno mediante coincidencia difusa (Fuzzy Match)</p>
+      <p class="text-sm text-slate-500">Cruza extracto bancario con el libro diario aplicando algoritmo de coincidencia difusa (Fuzzy Matching).</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btn-exportar-conciliacion" onclick="exportarInformeConciliacionCSV()" disabled class="bg-slate-200 text-slate-400 text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-not-allowed shadow-sm">
+        <i data-lucide="download" class="w-4 h-4"></i> Exportar Papel de Trabajo (CSV)
+      </button>
     </div>
   </div>
 
-  <!-- Panel de Importación de Archivos Bancarios -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Extracto Bancario -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-      <div class="flex items-center gap-2 border-b pb-2">
-        <i data-lucide="building-2" class="w-5 h-5 text-indigo-600"></i>
-        <h3 class="font-bold text-slate-700 text-sm">1. Extracto del Banco (CSV/Excel)</h3>
+  <!-- Parámetros de Tolerancia y Carga de Archivos -->
+  <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+    <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+      <h3 class="text-sm font-semibold text-slate-800">Configuración e Importación de Planillas</h3>
+      <span class="text-xs text-slate-400 font-medium">Archivos soportados: CSV / TXT / Excel (.xlsx)</span>
+    </div>
+
+    <!-- Controles de Tolerancia Difusa -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+      <div>
+        <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+          <label>Tolerancia en Texto / Concepto</label>
+          <span id="lbl-val-umbral" class="text-indigo-600">80%</span>
+        </div>
+        <input type="range" id="param-umbral-texto" min="50" max="100" value="80" oninput="document.getElementById('lbl-val-umbral').textContent = this.value + '%'" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
       </div>
-      <p class="text-xs text-slate-500">Subí el extracto bancario exportado de tu Homebanking o sistema.</p>
-      <input type="file" id="file-banco" accept=".csv, .txt" onchange="procesarArchivoBanco(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1">
-      <span id="status-banco-file" class="block text-[11px] text-slate-400 italic">Esperando extracto bancario...</span>
-    </div>
-
-    <!-- Libro Diario Interno -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-      <div class="flex items-center gap-2 border-b pb-2">
-        <i data-lucide="book-open" class="w-5 h-5 text-emerald-600"></i>
-        <h3 class="font-bold text-slate-700 text-sm">2. Libro Diario Interno (CSV)</h3>
+      <div>
+        <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
+          <label>Margen de Fechas (Días)</label>
+          <span id="lbl-val-dias" class="text-indigo-600">± 3 días</span>
+        </div>
+        <input type="range" id="param-margen-dias" min="0" max="10" value="3" oninput="document.getElementById('lbl-val-dias').textContent = '± ' + this.value + ' días'" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
       </div>
-      <p class="text-xs text-slate-500">Subí la planilla de movimientos del libro diario o sistema contable.</p>
-      <input type="file" id="file-libro" accept=".csv, .txt" onchange="procesarArchivoLibro(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-slate-200 rounded-lg p-1">
-      <span id="status-libro-file" class="block text-[11px] text-slate-400 italic">Esperando libro diario...</span>
+    </div>
+
+    <!-- Zone Carga de Archivos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- 1. Extracto del Banco -->
+      <div class="border border-slate-200 rounded-xl p-4 space-y-2">
+        <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs">
+          <i data-lucide="landmark" class="w-4 h-4"></i>
+          <span>1. Extracto del Banco (CSV/Excel)</span>
+        </div>
+        <p class="text-[11px] text-slate-500">Subí el extracto exportado de tu Homebanking.</p>
+        <input type="file" id="file-banco-csv" accept=".csv, .txt" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+      </div>
+
+      <!-- 2. Libro Diario Interno -->
+      <div class="border border-slate-200 rounded-xl p-4 space-y-2">
+        <div class="flex items-center gap-2 text-emerald-700 font-bold text-xs">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          <span>2. Libro Diario Interno / Mayor Banco</span>
+        </div>
+        <p class="text-[11px] text-slate-500">Subí la planilla de movimientos contables internos.</p>
+        <input type="file" id="file-libro-csv" accept=".csv, .txt" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
+      </div>
+    </div>
+
+    <!-- Botón Ejecutar -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+      <span class="text-[11px] text-slate-400 italic">* Si no cargás archivos, hacé clic en el botón para ejecutar una demostración con datos de prueba.</span>
+      <button onclick="ejecutarConciliacionBancaria()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition-all shadow cursor-pointer flex items-center justify-center gap-2">
+        <i data-lucide="scale" class="w-4 h-4"></i> Ejecutar Conciliación
+      </button>
     </div>
   </div>
 
-  <!-- Botón de Ejecutar Cruce Bancario -->
-  <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-    <div class="text-xs text-slate-500">
-      * Si no cargás archivos, podés hacer clic en el botón para ejecutar una demostración con datos de prueba.
+  <!-- Resumen Ejecutivo del Resultado -->
+  <div id="panel-resumen-conciliacion" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-xs font-semibold text-slate-400">Coincidentes (Conciliados)</p>
+      <h4 id="stat-coincidentes" class="text-xl font-bold text-emerald-600 mt-1">0</h4>
     </div>
-    <button onclick="ejecutarConciliacionBancaria()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-6 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer">
-      <i data-lucide="scale" class="w-4 h-4"></i>
-      <span>Ejecutar Conciliación</span>
-    </button>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-xs font-semibold text-slate-400">Pendientes en Banco</p>
+      <h4 id="stat-pend-banco" class="text-xl font-bold text-amber-600 mt-1">0</h4>
+    </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-xs font-semibold text-slate-400">Pendientes en Libro Contable</p>
+      <h4 id="stat-pend-libro" class="text-xl font-bold text-rose-600 mt-1">0</h4>
+    </div>
   </div>
 
-  <!-- Contenedor de Resultados -->
-  <div id="conciliador-results" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-slate-500 text-sm">
+  <!-- Grilla de Resultados de Auditoría -->
+  <div id="contenedor-resultado-conciliacion" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[150px] p-4 flex items-center justify-center text-slate-400 text-xs">
     Presioná "Ejecutar Conciliación" para procesar la coincidencia de movimientos.
   </div>
+
 </section>
+      
       <!-- VISTA 2: CUENTAS CORRIENTES -->
 <section id="tab-cta-corriente" class="hidden space-y-6">
   <div class="flex justify-between items-center">
