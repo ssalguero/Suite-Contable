@@ -12,11 +12,21 @@ let currentAuthMode = 'login';
 // CONTROL DE AUTENTICACIÓN Y SESIÓN (SUPABASE AUTH)
 // -------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', async () => {
+  // Inicializar íconos
   if (window.lucide) {
     lucide.createIcons();
   }
+
+  // Setear fecha de hoy en el formulario de Fondo Fijo
+  const inputFecha = document.getElementById('ff-fecha');
+  if (inputFecha) {
+    inputFecha.valueAsDate = new Date();
+  }
+
   // Cargar datos de Fondo Fijo al iniciar la app
-  if (typeof fetchFondoFijo === 'function') {
+  if (typeof cargarRegistrosFondoFijo === 'function') {
+    cargarRegistrosFondoFijo();
+  } else if (typeof fetchFondoFijo === 'function') {
     fetchFondoFijo();
   }
   
@@ -29,8 +39,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentUser = session.user;
       if (authModal) authModal.classList.add('hidden');
       if (userDisplay) userDisplay.textContent = session.user.email;
-      // Volver a consultar datos al iniciar sesión
-      if (typeof fetchFondoFijo === 'function') {
+      
+      // Volver a consultar datos al cambiar/iniciar sesión
+      if (typeof cargarRegistrosFondoFijo === 'function') {
+        cargarRegistrosFondoFijo();
+      } else if (typeof fetchFondoFijo === 'function') {
         fetchFondoFijo();
       }
     } else {
@@ -40,9 +53,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  renderHistorialOP();
+  if (typeof renderHistorialOP === 'function') {
+    renderHistorialOP();
+  }
 });
-
 function setAuthMode(mode) {
   currentAuthMode = mode;
   const btnLogin = document.getElementById('btn-login');
