@@ -976,7 +976,7 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
   document.body.removeChild(link);
 }
 // -------------------------------------------------------------
-// MOTOR 5: FONDO FIJO / CAJA CHICA (Mejorado)
+// MOTOR 5: FONDO FIJO / CAJA CHICA
 // -------------------------------------------------------------
 let fondoFijoMovimientos = [];
 
@@ -998,7 +998,7 @@ function agregarGastoCajaChica(concepto, monto, centroCosto, tipoDoc) {
   fondoFijoMovimientos.push(mov);
   renderFondoFijo();
 
-  // Limpiar campos del formulario si existen en el DOM
+  // Limpiar campos del formulario
   const inputConcepto = document.getElementById('ff-concepto');
   const inputMonto = document.getElementById('ff-monto');
   if (inputConcepto) inputConcepto.value = '';
