@@ -1,12 +1,10 @@
 // Inicialización de Supabase
+// Inicialización de Supabase
 const SUPABASE_URL = 'https://ippdmibozcpxzsczvpqn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlwcGRtaWJvemNweHpzY3p2cHFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDU1NTAzNDMsImV4cCI6MjAyMTEyNjM0M30.6izD8ivkoovQd...'; // Tu clave completa
 
-// Crear el cliente utilizando la CDN de window.supabase
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Alias de compatibilidad global
-const supabase = db;
+// Inicializar la cliente utilizando la variable global supabase que provee el CDN
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // State global de usuario y autenticación
 let currentUser = null;
