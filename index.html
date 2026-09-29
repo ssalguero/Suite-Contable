@@ -588,58 +588,111 @@
 
 </div>
       <!-- VISTA 7: LIBRO DIARIO Y ASIENTOS MANUALES -->
-      <section id="tab-libro-diario" class="hidden space-y-6">
-        <div class="flex justify-between items-center">
-          <div>
-            <h2 class="text-2xl font-bold text-slate-800">Libro Diario y Asientos Manuales</h2>
-            <p class="text-sm text-slate-500">Registro de asientos con validación automática de balanceo (Debe = Haber).</p>
-          </div>
-        </div>
+<section id="tab-libro-diario" class="hidden space-y-6">
+  
+  <!-- Encabezado y Acciones -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800">Libro Diario y Asientos Manuales</h2>
+      <p class="text-sm text-slate-500">Registro de asientos con validación en tiempo real de partida doble (Debe = Haber) y exportación.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="exportarLibroDiarioCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm">
+        <i data-lucide="download" class="w-4 h-4"></i> Exportar Libro Diario (CSV)
+      </button>
+    </div>
+  </div>
 
-        <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
-          <div class="flex justify-between items-center border-b pb-3">
-            <h3 class="text-sm font-semibold text-slate-800">Nuevo Asiento Contable</h3>
-            <span class="text-xs text-slate-400 font-medium">Verificación estricta de Partida Doble</span>
-          </div>
+  <!-- Formulario de Asiento -->
+  <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+    <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+      <h3 class="text-sm font-semibold text-slate-800">Nuevo Asiento Contable</h3>
+      <span class="text-xs text-slate-400 font-medium">Verificación estricta de Partida Doble</span>
+    </div>
 
-          <div class="space-y-3">
-            <div class="grid grid-cols-12 gap-2 items-center">
-              <div class="col-span-6">
-                <input type="text" id="asiento-cuenta-1" placeholder="Cuenta Contable (ej: Gastos de Administración)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-              </div>
-              <div class="col-span-3">
-                <input type="number" id="asiento-debe-1" placeholder="Debe ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-              </div>
-              <div class="col-span-3">
-                <input type="number" id="asiento-haber-1" placeholder="Haber ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-              </div>
-            </div>
+    <!-- Cabecera: Fecha y Leyenda -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha Contable</label>
+        <input type="date" id="asiento-fecha" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+      </div>
+      <div class="sm:col-span-2">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Leyenda / Glosa del Asiento</label>
+        <input type="text" id="asiento-leyenda" placeholder="Ej: Pago de alquiler oficina según comprobante TR-9021" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+      </div>
+    </div>
 
-            <div class="grid grid-cols-12 gap-2 items-center">
-              <div class="col-span-6">
-                <input type="text" id="asiento-cuenta-2" placeholder="Cuenta Contable (ej: Banco Nación Cta Cte)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-              </div>
-              <div class="col-span-3">
-                <input type="number" id="asiento-debe-2" placeholder="Debe ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-              </div>
-              <div class="col-span-3">
-                <input type="number" id="asiento-haber-2" placeholder="Haber ($)" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-              </div>
-            </div>
-          </div>
+    <!-- Datalist para Plan de Cuentas Sugerido -->
+    <datalist id="plan-cuentas-sugeridas">
+      <option value="Caja / Efectivo"></option>
+      <option value="Banco Nación Cta Cte"></option>
+      <option value="Mercaderías"></option>
+      <option value="Deudores por Ventas"></option>
+      <option value="IVA Crédito Fiscal"></option>
+      <option value="IVA Débito Fiscal"></option>
+      <option value="Proveedores"></option>
+      <option value="Ventas"></option>
+      <option value="Costo de Mercaderías Vendidas"></option>
+      <option value="Gastos de Administración"></option>
+      <option value="Honorarios Profesionales"></option>
+      <option value="Sueldos y Jornales"></option>
+      <option value="Retenciones Ganancias a Favor"></option>
+      <option value="Retenciones IIBB a Favor"></option>
+    </datalist>
 
-          <div class="pt-2 flex gap-3">
-            <button onclick="validarYGuardarAsiento([
-              { cuenta: document.getElementById('asiento-cuenta-1').value, debe: document.getElementById('asiento-debe-1').value, haber: document.getElementById('asiento-haber-1').value },
-              { cuenta: document.getElementById('asiento-cuenta-2').value, debe: document.getElementById('asiento-debe-2').value, haber: document.getElementById('asiento-haber-2').value }
-            ])" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition-all shadow cursor-pointer">
-              Validar y Guardar Asiento
-            </button>
-          </div>
+    <!-- Contenedor Dinámico de Renglones -->
+    <div class="space-y-2 pt-2">
+      <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 px-1">
+        <div class="col-span-6">Cuenta Contable</div>
+        <div class="col-span-3">Debe ($)</div>
+        <div class="col-span-3">Haber ($)</div>
+      </div>
 
-          <div id="asiento-validation-status" class="mt-4"></div>
-        </div>
-      </section>
+      <div id="contenedor-lineas-asiento" class="space-y-2">
+        <!-- Renglones agregados dinámicamente -->
+      </div>
+
+      <button type="button" onclick="agregarLineaAsiento()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 pt-1 cursor-pointer">
+        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Agregar otra cuenta
+      </button>
+    </div>
+
+    <!-- Barra de Estado y Totales -->
+    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-4">
+        <div>Debe: <strong id="lbl-total-debe" class="font-mono text-slate-800">$ 0.00</strong></div>
+        <div>Haber: <strong id="lbl-total-haber" class="font-mono text-slate-800">$ 0.00</strong></div>
+        <div>Diferencia: <strong id="lbl-diferencia-asiento" class="font-mono text-slate-800">$ 0.00</strong></div>
+      </div>
+      <div id="asiento-validation-status" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+        Desbalanceado
+      </div>
+    </div>
+
+    <!-- Botón de Guardado -->
+    <div class="pt-2">
+      <button id="btn-guardar-asiento" onclick="guardarAsientoValidado()" disabled class="w-full bg-slate-300 text-slate-500 text-xs font-semibold px-4 py-2.5 rounded-lg transition-all cursor-not-allowed flex items-center justify-center gap-2">
+        <i data-lucide="check-circle" class="w-4 h-4"></i> Validar y Guardar Asiento
+      </button>
+    </div>
+  </div>
+
+  <!-- Vista Histórica del Libro Diario -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <h3 class="text-sm font-bold text-slate-700">Libro Diario General</h3>
+      <div class="relative w-full sm:w-64">
+        <input id="asiento-buscar-historial" type="text" oninput="renderLibroDiario()" placeholder="Buscar por cuenta o leyenda..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+      </div>
+    </div>
+
+    <div id="contenedor-libro-diario" class="divide-y divide-slate-200 text-xs">
+      <!-- Asientos asentados -->
+    </div>
+  </div>
+
+</section>
 
     </main>
   </div>
