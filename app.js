@@ -809,7 +809,7 @@ function renderizarResultadosCruce(contenedor, concuerdan, soloArca, soloInterno
   `;
 }
 // -------------------------------------------------------------
-// MOTOR 4: CALC RETENCIONES (Interactivo + Guardado en BD)
+// MOTOR 4: CÁLCULO RETENCIONES (Interactivo + Guardado en BD)
 // -------------------------------------------------------------
 async function calculateRetentionsUI() {
   const net = parseFloat(document.getElementById('ret-neto').value) || 0;
@@ -822,43 +822,68 @@ async function calculateRetentionsUI() {
   const totalRet = ganancias + iibb;
   const netToPay = net - totalRet;
 
-  // Renderizar resultado en UI
+  // Renderizar resultado en UI alineado al diseño general de la Suite
   const container = document.getElementById('retenciones-results');
   if (container) {
     container.innerHTML = `
-      <div>
-        <h3 class="text-xs uppercase text-slate-400 font-semibold mb-4">Resultado Liquidación</h3>
-        <div class="space-y-3 text-sm">
-          <div class="flex justify-between border-b border-slate-800 pb-2">
+      <div class="bg-slate-900 text-slate-100 p-5 rounded-xl border border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+          <h3 class="text-xs uppercase text-slate-400 font-semibold tracking-wider">Resultado Liquidación</h3>
+          <span class="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-medium">RG 830 + IIBB</span>
+        </div>
+
+        <div class="space-y-2.5 text-sm">
+          <div class="flex justify-between items-center text-slate-300">
             <span class="text-slate-400">Neto Comprobante:</span>
-            <span>$ ${net.toLocaleString('es-AR')}</span>
+            <span class="font-medium">$ ${net.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
           </div>
-          <div class="flex justify-between text-amber-400">
-            <span>Ret. Ganancias (2%):</span>
-            <span>-$ ${ganancias.toLocaleString('es-AR')}</span>
+
+          <div class="flex justify-between items-center text-amber-400/90">
+            <span class="text-slate-400">Ret. Ganancias (2%):</span>
+            <span class="font-semibold">-$ ${ganancias.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
           </div>
-          <div class="flex justify-between text-amber-400 border-b border-slate-800 pb-2">
-            <span>Ret. IIBB (2.5%):</span>
-            <span>-$ ${iibb.toLocaleString('es-AR')}</span>
+
+          <div class="flex justify-between items-center text-amber-400/90 border-b border-slate-800 pb-3">
+            <span class="text-slate-400">Ret. IIBB (2.5%):</span>
+            <span class="font-semibold">-$ ${iibb.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
           </div>
-          <div class="flex justify-between text-base font-bold pt-2 text-emerald-400">
+
+          <div class="flex justify-between items-center text-base font-bold pt-2 text-emerald-400">
             <span>Neto a Pagar:</span>
-            <span>$ ${netToPay.toLocaleString('es-AR')}</span>
+            <span class="text-lg">$ ${netToPay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
-        <p id="save-status" class="mt-4 text-[11px] text-slate-400 italic">Guardando registro en Supabase...</p>
-        <div class="mt-4 grid grid-cols-2 gap-2">
-          <button onclick="downloadPDF(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1 cursor-pointer">
-            📄 Exportar PDF
+
+        <!-- Estado de guardado -->
+        <div class="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <span class="flex items-center gap-1.5 italic">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="save-status">Guardando registro en Supabase...</span>
+          </span>
+        </div>
+
+        <!-- Botones de Acción Estilizados -->
+        <div class="mt-5 grid grid-cols-2 gap-2.5">
+          <button onclick="downloadPDF(${net}, ${ganancias}, ${iibb}, ${netToPay})" 
+                  class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+            <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Exportar PDF
           </button>
-          <button onclick="downloadCSV(${net}, ${ganancias}, ${iibb}, ${netToPay})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-2 rounded-lg transition-all shadow flex items-center justify-center gap-1 cursor-pointer">
-            📊 Exportar CSV
+
+          <button onclick="downloadCSV(${net}, ${ganancias}, ${iibb}, ${netToPay})" 
+                  class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Exportar CSV
           </button>
         </div>
       </div>
     `;
   }
-
+}
   // Guardar en Supabase asociando al usuario
   try {
     const payload = {
