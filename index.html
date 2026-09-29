@@ -450,25 +450,30 @@
 <!-- Pestaña Órdenes de Pago -->
 <div id="tab-ordenes-pago" class="hidden space-y-6">
   
-  <div class="flex items-center justify-between">
+  <!-- Encabezado y Acciones -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h2 class="text-xl font-bold text-slate-800">Generador de Órdenes de Pago (OP)</h2>
-      <p class="text-xs text-slate-500">Emisión de órdenes de pago a proveedores con cálculo neto y registro en historial.</p>
+      <p class="text-xs text-slate-500">Emisión de órdenes de pago a proveedores con comprobantes adjuntos y registro en historial.</p>
     </div>
-    <button onclick="exportarHistorialOPCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer">
-      <i data-lucide="download" class="w-4 h-4"></i> Exportar Historial (CSV)
-    </button>
+    <div class="flex items-center gap-2">
+      <button onclick="exportarHistorialOPCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm">
+        <i data-lucide="download" class="w-4 h-4"></i> Exportar Historial (CSV)
+      </button>
+    </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     
     <!-- Formulario de Entrada -->
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-      <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2">Datos del Comprobante</h3>
+      <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
+        <i data-lucide="file-plus" class="w-4 h-4 text-indigo-600"></i> Datos del Comprobante
+      </h3>
       
       <form id="form-op" onsubmit="event.preventDefault(); generarOP();" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Razon Social / Proveedor</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Razón Social / Proveedor</label>
           <input id="op-proveedor" type="text" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
         </div>
 
@@ -501,8 +506,16 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2">
-          Emitir Orden de Pago
+        <!-- Adjuntar Comprobante -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Adjuntar Factura / Comprobante Respaldatorio</label>
+          <div class="flex items-center gap-2">
+            <input id="op-adjunto" type="file" accept=".pdf,image/*" onchange="actualizarCalculoOP()" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg" />
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2 flex items-center justify-center gap-2">
+          <i data-lucide="check-circle" class="w-4 h-4"></i> Emitir Orden de Pago
         </button>
       </form>
     </div>
@@ -510,7 +523,9 @@
     <!-- Previsualización -->
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
       <div>
-        <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-3 mb-4">Vista Previa</h3>
+        <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+          <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i> Vista Previa
+        </h3>
         <div id="contenedor-preview-op" class="text-center text-slate-400 py-12 flex flex-col items-center justify-center gap-2">
           <i data-lucide="receipt" class="w-12 h-12 text-slate-300"></i>
           <p class="text-sm">Completa el formulario para previsualizar y emitir la Orden de Pago.</p>
@@ -520,10 +535,14 @@
 
   </div>
 
-  <!-- Tabla Historial -->
+  <!-- Tabla Historial con Buscador -->
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
       <h3 class="text-sm font-bold text-slate-700">Historial de Órdenes Emitidas</h3>
+      <div class="relative w-full sm:w-64">
+        <input id="op-buscar-historial" type="text" oninput="renderHistorialOP()" placeholder="Buscar por proveedor o ID..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+      </div>
     </div>
     <div class="overflow-x-auto">
       <table class="w-full text-left text-xs border-collapse">
@@ -536,12 +555,13 @@
             <th class="p-3">Bruto</th>
             <th class="p-3">Retención</th>
             <th class="p-3">Neto</th>
+            <th class="p-3 text-center">Adjunto</th>
             <th class="p-3 text-center">Acciones</th>
           </tr>
         </thead>
         <tbody id="tbody-op-historial" class="divide-y divide-slate-100 text-slate-700">
           <tr>
-            <td colspan="8" class="p-4 text-center text-slate-400">No hay órdenes de pago emitidas.</td>
+            <td colspan="9" class="p-4 text-center text-slate-400">No hay órdenes de pago emitidas.</td>
           </tr>
         </tbody>
       </table>
