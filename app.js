@@ -789,48 +789,76 @@ function procesarArchivoFondoFijo(input) {
 // GESTOR DE ÓRDEN DE PAGO (OP)
 // -------------------------------------------------------------
 let historialOP = JSON.parse(localStorage.getItem('suite_historial_op')) || [];
+let adjuntoBase64Temp = null;
 
 function actualizarCalculoOP() {
   const montoFactura = parseFloat(document.getElementById('op-monto-factura').value) || 0;
   const retencion = parseFloat(document.getElementById('op-retencion').value) || 0;
-  const neto = montoFactura - retencion;
+  const neto = Math.max(0, montoFactura - retencion);
 
   const proveedor = document.getElementById('op-proveedor').value || 'Sin especificar';
   const medio = document.getElementById('op-medio-pago').value;
   const numComprobante = document.getElementById('op-num-comprobante').value || '-';
+  const fileInput = document.getElementById('op-adjunto');
   const preview = document.getElementById('contenedor-preview-op');
 
-  if (montoFactura > 0 && preview) {
-    preview.className = "space-y-4 text-left text-slate-700";
-    preview.innerHTML = `
-      <div class="flex justify-between items-center border-b border-slate-200 pb-3">
-        <h4 class="font-bold text-slate-800">ORDEN DE PAGO N° OP-${(historialOP.length + 1).toString().padStart(4, '0')}</h4>
-        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">Borrador</span>
-      </div>
-      <div class="text-sm space-y-1">
-        <p><strong class="text-slate-900">Proveedor:</strong> ${proveedor}</p>
-        <p><strong class="text-slate-900">Medio de Pago:</strong> ${medio} (${numComprobante})</p>
-      </div>
-      
-      <div class="border border-slate-200 rounded-lg overflow-hidden text-sm">
-        <div class="flex justify-between p-2.5 bg-slate-50 border-b border-slate-200">
-          <span>Monto Bruto Factura:</span>
-          <span class="font-mono">$ ${montoFactura.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
-        </div>
-        <div class="flex justify-between p-2.5 border-b border-slate-200 text-rose-600">
-          <span>Retenciones Aplicadas:</span>
-          <span class="font-mono">-$ ${retencion.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
-        </div>
-        <div class="flex justify-between p-2.5 bg-emerald-50 font-bold text-emerald-800">
-          <span>Monto Neto a Pagar:</span>
-          <span class="font-mono">$ ${neto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
-        </div>
-      </div>
-      <p class="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-        Al emitir la Orden de Pago, se registrará en el historial de transacciones y podrás descargar el comprobante.
-      </p>
-    `;
+  let nombreAdjunto = 'Ninguno';
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    nombreAdjunto = fileInput.files[0].name;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      adjuntoBase64Temp = e.target.result;
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    adjuntoBase64Temp = null;
   }
+
+  if (preview) {
+    if (montoFactura > 0) {
+      preview.className = "space-y-4 text-left text-slate-700";
+      preview.innerHTML = `
+        <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h4 class="font-bold text-slate-800">ORDEN DE PAGO N° OP-${(historialOP.length + 1).toString().padStart(4, '0')}</h4>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">Borrador</span>
+        </div>
+        <div class="text-xs space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+          <p><strong class="text-slate-900">Proveedor:</strong> ${proveedor}</p>
+          <p><strong class="text-slate-900">Medio de Pago:</strong> ${medio} (${numComprobante})</p>
+          <p><strong class="text-slate-900">Comprobante Adjunto:</strong> <span class="text-indigo-600">${nombreAdjunto}</span></p>
+        </div>
+        
+        <div class="border border-slate-200 rounded-lg overflow-hidden text-sm">
+          <div class="flex justify-between p-2.5 bg-slate-50 border-b border-slate-200">
+            <span>Monto Bruto Factura:</span>
+            <span class="font-mono">$ ${montoFactura.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="flex justify-between p-2.5 border-b border-slate-200 text-rose-600">
+            <span>Retenciones Aplicadas:</span>
+            <span class="font-mono">-$ ${retencion.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+          </div>
+          <div class="flex justify-between p-2.5 bg-emerald-50 font-bold text-emerald-800">
+            <span>Monto Neto a Pagar:</span>
+            <span class="font-mono">$ ${neto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="window.print()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i> Imprimir / PDF
+          </button>
+        </div>
+      `;
+    } else {
+      preview.className = "text-center text-slate-400 py-12 flex flex-col items-center justify-center gap-2";
+      preview.innerHTML = `
+        <i data-lucide="receipt" class="w-12 h-12 text-slate-300"></i>
+        <p class="text-sm">Completa el formulario para previsualizar y emitir la Orden de Pago.</p>
+      `;
+    }
+  }
+
+  if (window.lucide) lucide.createIcons();
 }
 
 function generarOP() {
@@ -866,7 +894,8 @@ function generarOP() {
     retencion,
     neto,
     medio,
-    numComprobante
+    numComprobante,
+    adjunto: adjuntoBase64Temp
   };
 
   historialOP.push(nuevaOP);
@@ -876,6 +905,8 @@ function generarOP() {
 
   const form = document.getElementById('form-op');
   if (form) form.reset();
+
+  adjuntoBase64Temp = null;
 
   const preview = document.getElementById('contenedor-preview-op');
   if (preview) {
@@ -892,15 +923,22 @@ function generarOP() {
 
 function renderHistorialOP() {
   const tbody = document.getElementById('tbody-op-historial');
+  const filtro = (document.getElementById('op-buscar-historial')?.value || '').toLowerCase();
+  
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  if (historialOP.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">No hay órdenes de pago emitidas.</td></tr>`;
+  const listaFiltrada = historialOP.filter(op => 
+    op.proveedor.toLowerCase().includes(filtro) || op.id.toLowerCase().includes(filtro)
+  );
+
+  if (listaFiltrada.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400">No se encontraron órdenes de pago.</td></tr>`;
     return;
   }
 
-  historialOP.forEach(op => {
+  listaFiltrada.forEach((op, index) => {
+    const tieneAdjunto = Boolean(op.adjunto);
     tbody.innerHTML += `
       <tr class="hover:bg-slate-50 transition-colors">
         <td class="p-3 font-semibold text-slate-900">${op.id}</td>
@@ -908,12 +946,23 @@ function renderHistorialOP() {
         <td class="p-3 font-medium">${op.proveedor}</td>
         <td class="p-3 text-xs"><span class="px-2 py-1 bg-slate-100 rounded border border-slate-200">${op.medio}</span></td>
         <td class="p-3 font-mono">$ ${op.montoFactura.toFixed(2)}</td>
-        <td class="p-3 font-mono text-rose-600">$ ${op.retencion.toFixed(2)}</td>
+        <td class="p-3 font-mono text-rose-600">-$ ${op.retencion.toFixed(2)}</td>
         <td class="p-3 font-mono font-semibold text-emerald-600">$ ${op.neto.toFixed(2)}</td>
         <td class="p-3 text-center">
-          <button onclick="window.print()" class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors" title="Imprimir Comprobante">
-            <i data-lucide="printer" class="w-4 h-4"></i>
-          </button>
+          ${tieneAdjunto 
+            ? `<button onclick="verAdjuntoOP('${op.id}')" class="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Ver Adjunto"><i data-lucide="paperclip" class="w-4 h-4"></i></button>`
+            : `<span class="text-slate-300">-</span>`
+          }
+        </td>
+        <td class="p-3 text-center">
+          <div class="flex items-center justify-center gap-1">
+            <button onclick="window.print()" class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded transition-colors" title="Imprimir Comprobante">
+              <i data-lucide="printer" class="w-4 h-4"></i>
+            </button>
+            <button onclick="eliminarOP('${op.id}')" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors" title="Eliminar OP">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -922,11 +971,27 @@ function renderHistorialOP() {
   if (window.lucide) lucide.createIcons();
 }
 
+function verAdjuntoOP(id) {
+  const op = historialOP.find(o => o.id === id);
+  if (op && op.adjunto) {
+    const win = window.open();
+    win.document.write(`<iframe src="${op.adjunto}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
+  }
+}
+
+function eliminarOP(id) {
+  if (confirm(`¿Estás seguro de que deseas eliminar la orden ${id}?`)) {
+    historialOP = historialOP.filter(op => op.id !== id);
+    localStorage.setItem('suite_historial_op', JSON.stringify(historialOP));
+    renderHistorialOP();
+  }
+}
+
 function exportarHistorialOPCSV() {
   if (historialOP.length === 0) return alert('No hay datos para exportar.');
-  let csv = 'ID,Fecha,Proveedor,Medio,Monto Factura,Retencion,Neto\n';
+  let csv = 'ID,Fecha,Proveedor,Medio,Monto Factura,Retencion,Neto,Num Comprobante\n';
   historialOP.forEach(o => {
-    csv += `${o.id},${o.fecha},"${o.proveedor}",${o.medio},${o.montoFactura},${o.retencion},${o.neto}\n`;
+    csv += `${o.id},${o.fecha},"${o.proveedor}",${o.medio},${o.montoFactura},${o.retencion},${o.neto},"${o.numComprobante}"\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
