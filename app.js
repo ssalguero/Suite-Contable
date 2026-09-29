@@ -357,40 +357,200 @@ function exportarInformeConciliacionCSV() {
 }
 
 // -------------------------------------------------------------
-// MOTOR 2: CUENTAS CORRIENTES (Demo)
+// MOTOR 2: CUENTAS CORRIENTES (FIFO, Aging & Export)
 // -------------------------------------------------------------
+let datosCtaCteProcesados = [];
+
+function ejecutarCalculoCtacte() {
+  const fileInput = document.getElementById('file-ctacte-csv')?.files[0];
+
+  if (fileInput) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lineas = e.target.result.split('\n').filter(l => l.trim().length > 0);
+      const registros = lineas.slice(1).map(l => {
+        const cols = l.split(',').map(c => c.replace(/"/g, '').trim());
+        return {
+          entidad: cols[0] || 'Entidad Desconocida',
+          fecha: cols[1] || new Date().toISOString().slice(0, 10),
+          factura: cols[2] || 'FC-0000',
+          monto: parseFloat(cols[3]) || 0,
+          cobrado: parseFloat(cols[4]) || 0
+        };
+      });
+      procesarSaldosYAgings(registros);
+    };
+    reader.readAsText(fileInput);
+  } else {
+    runCtaCorrienteDemo();
+  }
+}
+
 function runCtaCorrienteDemo() {
+  const tipo = document.getElementById('ctacte-tipo-filtro')?.value || 'CLIENTES';
+
+  let demoData = [];
+
+  if (tipo === 'CLIENTES') {
+    demoData = [
+      { entidad: 'DISTRIBUIDORA PEREZ SRL', fecha: '2026-06-10', factura: 'FC-001-1020', monto: 850000.00, cobrado: 500000.00 },
+      { entidad: 'DISTRIBUIDORA PEREZ SRL', fecha: '2026-09-01', factura: 'FC-001-1105', monto: 350000.00, cobrado: 0.00 },
+      { entidad: 'CONSTRUCCIONES DEL SUR SA', fecha: '2026-08-15', factura: 'FC-001-1088', monto: 1200000.00, cobrado: 1200000.00 },
+      { entidad: 'LOGISTICA ARGENTINA SA', fecha: '2026-05-20', factura: 'FC-001-0980', monto: 450000.00, cobrado: 0.00 },
+      { entidad: 'TECNOLOGIA GLOBAL SRL', fecha: '2026-09-12', factura: 'FC-001-1120', monto: 280000.00, cobrado: 50000.00 }
+    ];
+  } else {
+    demoData = [
+      { entidad: 'PINTURERIAS REX SA', fecha: '2026-08-10', factura: 'FC-A-0088', monto: 450000.00, cobrado: 200000.00 },
+      { entidad: 'SODIMAC ARGENTINA SA', fecha: '2026-07-01', factura: 'FC-A-9921', monto: 620000.00, cobrado: 620000.00 },
+      { entidad: 'CORRALON LA PLATA SRL', fecha: '2026-04-12', factura: 'FC-C-0112', monto: 180000.00, cobrado: 0.00 }
+    ];
+  }
+
+  procesarSaldosYAgings(demoData);
+}
+
+function procesarSaldosYAgings(registros) {
+  const hoy = new Date('2026-09-29'); // Fecha de referencia fija o actual
+  const entidades = {};
+
+  registros.forEach(r => {
+    const saldoFactura = Math.max(0, r.monto - r.cobrado);
+    const fechaFact = new Date(r.fecha);
+    const diffDias = Math.floor((hoy - fechaFact) / (1000 * 60 * 60 * 24));
+
+    if (!entidades[r.entidad]) {
+      entidades[r.entidad] = {
+        entidad: r.entidad,
+        facturado: 0,
+        cobrado: 0,
+        saldoTotal: 0,
+        tramo0_30: 0,
+        tramo31_60: 0,
+        tramo61_90: 0,
+        tramo90_mas: 0,
+        comprobantes: []
+      };
+    }
+
+    const e = entidades[r.entidad];
+    e.facturado += r.monto;
+    e.cobrado += r.cobrado;
+    e.saldoTotal += saldoFactura;
+
+    // Desglose de Aging según días de antigüedad del saldo
+    if (saldoFactura > 0) {
+      if (diffDias <= 30) e.tramo0_30 += saldoFactura;
+      else if (diffDias <= 60) e.tramo31_60 += saldoFactura;
+      else if (diffDias <= 90) e.tramo61_90 += saldoFactura;
+      else e.tramo90_mas += saldoFactura;
+    }
+
+    e.comprobantes.push({ ...r, saldoFactura, diffDias });
+  });
+
+  datosCtaCteProcesados = Object.values(entidades);
+  renderResultadosCtaCte();
+}
+
+function renderResultadosCtaCte() {
   const container = document.getElementById('cta-corriente-results');
   if (!container) return;
 
-  container.innerHTML = `
-    <table class="w-full text-left text-xs border-collapse">
-      <thead>
-        <tr class="border-b font-semibold text-slate-600">
-          <th class="p-2">Cliente / Proveedor</th>
-          <th class="p-2 text-right">Facturado</th>
-          <th class="p-2 text-right">Cobrado</th>
-          <th class="p-2 text-right">Saldo Pendiente</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y">
-        <tr>
-          <td class="p-2 font-medium text-slate-800">DISTRIBUIDORA PEREZ SRL</td>
-          <td class="p-2 text-right">$ 850.000,00</td>
-          <td class="p-2 text-right">$ 500.000,00</td>
-          <td class="p-2 text-right font-bold text-amber-600">$ 350.000,00</td>
-        </tr>
-        <tr>
-          <td class="p-2 font-medium text-slate-800">CONSTRUCCIONES DEL SUR SA</td>
-          <td class="p-2 text-right">$ 1.200.000,00</td>
-          <td class="p-2 text-right">$ 1.200.000,00</td>
-          <td class="p-2 text-right font-bold text-emerald-600">$ 0,00</td>
-        </tr>
-      </tbody>
-    </table>
+  let totalCartera = 0;
+  let totalAlDia = 0;
+  let totalVencido = 0;
+
+  datosCtaCteProcesados.forEach(e => {
+    totalCartera += e.saldoTotal;
+    totalAlDia += e.tramo0_30;
+    totalVencido += (e.tramo31_60 + e.tramo61_90 + e.tramo90_mas);
+  });
+
+  // Mostrar tarjetas de resumen
+  const panelResumen = document.getElementById('panel-resumen-ctacte');
+  if (panelResumen) panelResumen.classList.remove('hidden');
+
+  const elStatTot = document.getElementById('stat-ctacte-total');
+  const elStatDia = document.getElementById('stat-ctacte-aldia');
+  const elStatVen = document.getElementById('stat-ctacte-vencido');
+
+  if (elStatTot) elStatTot.textContent = `$ ${totalCartera.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+  if (elStatDia) elStatDia.textContent = `$ ${totalAlDia.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+  if (elStatVen) elStatVen.textContent = `$ ${totalVencido.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+
+  // Habilitar botón Exportar
+  const btnExp = document.getElementById('btn-exportar-ctacte');
+  if (btnExp) {
+    btnExp.disabled = false;
+    btnExp.className = "bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm";
+  }
+
+  if (datosCtaCteProcesados.length === 0) {
+    container.innerHTML = `<div class="p-6 text-center text-slate-400">No hay cuentas corrientes para mostrar con el filtro seleccionado.</div>`;
+    return;
+  }
+
+  let html = `
+    <div class="overflow-x-auto w-full">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+            <th class="p-3">Cliente / Proveedor</th>
+            <th class="p-3 text-right">Facturado</th>
+            <th class="p-3 text-right">Cobrado / Pagado</th>
+            <th class="p-3 text-right">Saldo Total</th>
+            <th class="p-3 text-right text-emerald-700 bg-emerald-50/50">0 - 30 Días</th>
+            <th class="p-3 text-right text-amber-700 bg-amber-50/50">31 - 60 Días</th>
+            <th class="p-3 text-right text-rose-700 bg-rose-50/50">+60 Días Vencido</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
   `;
+
+  datosCtaCteProcesados.forEach(e => {
+    const claseSaldo = e.saldoTotal > 0 ? 'font-bold text-rose-600' : 'font-semibold text-emerald-600';
+
+    html += `
+      <tr class="hover:bg-slate-50/80 transition-colors">
+        <td class="p-3 font-semibold text-slate-800">${e.entidad}</td>
+        <td class="p-3 text-right font-mono text-slate-600">$ ${e.facturado.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono text-slate-600">$ ${e.cobrado.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono ${claseSaldo}">$ ${e.saldoTotal.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono text-emerald-700 bg-emerald-50/30">$ ${e.tramo0_30.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono text-amber-700 bg-amber-50/30">$ ${e.tramo31_60.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono text-rose-700 bg-rose-50/30">$ ${(e.tramo61_90 + e.tramo90_mas).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = html;
+  container.className = "bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-xs";
 }
 
+function exportarCtaCteCSV() {
+  if (!datosCtaCteProcesados || datosCtaCteProcesados.length === 0) return;
+
+  const tipo = document.getElementById('ctacte-tipo-filtro')?.value || 'CLIENTES';
+  let csv = 'Entidad,Total Facturado,Total Cobrado,Saldo Pendiente,Tramo 0-30 Dias,Tramo 31-60 Dias,Tramo +60 Dias\n';
+
+  datosCtaCteProcesados.forEach(e => {
+    csv += `"${e.entidad}",${e.facturado},${e.cobrado},${e.saldoTotal},${e.tramo0_30},${e.tramo31_60},${e.tramo61_90 + e.tramo90_mas}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('href', url);
+  a.setAttribute('download', `Estado_Cuentas_Corrientes_${tipo}_${new Date().toISOString().slice(0,10)}.csv`);
+  a.click();
+}
 // -------------------------------------------------------------
 // MOTOR 3: CRUZADOR IVA DIGITAL (Demo)
 // -------------------------------------------------------------
