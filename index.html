@@ -153,49 +153,139 @@
     <!-- Secciones de Contenido -->
     <main class="flex-1 p-6">
       
-      <!-- VISTA 0: DASHBOARD -->
-      <section id="tab-dashboard" class="space-y-6">
-        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-8 text-white shadow-xl border border-slate-800">
-          <h1 class="text-3xl font-bold tracking-tight">Bienvenido a la Suite Contable</h1>
-          <p class="mt-2 text-slate-300 text-sm leading-relaxed">
-            Plataforma operativa local para el auxiliar contable. Seleccioná cualquiera de las herramientas del menú lateral para comenzar.
-          </p>
+     <!-- VISTA 1: DASHBOARD / CENTRO DE CONTROL OPERATIVO -->
+<section id="tab-dashboard" class="space-y-6">
+
+  <!-- Encabezado y Selector de Período -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800">Centro de Control Operativo</h2>
+      <p class="text-sm text-slate-500">Resumen ejecutivo y estado contable en tiempo real de la empresa activa.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-xs font-semibold text-slate-600">Ejercicio/Mes:</label>
+      <input type="month" id="dashboard-periodo" onchange="actualizarDashboardMetrics()" class="border border-slate-300 rounded-lg text-xs p-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm">
+    </div>
+  </div>
+
+  <!-- Tarjetas de Métricas Globales (KPIs) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Card 1: Conciliación Bancaria -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold text-slate-400">Conciliación Bancaria</p>
+        <h4 id="kpi-conciliacion-estado" class="text-lg font-bold text-slate-800 mt-1">Pendiente</h4>
+        <p id="kpi-conciliacion-sub" class="text-[11px] text-slate-500 mt-0.5">Sin cruces realizados</p>
+      </div>
+      <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+        <i data-lucide="scale" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <!-- Card 2: Deuda en Cuentas Corrientes -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold text-slate-400">Saldo Pendiente Cta Cte</p>
+        <h4 id="kpi-ctacte-saldo" class="text-lg font-bold text-slate-800 mt-1">$ 0.00</h4>
+        <p id="kpi-ctacte-sub" class="text-[11px] text-slate-500 mt-0.5">0 comprobantes activos</p>
+      </div>
+      <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+        <i data-lucide="users" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <!-- Card 3: Fondo Fijo Consumido -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold text-slate-400">Fondo Fijo Activo</p>
+        <h4 id="kpi-fondo-monto" class="text-lg font-bold text-slate-800 mt-1">$ 0.00</h4>
+        <p id="kpi-fondo-sub" class="text-[11px] text-slate-500 mt-0.5">Sin rinde abierto</p>
+      </div>
+      <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+        <i data-lucide="wallet" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <!-- Card 4: Asientos en Libro Diario -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold text-slate-400">Asientos Registrados</p>
+        <h4 id="kpi-asientos-cant" class="text-lg font-bold text-slate-800 mt-1">0</h4>
+        <p id="kpi-asientos-sub" class="text-[11px] text-slate-500 mt-0.5">Partida doble verificada</p>
+      </div>
+      <div class="p-3 bg-purple-50 text-purple-600 rounded-xl">
+        <i data-lucide="book-open" class="w-6 h-6"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zona Central: Acciones Rápidas y Bitácora de Operaciones -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- Columna Izquierda (2 cols): Accesos Directos Operativos -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">Acciones Rápidas de Trabajo</h3>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button onclick="navegarA('tab-libro-diario')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+            <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
+              <i data-lucide="plus-circle" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Nuevo Asiento Manual</p>
+              <p class="text-[11px] text-slate-500">Registrar movimiento contable rápido con validación.</p>
+            </div>
+          </button>
+
+          <button onclick="navegarA('tab-ordenes-pago')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+            <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
+              <i data-lucide="file-text" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Emitir Orden de Pago</p>
+              <p class="text-[11px] text-slate-500">Generar comprobante OP a proveedor con retención.</p>
+            </div>
+          </button>
+
+          <button onclick="navegarA('tab-cruzador-iva')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+            <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
+              <i data-lucide="check-check" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Auditar IVA (ARCA vs. Interno)</p>
+              <p class="text-[11px] text-slate-500">Cruzar libro IVA contra Mis Comprobantes.</p>
+            </div>
+          </button>
+
+          <button onclick="navegarA('tab-conciliador')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+            <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
+              <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Conciliar Extracto Bancario</p>
+              <p class="text-[11px] text-slate-500">Ejecutar motor de coincidencia difusa (Fuzzy).</p>
+            </div>
+          </button>
         </div>
+      </div>
+    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div onclick="switchTab('conciliador')" class="bg-white rounded-xl border border-slate-200 p-6 cursor-pointer hover:border-indigo-400 transition shadow-sm">
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="font-bold text-slate-800">1. Conciliador Bancario</h3>
-              <span class="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full border border-indigo-100 font-semibold">Fuzzy Match</span>
-            </div>
-            <p class="text-xs text-slate-500">Cruza Extracto Bancario con el Libro Diario aplicando algoritmo de coincidencia difusa.</p>
-          </div>
+    <!-- Columna Derecha (1 col): Log de Actividad Reciente -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <h3 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center justify-between">
+        <span>Últimos Movimientos</span>
+        <i data-lucide="history" class="w-4 h-4 text-slate-400"></i>
+      </h3>
 
-          <div onclick="switchTab('cta-corriente')" class="bg-white rounded-xl border border-slate-200 p-6 cursor-pointer hover:border-indigo-400 transition shadow-sm">
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="font-bold text-slate-800">2. Cuentas Corrientes</h3>
-              <span class="text-xs bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-full border border-emerald-100 font-semibold">Motor FIFO</span>
-            </div>
-            <p class="text-xs text-slate-500">Gestión de saldos de clientes/proveedores e imputación por antigüedad de deuda.</p>
-          </div>
+      <div id="dashboard-activity-log" class="space-y-3 text-xs">
+        <!-- Generado dinámicamente -->
+      </div>
+    </div>
 
-          <div onclick="switchTab('cruzador-iva')" class="bg-white rounded-xl border border-slate-200 p-6 cursor-pointer hover:border-indigo-400 transition shadow-sm">
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="font-bold text-slate-800">3. Cruzador IVA Digital</h3>
-              <span class="text-xs bg-sky-50 text-sky-600 px-2.5 py-1 rounded-full border border-sky-100 font-semibold">ARCA vs. Interno</span>
-            </div>
-            <p class="text-xs text-slate-500">Auditoría rápida entre el CSV de Mis Comprobantes ARCA y la planilla de la empresa.</p>
-          </div>
+  </div>
 
-          <div onclick="switchTab('calc-retenciones')" class="bg-white rounded-xl border border-slate-200 p-6 cursor-pointer hover:border-indigo-400 transition shadow-sm">
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="font-bold text-slate-800">4. Calc. Retenciones</h3>
-              <span class="text-xs bg-amber-50 text-amber-600 px-2.5 py-1 rounded-full border border-amber-100 font-semibold">RG 830 + IIBB</span>
-            </div>
-            <p class="text-xs text-slate-500">Cálculo automático de retenciones de Impuesto a las Ganancias e IIBB al emitir pagos.</p>
-          </div>
-        </div>
-      </section>
+</section>
 
       <!-- VISTA 1: CONCILIADOR BANCARIO -->
 <section id="tab-conciliador" class="hidden space-y-6">
