@@ -15,7 +15,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.lucide) {
     lucide.createIcons();
   }
-
+  // Cargar datos de Fondo Fijo al iniciar la app
+  if (typeof fetchFondoFijo === 'function') {
+    fetchFondoFijo();
+  }
+  
   // Listener en tiempo real para cambios de sesión
   db.auth.onAuthStateChange((event, session) => {
     const authModal = document.getElementById('auth-modal');
@@ -25,6 +29,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       currentUser = session.user;
       if (authModal) authModal.classList.add('hidden');
       if (userDisplay) userDisplay.textContent = session.user.email;
+      // Volver a consultar datos al iniciar sesión
+      if (typeof fetchFondoFijo === 'function') {
+        fetchFondoFijo();
+      }
     } else {
       currentUser = null;
       if (authModal) authModal.classList.remove('hidden');
@@ -976,46 +984,97 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
   document.body.removeChild(link);
 }
 // -------------------------------------------------------------
-// MOTOR 5: FONDO FIJO / CAJA CHICA
+// MOTOR 5: FONDO FIJO / CAJA CHICA (Conexión Supabase + Dashboard)
 // -------------------------------------------------------------
 let fondoFijoMovimientos = [];
 
-function agregarGastoCajaChica(concepto, monto, centroCosto, tipoDoc) {
+// Cargar movimientos desde Supabase al iniciar
+async function fetchFondoFijo() {
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const { data, error } = await db.from('fondo_fijo').select('*').order('id', { ascending: false });
+      if (!error && data) {
+        fondoFijoMovimientos = data.map(item => ({
+          id: item.id,
+          fecha: item.fecha || new Date(item.created_at).toLocaleDateString('es-AR'),
+          concepto: item.concepto,
+          monto: parseFloat(item.monto),
+          centroCosto: item.centro_costo,
+          tipoDoc: item.tipo_doc
+        }));
+      }
+    } catch (err) {
+      console.error("Error al cargar Fondo Fijo desde Supabase:", err);
+    }
+  }
+  renderFondoFijo();
+  updateDashboardMetrics(); // Sincroniza métricas en el Dashboard
+}
+
+async function agregarGastoCajaChica(concepto, monto, centroCosto, tipoDoc) {
   if (!concepto || !monto || parseFloat(monto) <= 0) {
     alert("Por favor ingrese un concepto y un monto válido.");
     return;
   }
 
-  const mov = {
-    id: Date.now(),
+  const nuevoMov = {
     fecha: new Date().toLocaleDateString('es-AR'),
     concepto: concepto.trim(),
     monto: parseFloat(monto),
-    centroCosto: centroCosto || 'General',
-    tipoDoc: tipoDoc || 'Factura B'
+    centro_costo: centroCosto || 'General',
+    tipo_doc: tipoDoc || 'Factura B'
   };
-  
-  fondoFijoMovimientos.push(mov);
-  renderFondoFijo();
 
-  // Limpiar campos del formulario
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    nuevoMov.user_id = currentUser.id;
+  }
+
+  // Guardar en Supabase si está disponible
+  if (typeof db !== 'undefined' && db) {
+    try {
+      const { data, error } = await db.from('fondo_fijo').insert([nuevoMov]).select();
+      if (error) {
+        console.error("Error al guardar gasto:", error.message);
+      } else if (data && data.length > 0) {
+        nuevoMov.id = data[0].id;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  if (!nuevoMov.id) nuevoMov.id = Date.now();
+
+  fondoFijoMovimientos.unshift({
+    id: nuevoMov.id,
+    fecha: nuevoMov.fecha,
+    concepto: nuevoMov.concepto,
+    monto: nuevoMov.monto,
+    centroCosto: nuevoMov.centro_costo,
+    tipoDoc: nuevoMov.tipo_doc
+  });
+
+  renderFondoFijo();
+  updateDashboardMetrics();
+
+  // Limpiar inputs
   const inputConcepto = document.getElementById('ff-concepto');
   const inputMonto = document.getElementById('ff-monto');
   if (inputConcepto) inputConcepto.value = '';
   if (inputMonto) inputMonto.value = '';
 }
 
-function eliminarGastoCajaChica(id) {
+async function eliminarGastoCajaChica(id) {
+  if (typeof db !== 'undefined' && db) {
+    try {
+      await db.from('fondo_fijo').delete().eq('id', id);
+    } catch (err) {
+      console.error("Error al eliminar registro:", err);
+    }
+  }
   fondoFijoMovimientos = fondoFijoMovimientos.filter(m => m.id !== id);
   renderFondoFijo();
-}
-
-function vaciarRindeCajaChica() {
-  if (fondoFijoMovimientos.length === 0) return;
-  if (confirm("¿Está seguro de reiniciar y vaciar la planilla actual de Caja Chica?")) {
-    fondoFijoMovimientos = [];
-    renderFondoFijo();
-  }
+  updateDashboardMetrics();
 }
 
 function renderFondoFijo() {
@@ -1038,7 +1097,6 @@ function renderFondoFijo() {
 
   container.innerHTML = `
     <div class="space-y-4">
-      <!-- Encabezado de Resumen -->
       <div class="flex justify-between items-center p-3.5 bg-slate-900 rounded-xl border border-slate-800 shadow-sm">
         <div>
           <span class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold block">Total Rinde Caja Chica</span>
@@ -1046,15 +1104,9 @@ function renderFondoFijo() {
         </div>
         <div class="flex items-center gap-3">
           <span class="text-lg font-bold text-emerald-400">$ ${totalGastado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          <button onclick="vaciarRindeCajaChica()" title="Reiniciar rinde" class="text-slate-500 hover:text-rose-400 p-1 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-            </svg>
-          </button>
         </div>
       </div>
 
-      <!-- Tabla de Movimientos -->
       <div class="overflow-x-auto rounded-xl border border-slate-800">
         <table class="w-full text-left text-xs border-collapse bg-slate-900/50">
           <thead>
@@ -1091,6 +1143,23 @@ function renderFondoFijo() {
       </div>
     </div>
   `;
+}
+
+// Actualizar las tarjetas del Dashboard
+function updateDashboardMetrics() {
+  const totalFondoFijo = fondoFijoMovimientos.reduce((acc, m) => acc + m.monto, 0);
+  const cantComprobantes = fondoFijoMovimientos.length;
+
+  // Buscar elementos del Dashboard
+  const cardFondoFijo = document.querySelector('[data-metric="fondo-fijo-monto"]');
+  const cardFondoFijoSub = document.querySelector('[data-metric="fondo-fijo-cant"]');
+
+  if (cardFondoFijo) {
+    cardFondoFijo.textContent = `$ ${totalFondoFijo.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  }
+  if (cardFondoFijoSub) {
+    cardFondoFijoSub.textContent = `${cantComprobantes} comprobantes cargados`;
+  }
 }
 // -------------------------------------------------------------
 // LIBRO DIARIO Y ASIENTOS (Verificación Debe = Haber)
