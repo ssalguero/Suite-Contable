@@ -976,62 +976,122 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
   document.body.removeChild(link);
 }
 // -------------------------------------------------------------
-// MOTOR 5: FONDO FIJO / CAJA CHICA
+// MOTOR 5: FONDO FIJO / CAJA CHICA (Mejorado)
 // -------------------------------------------------------------
 let fondoFijoMovimientos = [];
 
 function agregarGastoCajaChica(concepto, monto, centroCosto, tipoDoc) {
-  if (!concepto || !monto) return;
+  if (!concepto || !monto || parseFloat(monto) <= 0) {
+    alert("Por favor ingrese un concepto y un monto válido.");
+    return;
+  }
+
   const mov = {
     id: Date.now(),
     fecha: new Date().toLocaleDateString('es-AR'),
-    concepto,
+    concepto: concepto.trim(),
     monto: parseFloat(monto),
-    centroCosto,
-    tipoDoc
+    centroCosto: centroCosto || 'General',
+    tipoDoc: tipoDoc || 'Factura B'
   };
   
   fondoFijoMovimientos.push(mov);
   renderFondoFijo();
+
+  // Limpiar campos del formulario si existen en el DOM
+  const inputConcepto = document.getElementById('ff-concepto');
+  const inputMonto = document.getElementById('ff-monto');
+  if (inputConcepto) inputConcepto.value = '';
+  if (inputMonto) inputMonto.value = '';
+}
+
+function eliminarGastoCajaChica(id) {
+  fondoFijoMovimientos = fondoFijoMovimientos.filter(m => m.id !== id);
+  renderFondoFijo();
+}
+
+function vaciarRindeCajaChica() {
+  if (fondoFijoMovimientos.length === 0) return;
+  if (confirm("¿Está seguro de reiniciar y vaciar la planilla actual de Caja Chica?")) {
+    fondoFijoMovimientos = [];
+    renderFondoFijo();
+  }
 }
 
 function renderFondoFijo() {
   const container = document.getElementById('fondo-fijo-results');
   if (!container) return;
 
+  if (fondoFijoMovimientos.length === 0) {
+    container.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-48 text-slate-400 text-xs">
+        <svg class="w-8 h-8 mb-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        No hay comprobantes cargados en el rinde actual.
+      </div>
+    `;
+    return;
+  }
+
   const totalGastado = fondoFijoMovimientos.reduce((acc, m) => acc + m.monto, 0);
 
   container.innerHTML = `
     <div class="space-y-4">
-      <div class="flex justify-between items-center p-3 bg-slate-800 rounded-lg border border-slate-700">
-        <span class="text-xs text-slate-300 font-semibold">Total Rinde Caja Chica:</span>
-        <span class="text-sm font-bold text-emerald-400">$ ${totalGastado.toLocaleString('es-AR')}</span>
+      <!-- Encabezado de Resumen -->
+      <div class="flex justify-between items-center p-3.5 bg-slate-900 rounded-xl border border-slate-800 shadow-sm">
+        <div>
+          <span class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold block">Total Rinde Caja Chica</span>
+          <span class="text-xs text-slate-500">${fondoFijoMovimientos.length} comprobantes cargados</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-lg font-bold text-emerald-400">$ ${totalGastado.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <button onclick="vaciarRindeCajaChica()" title="Reiniciar rinde" class="text-slate-500 hover:text-rose-400 p-1 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+          </button>
+        </div>
       </div>
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="border-b border-slate-700 font-semibold text-slate-400">
-            <th class="p-2">Fecha</th>
-            <th class="p-2">Concepto</th>
-            <th class="p-2">Comprobante</th>
-            <th class="p-2">Centro Costo</th>
-            <th class="p-2 text-right">Monto</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-800">
-          ${fondoFijoMovimientos.map(m => `
-            <tr>
-              <td class="p-2 text-slate-400">${m.fecha}</td>
-              <td class="p-2 text-slate-200 font-medium">${m.concepto}</td>
-              <td class="p-2 text-slate-400">${m.tipoDoc}</td>
-              <td class="p-2"><span class="bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded text-[10px] border border-indigo-800">${m.centroCosto}</span></td>               <td class="p-2 text-right font-bold text-slate-100">$ ${m.monto.toLocaleString('es-AR')}</td>
+
+      <!-- Tabla de Movimientos -->
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs border-collapse bg-slate-900/50">
+          <thead>
+            <tr class="border-b border-slate-800 font-semibold text-slate-400 bg-slate-900">
+              <th class="p-2.5">Fecha</th>
+              <th class="p-2.5">Concepto</th>
+              <th class="p-2.5">Doc.</th>
+              <th class="p-2.5">Centro Costo</th>
+              <th class="p-2.5 text-right">Monto</th>
+              <th class="p-2.5 text-center w-8"></th>
             </tr>
-          `).join('')}
-        </tbody>
-      </table>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60">
+            ${fondoFijoMovimientos.map(m => `
+              <tr class="hover:bg-slate-800/40 transition-colors">
+                <td class="p-2.5 text-slate-400 text-[11px] whitespace-nowrap">${m.fecha}</td>
+                <td class="p-2.5 text-slate-200 font-medium">${m.concepto}</td>
+                <td class="p-2.5 text-slate-400 text-[11px]">${m.tipoDoc}</td>
+                <td class="p-2.5">
+                  <span class="bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded text-[10px] border border-indigo-500/20 font-medium">
+                    ${m.centroCosto}                   </span>                 </td>                 <td class="p-2.5 text-right font-semibold text-slate-100 whitespace-nowrap">                   $ ${m.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                </td>
+                <td class="p-2.5 text-center">
+                  <button onclick="eliminarGastoCajaChica(${m.id})" title="Eliminar ítem" class="text-slate-500 hover:text-rose-400 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }
-
 // -------------------------------------------------------------
 // LIBRO DIARIO Y ASIENTOS (Verificación Debe = Haber)
 // -------------------------------------------------------------
