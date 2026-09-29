@@ -1051,3 +1051,239 @@ function exportarHistorialOPCSV() {
   a.setAttribute('download', `Historial_OP_${new Date().toISOString().slice(0,10)}.csv`);
   a.click();
 }
+// =============================================================
+// LÓGICA DEL LIBRO DIARIO Y ASIENTOS
+// =============================================================
+let historialLibroDiario = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  const inputFecha = document.getElementById('asiento-fecha');
+  if (inputFecha && !inputFecha.value) {
+    inputFecha.value = new Date().toISOString().split('T')[0];
+  }
+  inicializarAsientoManual();
+  renderLibroDiario();
+});
+
+function inicializarAsientoManual() {
+  const contenedor = document.getElementById('contenedor-lineas-asiento');
+  if (!contenedor) return;
+  contenedor.innerHTML = '';
+  // Crea los 2 renglones base
+  agregarLineaAsiento();
+  agregarLineaAsiento();
+  calcularPartidaDoble();
+}
+
+function agregarLineaAsiento() {
+  const contenedor = document.getElementById('contenedor-lineas-asiento');
+  if (!contenedor) return;
+
+  const idLinea = 'linea-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+  const div = document.createElement('div');
+  div.className = 'grid grid-cols-12 gap-2 items-center linea-asiento-item';
+  div.id = idLinea;
+
+  div.innerHTML = `
+    <div class="col-span-6">
+      <input type="text" list="plan-cuentas-sugeridas" placeholder="Cuenta Contable (ej: Gastos de Administración)" class="asiento-cuenta w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none" required>
+    </div>
+    <div class="col-span-3">
+      <input type="number" step="0.01" min="0" placeholder="Debe ($)" oninput="calcularPartidaDoble()" class="asiento-debe w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+    </div>
+    <div class="col-span-3 flex items-center gap-1">
+      <input type="number" step="0.01" min="0" placeholder="Haber ($)" oninput="calcularPartidaDoble()" class="asiento-haber w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+      <button type="button" onclick="eliminarLineaAsiento('${idLinea}')" class="text-slate-400 hover:text-rose-600 p-1 cursor-pointer" title="Quitar renglón">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+    </div>
+  `;
+
+  contenedor.appendChild(div);
+  if (window.lucide) lucide.createIcons();
+}
+
+function eliminarLineaAsiento(idLinea) {
+  const lineas = document.querySelectorAll('.linea-asiento-item');
+  if (lineas.length <= 2) {
+    alert('Un asiento contable requiere como mínimo 2 cuentas.');
+    return;
+  }
+  const el = document.getElementById(idLinea);
+  if (el) el.remove();
+  calcularPartidaDoble();
+}
+
+function calcularPartidaDoble() {
+  const debes = document.querySelectorAll('.asiento-debe');
+  const haberes = document.querySelectorAll('.asiento-haber');
+
+  let totalDebe = 0;
+  let totalHaber = 0;
+
+  debes.forEach(inp => totalDebe += (parseFloat(inp.value) || 0));
+  haberes.forEach(inp => totalHaber += (parseFloat(inp.value) || 0));
+
+  const diferencia = Math.abs(totalDebe - totalHaber);
+
+  const lblDebe = document.getElementById('lbl-total-debe');
+  const lblHaber = document.getElementById('lbl-total-haber');
+  const lblDif = document.getElementById('lbl-diferencia-asiento');
+  const status = document.getElementById('asiento-validation-status');
+  const btn = document.getElementById('btn-guardar-asiento');
+
+  if (lblDebe) lblDebe.textContent = `$ ${totalDebe.toFixed(2)}`;
+  if (lblHaber) lblHaber.textContent = `$ ${totalHaber.toFixed(2)}`;
+  if (lblDif) lblDif.textContent = `$ ${diferencia.toFixed(2)}`;
+
+  const esValido = diferencia < 0.01 && totalDebe > 0;
+
+  if (status && btn) {
+    if (esValido) {
+      status.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200";
+      status.textContent = "Balanceado (Partida Doble OK)";
+      btn.disabled = false;
+      btn.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-all shadow cursor-pointer flex items-center justify-center gap-2";
+    } else {
+      status.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200";
+      status.textContent = "Desbalanceado (Debe ≠ Haber)";
+      btn.disabled = true;
+      btn.className = "w-full bg-slate-300 text-slate-500 text-xs font-semibold px-4 py-2.5 rounded-lg transition-all cursor-not-allowed flex items-center justify-center gap-2";
+    }
+  }
+}
+
+function guardarAsientoValidado() {
+  const fecha = document.getElementById('asiento-fecha')?.value || new Date().toISOString().split('T')[0];
+  const leyenda = document.getElementById('asiento-leyenda')?.value.trim() || 'Sin Leyenda';
+
+  const lineas = document.querySelectorAll('.linea-asiento-item');
+  const renglones = [];
+
+  lineas.forEach(linea => {
+    const cuenta = linea.querySelector('.asiento-cuenta').value.trim();
+    const debe = parseFloat(linea.querySelector('.asiento-debe').value) || 0;
+    const haber = parseFloat(linea.querySelector('.asiento-haber').value) || 0;
+
+    if (cuenta && (debe > 0 || haber > 0)) {
+      renglones.push({ cuenta, debe, haber });
+    }
+  });
+
+  if (renglones.length < 2) {
+    alert('Ingresá al menos dos cuentas con montos válidos.');
+    return;
+  }
+
+  const numAsiento = 'N° ' + (historialLibroDiario.length + 1).toString().padStart(4, '0');
+
+  const nuevoAsiento = {
+    id: numAsiento,
+    fecha,
+    leyenda,
+    renglones
+  };
+
+  historialLibroDiario.unshift(nuevoAsiento);
+  localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibroDiario));
+
+  renderLibroDiario();
+
+  // Limpiar campos y resetear
+  document.getElementById('asiento-leyenda').value = '';
+  inicializarAsientoManual();
+
+  alert(`Asiento ${numAsiento} guardado correctamente.`);
+}
+
+function renderLibroDiario() {
+  const contenedor = document.getElementById('contenedor-libro-diario');
+  const filtro = (document.getElementById('asiento-buscar-historial')?.value || '').toLowerCase();
+
+  if (!contenedor) return;
+  contenedor.innerHTML = '';
+
+  const listaFiltrada = historialLibroDiario.filter(a => 
+    a.leyenda.toLowerCase().includes(filtro) ||
+    a.id.toLowerCase().includes(filtro) ||
+    a.renglones.some(r => r.cuenta.toLowerCase().includes(filtro))
+  );
+
+  if (listaFiltrada.length === 0) {
+    contenedor.innerHTML = `<div class="p-6 text-center text-slate-400">No hay asientos registrados en el Libro Diario.</div>`;
+    return;
+  }
+
+  listaFiltrada.forEach(asiento => {
+    const totalMonto = asiento.renglones.reduce((acc, r) => acc + r.debe, 0);
+
+    const filasHTML = asiento.renglones.map(r => `
+      <tr class="border-b border-slate-100">
+        <td class="py-1.5 px-3 ${r.haber > 0 ? 'pl-8 text-slate-600' : 'font-semibold text-slate-800'}">${r.cuenta}</td>
+        <td class="py-1.5 px-3 text-right font-mono">${r.debe > 0 ? '$ ' + r.debe.toFixed(2) : '-'}</td>
+        <td class="py-1.5 px-3 text-right font-mono">${r.haber > 0 ? '$ ' + r.haber.toFixed(2) : '-'}</td>
+      </tr>
+    `).join('');
+
+    contenedor.innerHTML += `
+      <div class="p-4 space-y-2 hover:bg-slate-50/50 transition-colors">
+        <div class="flex items-center justify-between text-xs">
+          <div class="flex items-center gap-3">
+            <span class="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">${asiento.id}</span>
+            <span class="text-slate-400">${asiento.fecha}</span>
+            <span class="font-medium text-slate-800">${asiento.leyenda}</span>
+          </div>
+          <button onclick="eliminarAsiento('${asiento.id}')" class="text-rose-500 hover:text-rose-700 p-1 rounded transition-colors" title="Eliminar Asiento">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <table class="w-full text-xs border-collapse">
+          <thead>
+            <tr class="text-slate-400 font-normal border-b border-slate-100">
+              <th class="text-left py-1 px-3">Cuenta</th>
+              <th class="text-right py-1 px-3 w-28">Debe</th>
+              <th class="text-right py-1 px-3 w-28">Haber</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filasHTML}
+          </tbody>
+          <tfoot>
+            <tr class="font-bold text-slate-700 bg-slate-50/50">
+              <td class="py-1.5 px-3 text-right">Totales:</td>
+              <td class="py-1.5 px-3 text-right font-mono">$ ${totalMonto.toFixed(2)}</td>
+              <td class="py-1.5 px-3 text-right font-mono">$ ${totalMonto.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    `;
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function eliminarAsiento(id) {
+  if (confirm(`¿Eliminar el asiento ${id}?`)) {
+    historialLibroDiario = historialLibroDiario.filter(a => a.id !== id);
+    localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibroDiario));
+    renderLibroDiario();
+  }
+}
+
+function exportarLibroDiarioCSV() {
+  if (historialLibroDiario.length === 0) return alert('No hay asientos para exportar.');
+  let csv = 'Asiento,Fecha,Leyenda,Cuenta,Debe,Haber\n';
+  historialLibroDiario.forEach(a => {
+    a.renglones.forEach(r => {
+      csv += `"${a.id}",${a.fecha},"${a.leyenda}","${r.cuenta}",${r.debe},${r.haber}\n`;
+    });
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('href', url);
+  a.setAttribute('download', `Libro_Diario_${new Date().toISOString().slice(0,10)}.csv`);
+  a.click();
+}
