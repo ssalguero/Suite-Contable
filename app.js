@@ -1343,43 +1343,72 @@ async function cerrarYRendirFondoFijo() {
 
     const totalRendicion = estadoFondoFijo.registros.reduce((sum, r) => sum + parseFloat(r.monto), 0);
 
-    if (!confirm(`¿Confirmás el Cierre y Rendición del Fondo Fijo por un total de $ ${totalRendicion.toLocaleString('es-AR')}?`)) return;
+    if (!confirm(`¿Confirmás el Cierre del Fondo Fijo por un total de $ ${totalRendicion.toLocaleString('es-AR')}?`)) return;
 
     try {
         const { data: { user } } = await supabase.auth.getUser();
         const idsActivos = estadoFondoFijo.registros.map(r => r.id);
 
-        // 1. Marcar registros de fondo fijo como RENDIDO
+        // 1. Crear Cabecera del Asiento Contable
+        const { data: asiento, error: errAsiento } = await supabase
+            .from('asientos')
+            .insert([{
+                fecha: new Date().toISOString().split('T')[0],
+                concepto: `Rendición y Reposición de Fondo Fijo - ${new Date().toLocaleDateString('es-AR')}`,
+                empresa_id: estadoFondoFijo.empresaIdActual,
+                user_id: user?.id || null,
+                origen: 'FONDO_FIJO'
+            }])
+            .select()
+            .single();
+
+        if (errAsiento) throw errAsiento;
+
+        // 2. Armar Renglones (Debe y Haber)
+        // Ejemplo simplificado: Imputación masiva por Centro de Costo / Tipo a Cuentas Generales
+        const renglones = [];
+
+        // Renglón DEBE: Agrupado por centros de costo o imputación individual
+        estadoFondoFijo.registros.forEach(reg => {
+            renglones.push({
+                asiento_id: asiento.id,
+                cuenta_id: reg.cuenta_contable_id || 'ID_CUENTA_GASTOS_GENERALES', 
+                debe: parseFloat(reg.monto),
+                haber: 0
+            });
+        });
+
+        // Renglón HABER: Contrapartida a la cuenta Caja Chica / Fondo Fijo
+        renglones.push({
+            asiento_id: asiento.id,
+            cuenta_id: 'ID_CUENTA_FONDO_FIJO', // ID correspondiente en cuentas_contables
+            debe: 0,
+            haber: totalRendicion
+        });
+
+        const { error: errDetalles } = await supabase
+            .from('asiento_detalles')
+            .insert(renglones);
+
+        if (errDetalles) throw errDetalles;
+
+        // 3. Marcar los comprobantes del rinde como RENDIDOS
         const { error: errUpdate } = await supabase
             .from('fondo_fijo')
-            .update({ estado_rinde: 'RENDIDO' })
+            .update({ 
+                estado_rinde: 'RENDIDO',
+                asiento_id: asiento.id // Guarda la relación directa
+            })
             .in('id', idsActivos);
 
         if (errUpdate) throw errUpdate;
 
-        // 2. Generar Asiento Contable Automático en la tabla 'asientos' (o equivalente)
-        const asientoContable = {
-            fecha: new Date().toISOString().split('T')[0],
-            concepto: `Reposición de Fondo Fijo - Rendición del ${new Date().toLocaleDateString('es-AR')}`,
-            user_id: user?.id || null,
-            empresa_id: estadoFondoFijo.empresaIdActual,
-            debe: totalRendicion,
-            haber: totalRendicion,
-            detalles: 'Asiento generado automáticamente por cierre de rinde de caja chica.'
-        };
-
-        const { error: errAsiento } = await supabase
-            .from('asientos')
-            .insert([asientoContable]);
-
-        if (errAsiento) console.warn('Atención: Se rindió el fondo pero no se pudo generar el asiento automático:', errAsiento);
-
-        showToast('Fondo Fijo cerrado y rendido exitosamente. Asiento generado.');
+        showToast('Fondo Fijo cerrado y Asiento Contable registrado con éxito.');
         await cargarRegistrosFondoFijo();
 
     } catch (err) {
-        console.error('Error al rendir Fondo Fijo:', err);
-        showToast('Error al procesar el cierre del Fondo Fijo.', 'error');
+        console.error('Error al procesar la rendición contable:', err);
+        showToast('Error al registrar la rendición en la contabilidad.', 'error');
     }
 }
 
