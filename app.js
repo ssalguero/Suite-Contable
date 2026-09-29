@@ -1287,3 +1287,122 @@ function exportarLibroDiarioCSV() {
   a.setAttribute('download', `Libro_Diario_${new Date().toISOString().slice(0,10)}.csv`);
   a.click();
 }
+// =============================================================
+// LÓGICA DEL DASHBOARD INTEGRADO
+// =============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Setear el mes actual en el filtro de período del Dashboard
+  const inputPeriodo = document.getElementById('dashboard-periodo');
+  if (inputPeriodo && !inputPeriodo.value) {
+    const hoy = new Date();
+    inputPeriodo.value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+  }
+  actualizarDashboardMetrics();
+});
+
+// Función global de navegación entre pestañas
+function navegarA(tabId) {
+  const secciones = document.querySelectorAll('main section');
+  secciones.forEach(sec => sec.classList.add('hidden'));
+
+  const objetivo = document.getElementById(tabId);
+  if (objetivo) {
+    objetivo.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Actualizar la barra lateral activa si aplica
+  const linksSidebar = document.querySelectorAll('aside nav button');
+  linksSidebar.forEach(btn => {
+    btn.classList.remove('bg-indigo-600', 'text-white');
+    btn.classList.add('text-slate-300', 'hover:bg-slate-800');
+  });
+
+  // Re-actualizar KPIs al volver al Dashboard
+  if (tabId === 'tab-dashboard') {
+    actualizarDashboardMetrics();
+  }
+}
+
+function actualizarDashboardMetrics() {
+  // 1. Métrica Libro Diario
+  const libroDiario = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
+  const kpiAsientos = document.getElementById('kpi-asientos-cant');
+  const kpiAsientosSub = document.getElementById('kpi-asientos-sub');
+  if (kpiAsientos) kpiAsientos.textContent = libroDiario.length;
+  if (kpiAsientosSub) {
+    kpiAsientosSub.textContent = libroDiario.length > 0 
+      ? `Último: ${libroDiario[0].id}` 
+      : 'Sin registros aún';
+  }
+
+  // 2. Métrica Fondo Fijo / Caja Chica
+  const rindeFondo = JSON.parse(localStorage.getItem('suite_fondo_fijo')) || [];
+  const totalFondo = rindeFondo.reduce((acc, item) => acc + (parseFloat(item.monto) || 0), 0);
+  const kpiFondoMonto = document.getElementById('kpi-fondo-monto');
+  const kpiFondoSub = document.getElementById('kpi-fondo-sub');
+  if (kpiFondoMonto) kpiFondoMonto.textContent = `$ ${totalFondo.toFixed(2)}`;
+  if (kpiFondoSub) kpiFondoSub.textContent = `${rindeFondo.length} comprobantes cargados`;
+
+  // 3. Métrica Cuentas Corrientes
+  const ctacte = JSON.parse(localStorage.getItem('suite_cuentas_corrientes')) || [];
+  const totalCtaCte = ctacte.reduce((acc, item) => acc + (parseFloat(item.monto) || 0), 0);
+  const kpiCtaCteSaldo = document.getElementById('kpi-ctacte-saldo');
+  const kpiCtaCteSub = document.getElementById('kpi-ctacte-sub');
+  if (kpiCtaCteSaldo) kpiCtaCteSaldo.textContent = `$ ${totalCtaCte.toFixed(2)}`;
+  if (kpiCtaCteSub) kpiCtaCteSub.textContent = `${ctacte.length} facturas pendientes`;
+
+  // Renderizar Log de Actividades
+  renderActivityLog(libroDiario, rindeFondo);
+}
+
+function renderActivityLog(libroDiario, rindeFondo) {
+  const container = document.getElementById('dashboard-activity-log');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const eventos = [];
+
+  libroDiario.forEach(a => {
+    eventos.push({
+      tipo: 'Asiento Contable',
+      desc: `${a.id} - ${a.leyenda}`,
+      fecha: a.fecha,
+      icono: 'book-open',
+      color: 'text-purple-600 bg-purple-50'
+    });
+  });
+
+  rindeFondo.forEach(r => {
+    eventos.push({
+      tipo: 'Rendición Caja',
+      desc: `${r.concepto} ($${parseFloat(r.monto).toFixed(2)})`,
+      fecha: r.fecha || 'Reciente',
+      icono: 'wallet',
+      color: 'text-amber-600 bg-amber-50'
+    });
+  });
+
+  if (eventos.length === 0) {
+    container.innerHTML = `<div class="text-slate-400 text-center py-4">No hay actividad reciente registrada en el sistema.</div>`;
+    return;
+  }
+
+  // Tomar los últimos 5 eventos
+  eventos.slice(0, 5).forEach(ev => {
+    container.innerHTML += `
+      <div class="flex items-start gap-2.5 pb-2 border-b border-slate-100 last:border-none">
+        <div class="p-1.5 rounded-lg ${ev.color} mt-0.5">
+          <i data-lucide="${ev.icono}" class="w-3.5 h-3.5"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-slate-800 truncate">${ev.desc}</p>
+          <p class="text-[10px] text-slate-400">${ev.tipo} • ${ev.fecha}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
