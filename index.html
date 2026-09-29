@@ -447,102 +447,107 @@
 </section>
 
       <!-- VISTA 6: GESTOR DE ÓRDENES DE PAGO (OP) -->
-<div id="mod-op" class="modulo-seccion hidden space-y-6">
-  <div>
-    <h2 class="text-2xl font-bold text-slate-800">Gestor de Órdenes de Pago (OP)</h2>
-    <p class="text-slate-500 text-sm">Vinculación de facturas, medios de pago, adjuntos y emisión de comprobantes respaldatorios.</p>
+<!-- Pestaña Órdenes de Pago -->
+<div id="tab-ordenes-pago" class="hidden space-y-6">
+  
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-xl font-bold text-slate-800">Generador de Órdenes de Pago (OP)</h2>
+      <p class="text-xs text-slate-500">Emisión de órdenes de pago a proveedores con cálculo neto y registro en historial.</p>
+    </div>
+    <button onclick="exportarHistorialOPCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer">
+      <i data-lucide="download" class="w-4 h-4"></i> Exportar Historial (CSV)
+    </button>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Formulario de Carga -->
-    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-      <h3 class="text-lg font-semibold text-slate-700">Generar Orden de Pago</h3>
+    
+    <!-- Formulario de Entrada -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2">Datos del Comprobante</h3>
       
       <form id="form-op" onsubmit="event.preventDefault(); generarOP();" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Proveedor / Razón Social</label>
-          <input type="text" id="op-proveedor" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Razon Social / Proveedor</label>
+          <input id="op-proveedor" type="text" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Monto Factura ($)</label>
-            <input type="number" step="0.01" id="op-monto-factura" placeholder="0.00" oninput="actualizarCalculoOP()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Monto Bruto Factura ($)</label>
+            <input id="op-monto-factura" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
           </div>
+
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Retención Aplicada ($)</label>
-            <input type="number" step="0.01" id="op-retencion" placeholder="0.00" value="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Retención Aplicada ($)</label>
+            <input id="op-retencion" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Medio de Pago Principal</label>
-            <select id="op-medio-pago" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Medio de Pago</label>
+            <select id="op-medio-pago" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
               <option value="Transferencia Bancaria">Transferencia Bancaria</option>
               <option value="Cheque Propio">Cheque Propio</option>
-              <option value="Cheque Terceros">Cheque Terceros</option>
               <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
+              <option value="Echeq">Echeq</option>
             </select>
           </div>
+
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">N° Transacción / Cheque</label>
-            <input type="text" id="op-num-comprobante" placeholder="Ej: TR-884920" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">N° Comprobante / Transacción</label>
+            <input id="op-num-comprobante" type="text" placeholder="Ej: TR-884920" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
           </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Adjuntar Factura / Comprobante (PDF/Imagen)</label>
-          <input type="file" id="op-adjunto" accept=".pdf,image/*" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-        </div>
-
-        <button type="submit" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
-          <i data-lucide="file-check" class="w-4 h-4"></i> Emitir Orden de Pago
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2">
+          Emitir Orden de Pago
         </button>
       </form>
     </div>
 
-    <!-- Vista Previa de la OP -->
-    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <!-- Previsualización -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
       <div>
-        <h3 class="text-lg font-semibold text-slate-700 mb-4">Vista Previa de la OP</h3>
+        <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-3 mb-4">Vista Previa</h3>
         <div id="contenedor-preview-op" class="text-center text-slate-400 py-12 flex flex-col items-center justify-center gap-2">
           <i data-lucide="receipt" class="w-12 h-12 text-slate-300"></i>
           <p class="text-sm">Completa el formulario para previsualizar y emitir la Orden de Pago.</p>
         </div>
       </div>
     </div>
+
   </div>
 
-  <!-- Historial de OP Emitidas -->
-  <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <h3 class="text-lg font-semibold text-slate-700">Historial de Órdenes de Pago Emitidas</h3>
-      <button onclick="exportarHistorialOPCSV()" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
-        <i data-lucide="download" class="w-4 h-4"></i> Exportar Historial (CSV)
-      </button>
+  <!-- Tabla Historial -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+      <h3 class="text-sm font-bold text-slate-700">Historial de Órdenes Emitidas</h3>
     </div>
-
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-sm border-collapse">
+      <table class="w-full text-left text-xs border-collapse">
         <thead>
-          <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
-            <th class="p-3">N° OP</th>
+          <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+            <th class="p-3">ID</th>
             <th class="p-3">Fecha</th>
             <th class="p-3">Proveedor</th>
-            <th class="p-3">Medio de Pago</th>
-            <th class="p-3">Monto Factura</th>
+            <th class="p-3">Medio</th>
+            <th class="p-3">Bruto</th>
             <th class="p-3">Retención</th>
-            <th class="p-3">Monto Neto</th>
+            <th class="p-3">Neto</th>
             <th class="p-3 text-center">Acciones</th>
           </tr>
         </thead>
         <tbody id="tbody-op-historial" class="divide-y divide-slate-100 text-slate-700">
-          <!-- Filas dinámicas -->
+          <tr>
+            <td colspan="8" class="p-4 text-center text-slate-400">No hay órdenes de pago emitidas.</td>
+          </tr>
         </tbody>
       </table>
     </div>
   </div>
+
 </div>
       <!-- VISTA 7: LIBRO DIARIO Y ASIENTOS MANUALES -->
       <section id="tab-libro-diario" class="hidden space-y-6">
