@@ -198,7 +198,6 @@
       </section>
 
       <!-- VISTA 1: CONCILIADOR BANCARIO -->
-      <!-- VISTA 1: CONCILIADOR BANCARIO -->
 <section id="tab-conciliador" class="hidden space-y-6">
   <div class="flex justify-between items-center">
     <div>
@@ -249,7 +248,6 @@
   </div>
 </section>
       <!-- VISTA 2: CUENTAS CORRIENTES -->
-      <!-- VISTA 2: CUENTAS CORRIENTES -->
 <section id="tab-cta-corriente" class="hidden space-y-6">
   <div class="flex justify-between items-center">
     <div>
@@ -286,7 +284,6 @@
   </div>
 </section>
 
-      <!-- VISTA 3: CRUZADOR IVA -->
      <!-- VISTA 3: CRUZADOR IVA DIGITAL -->
 <section id="tab-cruzador-iva" class="hidden space-y-6">
   <div class="flex justify-between items-center">
@@ -450,111 +447,100 @@
 </section>
 
       <!-- VISTA 6: GESTOR DE ÓRDENES DE PAGO (OP) -->
-      <!-- Módulo Órdenes de Pago (OP) -->
-<div id="mod-op" class="modulo-seccion d-none">
-  <div class="mb-4">
-    <h2 class="fw-bold text-dark">Gestor de Órdenes de Pago (OP)</h2>
-    <p class="text-muted">Vinculación de facturas, medios de pago, adjuntos y emisión de comprobantes respaldatorios.</p>
+<div id="mod-op" class="modulo-seccion hidden space-y-6">
+  <div>
+    <h2 class="text-2xl font-bold text-slate-800">Gestor de Órdenes de Pago (OP)</h2>
+    <p class="text-slate-500 text-sm">Vinculación de facturas, medios de pago, adjuntos y emisión de comprobantes respaldatorios.</p>
   </div>
 
-  <div class="row g-4">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Formulario de Carga -->
-    <div class="col-lg-6">
-      <div class="card shadow-sm border-0 rounded-3">
-        <div class="card-body p-4">
-          <h5 class="fw-bold mb-3 text-secondary">Generar Orden de Pago</h5>
-          <form id="form-op" onsubmit="event.preventDefault(); generarOP();">
-            
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Proveedor / Razón Social</label>
-              <input type="text" id="op-proveedor" class="form-control" placeholder="Ej: Pinturerías Rex SA" required>
-            </div>
-
-            <div class="row g-2 mb-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Monto Factura ($)</label>
-                <input type="number" step="0.01" id="op-monto-factura" class="form-control" placeholder="0.00" oninput="actualizarCalculoOP()" required>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Retención Aplicada ($)</label>
-                <input type="number" step="0.01" id="op-retencion" class="form-control" placeholder="0.00" value="0.00" oninput="actualizarCalculoOP()">
-              </div>
-            </div>
-
-            <div class="row g-2 mb-3">
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">Medio de Pago Principal</label>
-                <select id="op-medio-pago" class="form-select">
-                  <option value="Transferencia Bancaria">Transferencia Bancaria</option>
-                  <option value="Cheque Propio">Cheque Propio</option>
-                  <option value="Cheque Terceros">Cheque Terceros</option>
-                  <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
-                </select>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-semibold">N° Transacción / Cheque</label>
-                <input type="text" id="op-num-comprobante" class="form-control" placeholder="Ej: TR-884920">
-              </div>
-            </div>
-
-            <!-- Adjuntar Documento Respaldatorio -->
-            <div class="mb-4">
-              <label class="form-label fw-semibold">Adjuntar Factura / Comprobante (PDF/Imagen)</label>
-              <input type="file" id="op-adjunto" class="form-control" accept=".pdf,image/*">
-            </div>
-
-            <button type="submit" class="btn btn-success w-100 fw-bold py-2">
-              <i class="bi bi-file-earmark-check me-1"></i> Emitir Orden de Pago
-            </button>
-          </form>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <h3 class="text-lg font-semibold text-slate-700">Generar Orden de Pago</h3>
+      
+      <form id="form-op" onsubmit="event.preventDefault(); generarOP();" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Proveedor / Razón Social</label>
+          <input type="text" id="op-proveedor" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
-      </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Monto Factura ($)</label>
+            <input type="number" step="0.01" id="op-monto-factura" placeholder="0.00" oninput="actualizarCalculoOP()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Retención Aplicada ($)</label>
+            <input type="number" step="0.01" id="op-retencion" placeholder="0.00" value="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Medio de Pago Principal</label>
+            <select id="op-medio-pago" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+              <option value="Cheque Propio">Cheque Propio</option>
+              <option value="Cheque Terceros">Cheque Terceros</option>
+              <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">N° Transacción / Cheque</label>
+            <input type="text" id="op-num-comprobante" placeholder="Ej: TR-884920" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Adjuntar Factura / Comprobante (PDF/Imagen)</label>
+          <input type="file" id="op-adjunto" accept=".pdf,image/*" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-slate-50 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+        </div>
+
+        <button type="submit" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+          <i data-lucide="file-check" class="w-4 h-4"></i> Emitir Orden de Pago
+        </button>
+      </form>
     </div>
 
-    <!-- Vista Previa / Emisión -->
-    <div class="col-lg-6">
-      <div class="card shadow-sm border-0 rounded-3 h-100">
-        <div class="card-body p-4 d-flex flex-column justify-content-between" id="contenedor-preview-op">
-          <div>
-            <h5 class="fw-bold mb-3 text-secondary">Vista Previa de la OP</h5>
-            <div id="detalle-preview-op" class="text-center text-muted py-5">
-              <i class="bi bi-receipt display-4 d-block mb-2"></i>
-              Completa el formulario para previsualizar y emitir la Orden de Pago.
-            </div>
-          </div>
+    <!-- Vista Previa de la OP -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+      <div>
+        <h3 class="text-lg font-semibold text-slate-700 mb-4">Vista Previa de la OP</h3>
+        <div id="contenedor-preview-op" class="text-center text-slate-400 py-12 flex flex-col items-center justify-center gap-2">
+          <i data-lucide="receipt" class="w-12 h-12 text-slate-300"></i>
+          <p class="text-sm">Completa el formulario para previsualizar y emitir la Orden de Pago.</p>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Historial de OP Emitidas -->
-  <div class="card shadow-sm border-0 rounded-3 mt-4">
-    <div class="card-body p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="fw-bold text-secondary mb-0">Historial de Órdenes de Pago Emitidas</h5>
-        <button class="btn btn-outline-secondary btn-sm" onclick="exportarHistorialOPCSV()">
-          <i class="bi bi-file-earmark-excel me-1"></i> Exportar Historial (CSV)
-        </button>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover align-middle" id="tabla-op">
-          <thead class="table-light">
-            <tr>
-              <th>N° OP</th>
-              <th>Fecha</th>
-              <th>Proveedor</th>
-              <th>Medio de Pago</th>
-              <th>Monto Factura</th>
-              <th>Retención</th>
-              <th>Monto Neto</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-op-historial">
-            <!-- Filas dinámicas -->
-          </tbody>
-        </table>
-      </div>
+  <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <h3 class="text-lg font-semibold text-slate-700">Historial de Órdenes de Pago Emitidas</h3>
+      <button onclick="exportarHistorialOPCSV()" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 self-start sm:self-auto">
+        <i data-lucide="download" class="w-4 h-4"></i> Exportar Historial (CSV)
+      </button>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm border-collapse">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-medium">
+            <th class="p-3">N° OP</th>
+            <th class="p-3">Fecha</th>
+            <th class="p-3">Proveedor</th>
+            <th class="p-3">Medio de Pago</th>
+            <th class="p-3">Monto Factura</th>
+            <th class="p-3">Retención</th>
+            <th class="p-3">Monto Neto</th>
+            <th class="p-3 text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-op-historial" class="divide-y divide-slate-100 text-slate-700">
+          <!-- Filas dinámicas -->
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
