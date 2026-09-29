@@ -810,4 +810,102 @@ function ejecularCalculoCtaCorriente() {
 
   reader.readAsText(file);
 }
+  let historialOP = JSON.parse(localStorage.getItem('suite_historial_op')) || [];
+
+function actualizarCalculoOP() {
+  const montoFactura = parseFloat(document.getElementById('op-monto-factura').value) || 0;
+  const retencion = parseFloat(document.getElementById('op-retencion').value) || 0;
+  const neto = montoFactura - retencion;
+
+  const proveedor = document.getElementById('op-proveedor').value || 'Sin especificar';
+  const medio = document.getElementById('op-medio-pago').value;
+  const numComprobante = document.getElementById('op-num-comprobante').value || '-';
+
+  if (montoFactura > 0) {
+    document.getElementById('contenedor-preview-op').innerHTML = `
+      <div>
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-3">
+          <h5 class="fw-bold text-dark m-0">ORDEN DE PAGO N° OP-${(historialOP.length + 1).toString().padStart(4, '0')}</h5>
+          <span class="badge bg-primary">Borrador</span>
+        </div>
+        <p><strong>Proveedor:</strong> ${proveedor}</p>
+        <p><strong>Medio de Pago:</strong> ${medio} (${numComprobante})</p>
+        
+        <table class="table table-bordered mt-3">
+          <tr><th>Monto Bruto Factura:</th><td class="text-end">$ ${montoFactura.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td></tr>
+          <tr><th>Retenciones Aplicadas:</th><td class="text-end text-danger">-$ ${retencion.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td></tr>
+          <tr class="table-active fw-bold"><th>Monto Neto a Pagar:</th><td class="text-end text-success">$ ${neto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</td></tr>
+        </table>
+      </div>
+      <div class="alert alert-info py-2 small"><i class="bi bi-info-circle me-1"></i> Al emitir se registrará en el historial y podrás imprimir el comprobante.</div>
+    `;
+  }
+}
+
+function generarOP() {
+  const proveedor = document.getElementById('op-proveedor').value;
+  const montoFactura = parseFloat(document.getElementById('op-monto-factura').value) || 0;
+  const retencion = parseFloat(document.getElementById('op-retencion').value) || 0;
+  const neto = montoFactura - retencion;
+  const medio = document.getElementById('op-medio-pago').value;
+  const numComprobante = document.getElementById('op-num-comprobante').value || '-';
+
+  const nuevaOP = {
+    id: 'OP-' + (historialOP.length + 1).toString().padStart(4, '0'),
+    fecha: new Date().toLocaleDateString('es-AR'),
+    proveedor,
+    montoFactura,
+    retencion,
+    neto,
+    medio,
+    numComprobante
+  };
+
+  historialOP.push(nuevaOP);
+  localStorage.setItem('suite_historial_op', JSON.stringify(historialOP));
+  
+  renderHistorialOP();
+  document.getElementById('form-op').reset();
+  alert('Orden de Pago emitida exitosamente.');
+}
+
+function renderHistorialOP() {
+  const tbody = document.getElementById('tbody-op-historial');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  historialOP.forEach(op => {
+    tbody.innerHTML += `
+      <tr>
+        <td class="fw-bold">${op.id}</td>
+        <td>${op.fecha}</td>
+        <td>${op.proveedor}</td>
+        <td>${op.medio}</td>
+        <td>$ ${op.montoFactura.toFixed(2)}</td>
+        <td class="text-danger">$ ${op.retencion.toFixed(2)}</td>
+        <td class="fw-bold text-success">$ ${op.neto.toFixed(2)}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" onclick="window.print()"><i class="bi bi-printer"></i></button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function exportarHistorialOPCSV() {
+  if (historialOP.length === 0) return alert('No hay datos para exportar.');
+  let csv = 'ID,Fecha,Proveedor,Medio,Monto Factura,Retencion,Neto\n';
+  historialOP.forEach(o => {
+    csv += `${o.id},${o.fecha},"${o.proveedor}",${o.medio},${o.montoFactura},${o.retencion},${o.neto}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('href', url);
+  a.setAttribute('download', `Historial_OP_${new Date().toISOString().slice(0,10)}.csv`);
+  a.click();
+}
+
+// Cargar el historial al iniciar
+document.addEventListener('DOMContentLoaded', renderHistorialOP);
 }
