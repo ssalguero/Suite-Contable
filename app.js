@@ -976,7 +976,7 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
   document.body.removeChild(link);
 }
 // -------------------------------------------------------------
-// FONDO FIJO / CAJA CHICA
+// MOTOR 5: FONDO FIJO / CAJA CHICA
 // -------------------------------------------------------------
 let fondoFijoMovimientos = [];
 
