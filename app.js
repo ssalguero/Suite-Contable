@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (userDisplay) userDisplay.textContent = 'No autenticado';
     }
   });
+
+  renderHistorialOP();
 });
 
 function setAuthMode(mode) {
@@ -425,35 +427,6 @@ function renderFondoFijo() {
 }
 
 // -------------------------------------------------------------
-// GESTOR DE ÓRDEN DE PAGO (OP)
-// -------------------------------------------------------------
-function generarOrdenPago(proveedor, montoFactura, retencionAplicada, medioPago) {
-  const netoAPagar = montoFactura - retencionAplicada;
-  
-  const opContainer = document.getElementById('op-results');
-  if (!opContainer) return;
-
-  opContainer.innerHTML = `
-    <div class="p-4 bg-slate-900 border border-slate-700 rounded-xl space-y-3">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h4 class="text-xs font-bold uppercase text-indigo-400">Órden de Pago Generada</h4>
-        <span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded">Emitida</span>
-      </div>
-      <div class="space-y-1.5 text-xs text-slate-300">
-        <div class="flex justify-between"><span>Proveedor:</span> <strong class="text-slate-100">${proveedor}</strong></div>
-        <div class="flex justify-between"><span>Total Comprobante:</span> <span>$ ${montoFactura.toLocaleString('es-AR')}</span></div>
-        <div class="flex justify-between text-amber-400"><span>Retenciones Aplicadas:</span> <span>-$ ${retencionAplicada.toLocaleString('es-AR')}</span></div>
-        <div class="flex justify-between"><span>Medio de Pago:</span> <span>${medioPago}</span></div>
-        <div class="flex justify-between text-sm font-bold border-t border-slate-800 pt-2 text-emerald-400">
-          <span>Total a Transferir/Emitir:</span>
-          <span>$ ${netoAPagar.toLocaleString('es-AR')}</span>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// -------------------------------------------------------------
 // LIBRO DIARIO Y ASIENTOS (Verificación Debe = Haber)
 // -------------------------------------------------------------
 function validarYGuardarAsiento(lineas) {
@@ -499,7 +472,9 @@ function parseCSV(text, delimiter = ',') {
     });
     return rowObj;
   });
-  // Variables de estado para los registros cargados
+}
+
+// Variables de estado para los registros cargados
 let datosArcaIVA = [];
 let datosInternoIVA = [];
 
@@ -596,7 +571,8 @@ function ejecutarCruceIvaReal() {
     </div>
   `;
 }
-  // Variables de estado para el conciliador
+
+// Variable de estado para Conciliador
 let datosExtractoBanco = [];
 let datosLibroDiario = [];
 
@@ -642,19 +618,16 @@ function ejecutarConciliacionBancaria() {
   const container = document.getElementById('conciliador-results');
   if (!container) return;
 
-  // Si no hay archivos subidos, ejecuta la demostración por defecto
   if (datosExtractoBanco.length === 0 && datosLibroDiario.length === 0) {
     runConciliationDemo();
     return;
   }
 
-  // Lógica de comparación de importes entre Extracto y Libro
   let conciliadosCount = 0;
   const resultadosHTML = datosExtractoBanco.map(banco => {
     const montoBanco = parseFloat(banco['Monto'] || banco['Importe'] || banco['monto'] || 0);
     const conceptoBanco = banco['Concepto'] || banco['Descripcion'] || banco['concepto'] || 'Movimiento Banco';
 
-    // Buscar coincidencia exacta o cercana en importe en el Libro Diario
     const coincidencia = datosLibroDiario.find(libro => {
       const montoLibro = parseFloat(libro['Monto'] || libro['Importe'] || libro['monto'] || 0);
       return Math.abs(montoBanco - montoLibro) < 0.01;
@@ -697,7 +670,8 @@ function ejecutarConciliacionBancaria() {
     </div>
   `;
 }
-  // Variable de estado para Cuentas Corrientes
+
+// Variable de estado para Cuentas Corrientes
 let datosCtaCorriente = [];
 
 function procesarArchivoCtaCorriente(input) {
@@ -728,7 +702,6 @@ function ejecularCalculoCtaCorriente() {
     return;
   }
 
-  // Agrupar saldos por Entidad/Cliente
   const saldosPorCliente = {};
 
   datosCtaCorriente.forEach(item => {
@@ -776,7 +749,8 @@ function ejecularCalculoCtaCorriente() {
     </table>
   `;
 }
-  function procesarArchivoFondoFijo(input) {
+
+function procesarArchivoFondoFijo(input) {
   const file = input.files[0];
   if (!file) return;
 
@@ -810,7 +784,11 @@ function ejecularCalculoCtaCorriente() {
 
   reader.readAsText(file);
 }
-  let historialOP = JSON.parse(localStorage.getItem('suite_historial_op')) || [];
+
+// -------------------------------------------------------------
+// GESTOR DE ÓRDEN DE PAGO (OP)
+// -------------------------------------------------------------
+let historialOP = JSON.parse(localStorage.getItem('suite_historial_op')) || [];
 
 function actualizarCalculoOP() {
   const montoFactura = parseFloat(document.getElementById('op-monto-factura').value) || 0;
@@ -822,7 +800,7 @@ function actualizarCalculoOP() {
   const numComprobante = document.getElementById('op-num-comprobante').value || '-';
   const preview = document.getElementById('contenedor-preview-op');
 
-  if (montoFactura > 0) {
+  if (montoFactura > 0 && preview) {
     preview.className = "space-y-4 text-left text-slate-700";
     preview.innerHTML = `
       <div class="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -856,12 +834,29 @@ function actualizarCalculoOP() {
 }
 
 function generarOP() {
-  const proveedor = document.getElementById('op-proveedor').value;
+  const proveedorInput = document.getElementById('op-proveedor');
+  const proveedor = proveedorInput ? proveedorInput.value.trim() : '';
   const montoFactura = parseFloat(document.getElementById('op-monto-factura').value) || 0;
   const retencion = parseFloat(document.getElementById('op-retencion').value) || 0;
-  const neto = montoFactura - retencion;
   const medio = document.getElementById('op-medio-pago').value;
   const numComprobante = document.getElementById('op-num-comprobante').value || '-';
+
+  if (!proveedor) {
+    alert('Por favor, ingresá el nombre del proveedor.');
+    return;
+  }
+
+  if (montoFactura <= 0) {
+    alert('El monto de la factura debe ser mayor a 0.');
+    return;
+  }
+
+  if (retencion > montoFactura) {
+    alert('La retención no puede ser mayor al monto de la factura.');
+    return;
+  }
+
+  const neto = montoFactura - retencion;
 
   const nuevaOP = {
     id: 'OP-' + (historialOP.length + 1).toString().padStart(4, '0'),
@@ -878,12 +873,19 @@ function generarOP() {
   localStorage.setItem('suite_historial_op', JSON.stringify(historialOP));
   
   renderHistorialOP();
-  document.getElementById('form-op').reset();
-  document.getElementById('contenedor-preview-op').className = "text-center text-slate-400 py-12 flex flex-col items-center justify-center gap-2";
-  document.getElementById('contenedor-preview-op').innerHTML = `
-    <i data-lucide="receipt" class="w-12 h-12 text-slate-300"></i>
-    <p class="text-sm">Completa el formulario para previsualizar y emitir la Orden de Pago.</p>
-  `;
+
+  const form = document.getElementById('form-op');
+  if (form) form.reset();
+
+  const preview = document.getElementById('contenedor-preview-op');
+  if (preview) {
+    preview.className = "text-center text-slate-400 py-12 flex flex-col items-center justify-center gap-2";
+    preview.innerHTML = `
+      <i data-lucide="receipt" class="w-12 h-12 text-slate-300"></i>
+      <p class="text-sm">Completa el formulario para previsualizar y emitir la Orden de Pago.</p>
+    `;
+  }
+
   if (window.lucide) lucide.createIcons();
   alert('Orden de Pago emitida exitosamente.');
 }
@@ -933,8 +935,3 @@ function exportarHistorialOPCSV() {
   a.setAttribute('download', `Historial_OP_${new Date().toISOString().slice(0,10)}.csv`);
   a.click();
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  renderHistorialOP();
-  if (window.lucide) lucide.createIcons();
-});
