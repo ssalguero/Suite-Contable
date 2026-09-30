@@ -921,13 +921,16 @@ function descargarPlantillaCSV() {
 
 async function importarCSVFondoFijo(file) {
     if (!file) return;
+    const inputEl = document.getElementById('ff-input-csv');
+    const statusEl = document.getElementById('status-ff-file');
+
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
             const texto = e.target.result;
             const lineas = texto.split(/\r\n|\n/).filter(line => line.trim() !== '');
             if (lineas.length <= 1) {
-                showToast('El archivo CSV está vacío o no contiene filas de datos.', 'error');
+                showToast('El archivo CSV no contiene registros.', 'error');
                 return;
             }
 
@@ -940,12 +943,16 @@ async function importarCSVFondoFijo(file) {
                     const fecha = cols[0]?.replace(/"/g, '').trim();
                     const concepto = cols[1]?.replace(/"/g, '').trim();
                     const monto = parseFloat(cols[2]?.replace(/"/g, '').trim());
-                    const tipo_doc = cols[3]?.replace(/"/g, '').trim() || 'Ticket';
-                    const centro_costo = cols[4]?.replace(/"/g, '').trim() || 'General';
+                    const tipo_doc = cols[3]?.replace(/"/g, '').trim() || 'Ticket Fiscal';
+                    const centro_costo = cols[4]?.replace(/"/g, '').trim() || 'Administración';
 
                     if (fecha && concepto && !isNaN(monto)) {
                         registrosInsertar.push({
-                            fecha, concepto, monto, tipo_doc, centro_costo,
+                            fecha,
+                            concepto,
+                            monto,
+                            tipo_doc,
+                            centro_costo,
                             user_id: user?.id || null,
                             estado_rinde: 'ACTIVO'
                         });
@@ -953,13 +960,28 @@ async function importarCSVFondoFijo(file) {
                 }
             }
 
-            if (registrosInsertar.length === 0) return showToast('No se pudieron parsear registros válidos.', 'error');
+            if (registrosInsertar.length === 0) {
+                showToast('No se encontraron filas válidas en el archivo CSV.', 'error');
+                return;
+            }
 
             const { error } = await db.from('fondo_fijo').insert(registrosInsertar);
             if (error) throw error;
 
-            showToast(`Se importaron ${registrosInsertar.length} comprobantes correctamente.`);
-            await cargarRegistrosFondoFijo();
+            showToast(`Se importaron ${registrosInsertar.length} comprobantes al rinde activo.`);
+            
+            // Limpiar input file para permitir volver a subir
+            if (inputEl) inputEl.value = '';
+            if (statusEl) {
+                statusEl.textContent = `✓ Última importación: ${registrosInsertar.length} comprobantes.`;
+                statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
+            }
+
+            // Cambiar vista al rinde activo para ver lo importado
+            cambiarFiltroEstadoFF('ACTIVO');
+            const selectFiltro = document.getElementById('ff-filtro-estado');
+            if (selectFiltro) selectFiltro.value = 'ACTIVO';
+
         } catch (err) {
             console.error('Error al importar CSV:', err);
             showToast('Error al procesar el archivo CSV.', 'error');
@@ -967,27 +989,46 @@ async function importarCSVFondoFijo(file) {
     };
     reader.readAsText(file);
 }
-
 async function cargarRegistrosFondoFijo() {
     try {
-        let query = db.from('fondo_fijo').select('*', { count: 'exact' }).order('fecha', { ascending: false });
+        let query = db
+            .from('fondo_fijo')
+            .select('*')
+            .order('fecha', { ascending: false });
 
+        // 1. Filtrado estricto por Estado de Rendición
         if (estadoFondoFijo.filtros.estadoRinde === 'ACTIVO') {
             query = query.or('estado_rinde.eq.ACTIVO,estado_rinde.is.null');
-        } else if (estadoFondoFijo.filtros.estadoRinde) {
-            query = query.eq('estado_rinde', estadoFondoFijo.filtros.estadoRinde);
+        } else if (estadoFondoFijo.filtros.estadoRinde === 'RENDIDO') {
+            query = query.eq('estado_rinde', 'RENDIDO');
         }
+        // Si es 'TODOS', no aplicamos ningún filtro sobre estado_rinde
 
-        if (estadoFondoFijo.filtros.centroCosto !== 'TODOS') query = query.eq('centro_costo', estadoFondoFijo.filtros.centroCosto);
-        if (estadoFondoFijo.filtros.tipoDoc !== 'TODOS') query = query.eq('tipo_doc', estadoFondoFijo.filtros.tipoDoc);
-        if (estadoFondoFijo.filtros.busqueda) query = query.ilike('concepto', `%${estadoFondoFijo.filtros.busqueda}%`);
+        // 2. Filtros secundarios
+        if (estadoFondoFijo.filtros.centroCosto && estadoFondoFijo.filtros.centroCosto !== 'TODOS') {
+            query = query.eq('centro_costo', estadoFondoFijo.filtros.centroCosto);
+        }
+        if (estadoFondoFijo.filtros.tipoDoc && estadoFondoFijo.filtros.tipoDoc !== 'TODOS') {
+            query = query.eq('tipo_doc', estadoFondoFijo.filtros.tipoDoc);
+        }
+        if (estadoFondoFijo.filtros.busqueda) {
+            query = query.ilike('concepto', `%${estadoFondoFijo.filtros.busqueda}%`);
+        }
 
         const { data, error } = await query;
         if (error) throw error;
 
         estadoFondoFijo.registros = data || [];
+        
+        // Reset a pág 1 si la página actual excede el nuevo total de páginas
+        const totalPaginas = Math.ceil(estadoFondoFijo.registros.length / estadoFondoFijo.paginacion.registrosPorPagina) || 1;
+        if (estadoFondoFijo.paginacion.paginaActual > totalPaginas) {
+            estadoFondoFijo.paginacion.paginaActual = 1;
+        }
+
         renderizarTablaFondoFijo();
-        actualizarDashboardMetrics();
+        actualizarMetricasFondoFijoDashboard();
+
     } catch (err) {
         console.error('Error cargando fondo fijo:', err);
         showToast('Error al cargar la tabla de rendición.', 'error');
@@ -1239,6 +1280,17 @@ function exportarRindeCSV() {
     showToast('Exportación a CSV generada.');
 }
 
+// Función auxiliar para métricas de rinde activo en dashboard
+function actualizarMetricasFondoFijoDashboard() {
+    const registrosActivos = estadoFondoFijo.registros.filter(r => r.estado_rinde === 'ACTIVO' || !r.estado_rinde);
+    const totalActivo = registrosActivos.reduce((acc, r) => acc + (parseFloat(r.monto) || 0), 0);
+
+    const elTotal = document.getElementById('kpi-fondo-monto');
+    const elSub = document.getElementById('kpi-fondo-sub');
+
+    if (elTotal) elTotal.textContent = `$ ${totalActivo.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+    if (elSub) elSub.textContent = `${registrosActivos.length} comprobantes activos`;
+}
 // ==========================================
 // MOTOR 5: ÓRDENES DE PAGO (OP)
 // ==========================================
