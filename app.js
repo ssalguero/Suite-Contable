@@ -994,6 +994,35 @@ async function cargarRegistrosFondoFijo() {
     }
 }
 
+// ==========================================
+// CONMUTADOR DE FILTRO: ACTIVOS / RENDIDOS
+// ==========================================
+function cambiarFiltroEstadoFF(nuevoEstado) {
+    estadoFondoFijo.filtros.estadoRinde = nuevoEstado;
+    estadoFondoFijo.paginacion.paginaActual = 1;
+
+    const tituloEl = document.getElementById('ff-titulo-grilla');
+    const badgeEl = document.getElementById('ff-badge-estado');
+
+    if (tituloEl && badgeEl) {
+        if (nuevoEstado === 'ACTIVO') {
+            tituloEl.textContent = 'Resumen del Rinde Activo';
+            badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200';
+            badgeEl.textContent = 'Abierto';
+        } else if (nuevoEstado === 'RENDIDO') {
+            tituloEl.textContent = 'Historial de Comprobantes Rendidos';
+            badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200';
+            badgeEl.textContent = 'Cerrados / Asentados';
+        } else {
+            tituloEl.textContent = 'Histórico Total de Comprobantes';
+            badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200';
+            badgeEl.textContent = 'Auditoría Global';
+        }
+    }
+
+    cargarRegistrosFondoFijo();
+}
+
 function renderizarTablaFondoFijo() {
     const tbody = document.getElementById('tabla-fondo-fijo-body');
     if (!tbody) return;
@@ -1004,13 +1033,23 @@ function renderizarTablaFondoFijo() {
     const paginados = estadoFondoFijo.registros.slice(inicio, inicio + registrosPorPagina);
 
     if (paginados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">No hay comprobantes registrados en este rinde.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">No hay comprobantes para mostrar con los filtros aplicados.</td></tr>`;
         return;
     }
 
     paginados.forEach(reg => {
+        const esRendido = reg.estado_rinde === 'RENDIDO';
         const tr = document.createElement('tr');
-        tr.className = 'border-b border-slate-200 hover:bg-slate-50 transition-colors text-xs';
+        tr.className = `border-b border-slate-200 hover:bg-slate-50 transition-colors text-xs ${esRendido ? 'bg-slate-50/50' : ''}`;
+        
+        // Acciones: si está rendido muestra candado de auditoría; si está activo permite editar/eliminar
+        const botonesAccion = esRendido
+            ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-200 text-slate-600" title="Comprobante rendido en Libro Diario">🔒 Asentado</span>`
+            : `
+                <button onclick="prepararEdicionFondoFijo('${reg.id}')" class="text-blue-600 hover:text-blue-800 p-1 mr-1" title="Editar">✏️</button>
+                <button onclick="eliminarRegistroFondoFijo('${reg.id}')" class="text-rose-600 hover:text-rose-800 p-1" title="Eliminar">🗑️</button>
+              `;
+
         tr.innerHTML = `
             <td class="p-2.5 text-slate-600 whitespace-nowrap">${reg.fecha}</td>
             <td class="p-2.5 text-slate-800 font-medium">${reg.concepto}</td>
@@ -1018,8 +1057,7 @@ function renderizarTablaFondoFijo() {
             <td class="p-2.5"><span class="px-2 py-0.5 text-[10px] font-semibold rounded bg-slate-100 text-slate-700 border border-slate-200">${reg.centro_costo || 'General'}</span></td>
             <td class="p-2.5 text-right font-mono font-bold text-slate-900 whitespace-nowrap">$ ${parseFloat(reg.monto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
             <td class="p-2.5 text-center whitespace-nowrap">
-                <button onclick="prepararEdicionFondoFijo('${reg.id}')" class="text-blue-600 hover:text-blue-800 p-1 mr-1" title="Editar">✏️</button>
-                <button onclick="eliminarRegistroFondoFijo('${reg.id}')" class="text-rose-600 hover:text-rose-800 p-1" title="Eliminar">🗑️</button>
+                ${botonesAccion}
             </td>
         `;
         tbody.appendChild(tr);
