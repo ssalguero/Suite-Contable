@@ -862,7 +862,7 @@ async function registrarComprobanteFondoFijo(e) {
                     centro_costo: centroCosto,
                     tipo_doc: tipoDoc
                 })
-                .eq('id', estadoFondoFijo.registroEnEdicion);
+                .eq('id', Number(estadoFondoFijo.registroEnEdicion));
 
             if (error) throw error;
 
