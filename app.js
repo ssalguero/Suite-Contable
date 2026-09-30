@@ -1444,64 +1444,122 @@ function guardarAsientoValidado() {
   alert(`Asiento ${numAsiento} guardado correctamente.`);
 }
 
-function renderLibroDiario() {
+async function renderLibroDiario() {
   const contenedor = document.getElementById('contenedor-libro-diario');
   if (!contenedor) return;
-  contenedor.innerHTML = '';
 
-  if (historialLibroDiario.length === 0) {
-    contenedor.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No hay asientos registrados en el Libro Diario.</div>`;
-    return;
-  }
+  const filtro = (document.getElementById('asiento-buscar-historial')?.value || '').toLowerCase();
 
-  historialLibroDiario.forEach(asiento => {
-    const totalMonto = asiento.renglones.reduce((acc, r) => acc + r.debe, 0);
+  try {
+    // 1. Consultar asientos en Supabase ordenados por fecha descendente
+    const { data: listaAsientos, error: errAsientos } = await db
+      .from('asientos')
+      .select('*')
+      .order('fecha', { ascending: false });
 
-    const filasHTML = asiento.renglones.map(r => `
-      <tr class="border-b border-slate-100 text-xs">
-        <td class="py-1.5 px-3 ${r.haber > 0 ? 'pl-8 text-slate-600' : 'font-semibold text-slate-800'}">${r.cuenta}</td>
-        <td class="py-1.5 px-3 text-right font-mono">${r.debe > 0 ? '$ ' + r.debe.toFixed(2) : '-'}</td>
-        <td class="py-1.5 px-3 text-right font-mono">${r.haber > 0 ? '$ ' + r.haber.toFixed(2) : '-'}</td>
-      </tr>
-    `).join('');
+    if (errAsientos) throw errAsientos;
 
-    contenedor.innerHTML += `
-      <div class="p-4 space-y-2 hover:bg-slate-50/50 transition-colors">
-        <div class="flex items-center justify-between text-xs">
-          <div class="flex items-center gap-3">
-            <span class="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">${asiento.id}</span>
-            <span class="text-slate-400">${asiento.fecha}</span>
-            <span class="font-medium text-slate-800">${asiento.leyenda}</span>
+    if (!listaAsientos || listaAsientos.length === 0) {
+      contenedor.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No hay asientos registrados en la base de datos.</div>`;
+      return;
+    }
+
+    // 2. Traer todos los detalles asociados
+    const asientoIds = listaAsientos.map(a => a.id);
+    const { data: listaDetalles, error: errDetalles } = await db
+      .from('asiento_detalles')
+      .select('*')
+      .in('asiento_id', asientoIds);
+
+    if (errDetalles) console.warn('Detalles de asientos no disponibles:', errDetalles);
+
+    contenedor.innerHTML = '';
+
+    // 3. Filtrar según la búsqueda
+    const filtrados = listaAsientos.filter(a => {
+      const concepto = (a.concepto || a.leyenda || '').toLowerCase();
+      const id = String(a.id).toLowerCase();
+      return concepto.includes(filtro) || id.includes(filtro);
+    });
+
+    if (filtrados.length === 0) {
+      contenedor.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">No se encontraron asientos con ese criterio de búsqueda.</div>`;
+      return;
+    }
+
+    // 4. Renderizar cada tarjeta de asiento
+    filtrados.forEach((asiento, idx) => {
+      const renglones = (listaDetalles || []).filter(d => d.asiento_id === asiento.id);
+      const totalDebe = renglones.reduce((acc, r) => acc + (parseFloat(r.debe) || 0), 0);
+      const numeroAsiento = `N° ${String(listaAsientos.length - idx).padStart(4, '0')}`;
+      const glosa = asiento.concepto || asiento.leyenda || 'Sin concepto registrado';
+
+      const filasHTML = renglones.map(r => `
+        <tr class="border-b border-slate-100 text-xs">
+          <td class="py-2 px-3 ${r.haber > 0 ? 'pl-8 text-slate-600' : 'font-semibold text-slate-800'}">
+            ${r.cuenta_nombre || r.detalle || (r.haber > 0 ? 'Caja / Contrapartida' : 'Gasto Imputado')}
+          </td>
+          <td class="py-2 px-3 text-right font-mono text-slate-700">${r.debe > 0 ? '$ ' + parseFloat(r.debe).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '-'}</td>
+          <td class="py-2 px-3 text-right font-mono text-slate-700">${r.haber > 0 ? '$ ' + parseFloat(r.haber).toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '-'}</td>
+        </tr>
+      `).join('');
+
+      contenedor.innerHTML += `
+        <div class="p-4 space-y-3 bg-white rounded-lg border border-slate-100 shadow-xs mb-3">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-3">
+              <span class="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">${numeroAsiento}</span>
+              <span class="text-slate-400 font-medium">${asiento.fecha}</span>
+              <span class="font-semibold text-slate-800">${glosa}</span>
+            </div>
+            <button onclick="eliminarAsientoSupabase('${asiento.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar Asiento">
+              🗑️
+            </button>
           </div>
-          <button onclick="eliminarAsiento('${asiento.id}')" class="text-rose-500 hover:text-rose-700 p-1">🗑️</button>
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="text-slate-400 font-semibold border-b border-slate-200 bg-slate-50/50">
+                <th class="text-left py-1.5 px-3">Cuenta Contable</th>
+                <th class="text-right py-1.5 px-3 w-32">Debe</th>
+                <th class="text-right py-1.5 px-3 w-32">Haber</th>
+              </tr>
+            </thead>
+            <tbody>${filasHTML}</tbody>
+            <tfoot>
+              <tr class="font-bold text-slate-800 bg-slate-50 border-t border-slate-200">
+                <td class="py-2 px-3 text-right">Totales Asiento:</td>
+                <td class="py-2 px-3 text-right font-mono text-emerald-700">$ ${totalDebe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                <td class="py-2 px-3 text-right font-mono text-emerald-700">$ ${totalDebe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-        <table class="w-full text-xs border-collapse">
-          <thead>
-            <tr class="text-slate-400 font-normal border-b border-slate-100">
-              <th class="text-left py-1 px-3">Cuenta</th>
-              <th class="text-right py-1 px-3 w-28">Debe</th>
-              <th class="text-right py-1 px-3 w-28">Haber</th>
-            </tr>
-          </thead>
-          <tbody>${filasHTML}</tbody>
-          <tfoot>
-            <tr class="font-bold text-slate-700 bg-slate-50/50">
-              <td class="py-1.5 px-3 text-right">Totales:</td>
-              <td class="py-1.5 px-3 text-right font-mono">$ ${totalMonto.toFixed(2)}</td>
-              <td class="py-1.5 px-3 text-right font-mono">$ ${totalMonto.toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    `;
-  });
-}
+      `;
+    });
 
-function eliminarAsiento(id) {
-  if (confirm(`¿Eliminar el asiento ${id}?`)) {
-    historialLibroDiario = historialLibroDiario.filter(a => a.id !== id);
-    localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibroDiario));
-    renderLibroDiario();
+  } catch (err) {
+    console.error('Error cargando Libro Diario desde Supabase:', err);
+    contenedor.innerHTML = `<div class="p-6 text-center text-rose-500 text-xs">Error al consultar el Libro Diario en el servidor.</div>`;
+  }
+}
+async function eliminarAsiento(asientoId) {
+  if (!confirm('¿Seguro que deseas anular y eliminar este asiento contable?')) return;
+
+  try {
+    // 1. Borrar renglones dependientes
+    await db.from('asiento_detalles').delete().eq('asiento_id', asientoId);
+
+    // 2. Borrar cabecera del asiento
+    const { error } = await db.from('asientos').delete().eq('id', asientoId);
+    if (error) throw error;
+
+    showToast('Asiento eliminado con éxito.');
+    await renderLibroDiario();
+    await actualizarDashboardMetrics();
+
+  } catch (err) {
+    console.error('Error eliminando asiento:', err);
+    showToast('Error al eliminar el asiento en la base de datos.', 'error');
   }
 }
 
@@ -1528,16 +1586,29 @@ function navegarA(tabId) {
   switchTab(tabId.replace('tab-', ''));
 }
 
-function actualizarDashboardMetrics() {
-  const libroDiario = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
-  const kpiAsientos = document.getElementById('kpi-asientos-cant');
-  const kpiAsientosSub = document.getElementById('kpi-asientos-sub');
-  if (kpiAsientos) kpiAsientos.textContent = libroDiario.length;
-  if (kpiAsientosSub) kpiAsientosSub.textContent = libroDiario.length > 0 ? `Último: ${libroDiario[0].id}` : 'Sin registros aún';
+async function actualizarDashboardMetrics() {
+  try {
+    // 1. Asientos reales consultados en Supabase
+    const { count: cantAsientos } = await db
+      .from('asientos')
+      .select('*', { count: 'exact', head: true });
 
-  const totalFondo = estadoFondoFijo.registros.reduce((acc, item) => acc + (parseFloat(item.monto) || 0), 0);
-  const kpiFondoMonto = document.getElementById('kpi-fondo-monto');
-  const kpiFondoSub = document.getElementById('kpi-fondo-sub');
-  if (kpiFondoMonto) kpiFondoMonto.textContent = `$ ${totalFondo.toFixed(2)}`;
-  if (kpiFondoSub) kpiFondoSub.textContent = `${estadoFondoFijo.registros.length} comprobantes cargados`;
+    const kpiAsientos = document.getElementById('kpi-asientos-cant');
+    const kpiAsientosSub = document.getElementById('kpi-asientos-sub');
+    if (kpiAsientos) kpiAsientos.textContent = cantAsientos || 0;
+    if (kpiAsientosSub) {
+      kpiAsientosSub.textContent = (cantAsientos || 0) > 0 
+        ? `${cantAsientos} registrados en BD` 
+        : 'Sin registros aún';
+    }
+
+    // 2. Fondo Fijo Activo real
+    const totalFondo = estadoFondoFijo.registros.reduce((acc, item) => acc + (parseFloat(item.monto) || 0), 0);
+    const kpiFondoMonto = document.getElementById('kpi-fondo-monto');
+    const kpiFondoSub = document.getElementById('kpi-fondo-sub');
+    if (kpiFondoMonto) kpiFondoMonto.textContent = `$ ${totalFondo.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+    if (kpiFondoSub) kpiFondoSub.textContent = `${estadoFondoFijo.registros.length} comprobantes en rinde activo`;
+  } catch (err) {
+    console.warn('Error actualizando KPIs:', err);
+  }
 }
