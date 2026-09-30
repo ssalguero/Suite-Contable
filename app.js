@@ -857,9 +857,12 @@ async function registrarComprobanteFondoFijo(e) {
             centro_costo: centroCosto,
             tipo_doc: tipoDoc,
             user_id: user?.id || null,
-            empresa_id: estadoFondoFijo.empresaIdActual,
             estado_rinde: 'ACTIVO'
         };
+        // Solo agregar empresa_id si existe y no es el valor de prueba
+        if (estadoFondoFijo.empresaIdActual && estadoFondoFijo.empresaIdActual !== 'demo-empresa-id') {
+            nuevoRegistro.empresa_id = estadoFondoFijo.empresaIdActual;
+        }
 
         const { error } = await db.from('fondo_fijo').insert([nuevoRegistro]);
         if (error) throw error;
@@ -921,7 +924,6 @@ async function importarCSVFondoFijo(file) {
                         registrosInsertar.push({
                             fecha, concepto, monto, tipo_doc, centro_costo,
                             user_id: user?.id || null,
-                            empresa_id: estadoFondoFijo.empresaIdActual,
                             estado_rinde: 'ACTIVO'
                         });
                     }
