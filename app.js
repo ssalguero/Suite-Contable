@@ -1092,6 +1092,9 @@ async function eliminarRegistroFondoFijo(id) {
     }
 }
 
+// ==========================================
+// CIERRE, RENDICIÓN Y ASIENTO POR CENTRO DE COSTO
+// ==========================================
 async function cerrarYRendirFondoFijo() {
     if (estadoFondoFijo.registros.length === 0) {
         showToast('No hay comprobantes activos para rendir.', 'error');
@@ -1110,7 +1113,15 @@ async function cerrarYRendirFondoFijo() {
         const hoy = new Date().toISOString().split('T')[0];
         const textoConcepto = `Rendición Fondo Fijo - ${hoy}`;
 
-        // 1. Inserción directa en tabla asientos de Supabase
+        // 1. Agrupar gastos por Centro de Costo para el Debe
+        const agrupadoPorCentro = {};
+        estadoFondoFijo.registros.forEach(r => {
+            const centro = r.centro_costo || 'Gastos Generales';
+            const monto = parseFloat(r.monto) || 0;
+            agrupadoPorCentro[centro] = (agrupadoPorCentro[centro] || 0) + monto;
+        });
+
+        // 2. Insertar Cabecera de Asiento en Supabase
         const { data: asientoCreado, error: errAsiento } = await db
             .from('asientos')
             .insert([{
@@ -1122,46 +1133,35 @@ async function cerrarYRendirFondoFijo() {
             .single();
 
         if (errAsiento) {
-            console.error('Error insertando cabecera de asiento en Supabase:', errAsiento);
+            console.error('Error insertando en asientos:', errAsiento);
             showToast('Aviso: no se pudo guardar el asiento en Supabase: ' + errAsiento.message, 'error');
         } else if (asientoCreado) {
-            // 2. Inserción de renglones en asiento_detalles de Supabase
-            const detalles = [
-                {
-                    asiento_id: asientoCreado.id,
-                    debe: totalRendicion,
-                    haber: 0,
-                    cuenta_nombre: 'Gastos Generales / Administración'
-                },
-                {
-                    asiento_id: asientoCreado.id,
-                    debe: 0,
-                    haber: totalRendicion,
-                    cuenta_nombre: 'Caja Chica / Fondo Fijo'
-                }
-            ];
-            const { error: errDetalles } = await db.from('asiento_detalles').insert(detalles);
-            if (errDetalles) {
-                console.error('Error insertando líneas de asiento:', errDetalles);
-            }
-        }
+            // 3. Crear renglones para asiento_detalles
+            const renglonesBD = [];
 
-        // 3. Guardar en Libro Diario local (UI inmediata)
-        let historialLibro = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
-        const numAsientoLocal = 'N° ' + (historialLibro.length + 1).toString().padStart(4, '0');
-        
-        historialLibro.unshift({
-            id: numAsientoLocal,
-            fecha: hoy,
-            leyenda: textoConcepto,
-            renglones: [
-                { cuenta: 'Gastos de Administración', debe: totalRendicion, haber: 0 },
-                { cuenta: 'Caja / Efectivo', debe: 0, haber: totalRendicion }
-            ]
-        });
-        localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibro));
-        if (typeof renderLibroDiario === 'function') renderLibroDiario();
-        if (typeof actualizarDashboardMetrics === 'function') actualizarDashboardMetrics();
+            // A. Renglones en el DEBE (uno por cada Centro de Costo con gastos)
+            Object.keys(agrupadoPorCentro).forEach(centro => {
+                renglonesBD.push({
+                    asiento_id: asientoCreado.id,
+                    debe: agrupadoPorCentro[centro],
+                    haber: 0,
+                    cuenta_nombre: `Gastos de ${centro}`,
+                    detalle: `Imputación centro de costo: ${centro}`
+                });
+            });
+
+            // B. Renglón en el HABER (Contrapartida total contra la Caja Chica)
+            renglonesBD.push({
+                asiento_id: asientoCreado.id,
+                debe: 0,
+                haber: totalRendicion,
+                cuenta_nombre: 'Fondo Fijo / Caja Chica',
+                detalle: 'Reposición y cancelación del rinde'
+            });
+
+            const { error: errDetalles } = await db.from('asiento_detalles').insert(renglonesBD);
+            if (errDetalles) console.error('Error insertando detalles del asiento:', errDetalles);
+        }
 
         // 4. Pasar comprobantes a RENDIDO en fondo_fijo
         const { error: errUpdate } = await db
@@ -1171,15 +1171,18 @@ async function cerrarYRendirFondoFijo() {
 
         if (errUpdate) throw errUpdate;
 
-        showToast('Fondo Fijo cerrado y Asiento Contable registrado con éxito.');
+        showToast('Fondo Fijo rendido y Asiento Contable generado por centros de costo.');
+        
+        // 5. Refrescar datos en vivo
         await cargarRegistrosFondoFijo();
+        if (typeof renderLibroDiario === 'function') await renderLibroDiario();
+        if (typeof actualizarDashboardMetrics === 'function') await actualizarDashboardMetrics();
 
     } catch (err) {
         console.error('Error general en rendición:', err);
         showToast('Ocurrió un error al procesar el cierre.', 'error');
     }
 }
-
 function exportarRindeCSV() {
     if (estadoFondoFijo.registros.length === 0) return showToast('No hay datos para exportar.', 'error');
     const columnas = ['Fecha', 'Concepto', 'Tipo Doc', 'Centro Costo', 'Monto'];
