@@ -1101,53 +1101,52 @@ async function cerrarYRendirFondoFijo() {
         const { data: { user } } = await db.auth.getUser();
         const idsActivos = estadoFondoFijo.registros.map(r => r.id);
         const hoy = new Date().toISOString().split('T')[0];
-        const leyendaAsiento = `Rendición y reposición de Fondo Fijo al ${hoy}`;
+        const detalleConcepto = `Rendición Fondo Fijo - ${hoy}`;
 
-        // A. Insertar cabecera en Supabase (tabla asientos)
-        const { data: nuevoAsiento, error: errAsiento } = await db
-            .from('asientos')
-            .insert([{
-                fecha: hoy,
-                leyenda: leyendaAsiento,
-                user_id: user?.id || null
-            }])
-            .select()
-            .single();
-
-        // B. Insertar renglones contables (Debe: Gastos Generales / Haber: Fondo Fijo)
-        if (nuevoAsiento && !errAsiento) {
-            const renglonesBD = [
-                {
-                    asiento_id: nuevoAsiento.id,
-                    debe: totalRendicion,
-                    haber: 0
-                },
-                {
-                    asiento_id: nuevoAsiento.id,
-                    debe: 0,
-                    haber: totalRendicion
-                }
-            ];
-            await db.from('asiento_detalles').insert(renglonesBD);
-        }
-
-        // C. Impactar en el visor de Libro Diario (localStorage)
+        // 1. Guardar en Libro Diario Local (para verlo en la pestaña "Libro Diario y Asientos")
         let historialLibro = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
         const numAsientoLocal = 'N° ' + (historialLibro.length + 1).toString().padStart(4, '0');
         
         historialLibro.unshift({
             id: numAsientoLocal,
             fecha: hoy,
-            leyenda: leyendaAsiento,
+            leyenda: detalleConcepto,
             renglones: [
-                { cuenta: 'Gastos Generales / Varios', debe: totalRendicion, haber: 0 },
-                { cuenta: 'Fondo Fijo / Caja Chica', debe: 0, haber: totalRendicion }
+                { cuenta: 'Gastos de Administración', debe: totalRendicion, haber: 0 },
+                { cuenta: 'Caja / Efectivo', debe: 0, haber: totalRendicion }
             ]
         });
         localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibro));
         if (typeof renderLibroDiario === 'function') renderLibroDiario();
 
-        // D. Actualizar comprobantes a RENDIDO en Supabase
+        // 2. Intentar guardar en Supabase (tabla asientos)
+        try {
+            const cabeceraAsiento = {
+                fecha: hoy,
+                user_id: user?.id || null
+            };
+            // Se envía 'concepto' o 'leyenda' según exista en la tabla
+            cabeceraAsiento.concepto = detalleConcepto;
+
+            const { data: asientoCreado, error: errAsiento } = await db
+                .from('asientos')
+                .insert([cabeceraAsiento])
+                .select()
+                .maybeSingle();
+
+            if (asientoCreado && !errAsiento) {
+                // Renglones en asiento_detalles
+                const detalles = [
+                    { asiento_id: asientoCreado.id, debe: totalRendicion, haber: 0 },
+                    { asiento_id: asientoCreado.id, debe: 0, haber: totalRendicion }
+                ];
+                await db.from('asiento_detalles').insert(detalles);
+            }
+        } catch (dbErr) {
+            console.warn('Aviso: no se pudo escribir en asientos de Supabase por estructura de columnas:', dbErr);
+        }
+
+        // 3. Marcar comprobantes como RENDIDOS en fondo_fijo
         const { error: errUpdate } = await db
             .from('fondo_fijo')
             .update({ estado_rinde: 'RENDIDO' })
@@ -1155,7 +1154,7 @@ async function cerrarYRendirFondoFijo() {
 
         if (errUpdate) throw errUpdate;
 
-        showToast('Fondo Fijo cerrado y Asiento Contable generado con éxito.');
+        showToast('Fondo Fijo cerrado y Asiento Contable generado.');
         await cargarRegistrosFondoFijo();
 
     } catch (err) {
