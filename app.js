@@ -1110,7 +1110,43 @@ async function cerrarYRendirFondoFijo() {
         const hoy = new Date().toISOString().split('T')[0];
         const textoConcepto = `Rendición Fondo Fijo - ${hoy}`;
 
-        // 1. Guardar en Libro Diario local (UI inmediata)
+        // 1. Inserción directa en tabla asientos de Supabase
+        const { data: asientoCreado, error: errAsiento } = await db
+            .from('asientos')
+            .insert([{
+                fecha: hoy,
+                user_id: user?.id || null,
+                concepto: textoConcepto
+            }])
+            .select()
+            .single();
+
+        if (errAsiento) {
+            console.error('Error insertando cabecera de asiento en Supabase:', errAsiento);
+            showToast('Aviso: no se pudo guardar el asiento en Supabase: ' + errAsiento.message, 'error');
+        } else if (asientoCreado) {
+            // 2. Inserción de renglones en asiento_detalles de Supabase
+            const detalles = [
+                {
+                    asiento_id: asientoCreado.id,
+                    debe: totalRendicion,
+                    haber: 0,
+                    cuenta_nombre: 'Gastos Generales / Administración'
+                },
+                {
+                    asiento_id: asientoCreado.id,
+                    debe: 0,
+                    haber: totalRendicion,
+                    cuenta_nombre: 'Caja Chica / Fondo Fijo'
+                }
+            ];
+            const { error: errDetalles } = await db.from('asiento_detalles').insert(detalles);
+            if (errDetalles) {
+                console.error('Error insertando líneas de asiento:', errDetalles);
+            }
+        }
+
+        // 3. Guardar en Libro Diario local (UI inmediata)
         let historialLibro = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
         const numAsientoLocal = 'N° ' + (historialLibro.length + 1).toString().padStart(4, '0');
         
@@ -1120,47 +1156,12 @@ async function cerrarYRendirFondoFijo() {
             leyenda: textoConcepto,
             renglones: [
                 { cuenta: 'Gastos de Administración', debe: totalRendicion, haber: 0 },
-                { cuenta: 'Caja Chica / Fondo Fijo', debe: 0, haber: totalRendicion }
+                { cuenta: 'Caja / Efectivo', debe: 0, haber: totalRendicion }
             ]
         });
         localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibro));
         if (typeof renderLibroDiario === 'function') renderLibroDiario();
-
-        // 2. Insertar Cabecera en tabla asientos (Supabase)
-        const payloadAsiento = {
-            fecha: hoy,
-            user_id: user?.id || null,
-            concepto: textoConcepto,
-            leyenda: textoConcepto
-        };
-
-        const { data: nuevoAsiento, error: errAsiento } = await db
-            .from('asientos')
-            .insert([payloadAsiento])
-            .select()
-            .single();
-
-        if (errAsiento) {
-            console.error('Error insertando en asientos:', errAsiento);
-        } else if (nuevoAsiento) {
-            // 3. Insertar Renglones en tabla asiento_detalles (Supabase)
-            const detalles = [
-                {
-                    asiento_id: nuevoAsiento.id,
-                    debe: totalRendicion,
-                    haber: 0,
-                    detalle: 'Gastos Fondo Fijo'
-                },
-                {
-                    asiento_id: nuevoAsiento.id,
-                    debe: 0,
-                    haber: totalRendicion,
-                    detalle: 'Reposición Caja Chica'
-                }
-            ];
-            const { error: errDetalles } = await db.from('asiento_detalles').insert(detalles);
-            if (errDetalles) console.error('Error insertando en asiento_detalles:', errDetalles);
-        }
+        if (typeof actualizarDashboardMetrics === 'function') actualizarDashboardMetrics();
 
         // 4. Pasar comprobantes a RENDIDO en fondo_fijo
         const { error: errUpdate } = await db
