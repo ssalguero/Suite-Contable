@@ -962,7 +962,7 @@ async function cargarRegistrosFondoFijo() {
 
         estadoFondoFijo.registros = data || [];
         renderizarTablaFondoFijo();
-        actualizarMetricasDashboard();
+        actualizarDashboardMetrics();
     } catch (err) {
         console.error('Error cargando fondo fijo:', err);
         showToast('Error al cargar la tabla de rendición.', 'error');
