@@ -1055,15 +1055,22 @@ function cambiarPaginaFF(nuevaPagina) {
 }
 
 function prepararEdicionFondoFijo(id) {
+    // Buscar convirtiendo ambos a string para evitar descalce de tipos
     const reg = estadoFondoFijo.registros.find(r => String(r.id) === String(id));
     if (!reg) return;
 
-    estadoFondoFijo.registroEnEdicion = reg.id;
+    // Guardar el ID como número entero
+    estadoFondoFijo.registroEnEdicion = Number(reg.id);
+
     document.getElementById('ff-fecha').value = reg.fecha;
     document.getElementById('ff-concepto').value = reg.concepto;
     document.getElementById('ff-monto').value = reg.monto;
-    document.getElementById('ff-centro-costo').value = reg.centro_costo || 'Administración';
-    document.getElementById('ff-tipo-doc').value = reg.tipo_doc || 'Factura B';
+    
+    const selCentro = document.getElementById('ff-centro-costo');
+    if (selCentro) selCentro.value = reg.centro_costo || 'Administración';
+
+    const selTipo = document.getElementById('ff-tipo-doc');
+    if (selTipo) selTipo.value = reg.tipo_doc || 'Factura B';
 
     const btnSubmit = document.getElementById('btn-registrar-ff');
     if (btnSubmit) {
@@ -1099,54 +1106,63 @@ async function cerrarYRendirFondoFijo() {
 
     try {
         const { data: { user } } = await db.auth.getUser();
-        const idsActivos = estadoFondoFijo.registros.map(r => r.id);
+        const idsActivos = estadoFondoFijo.registros.map(r => Number(r.id));
         const hoy = new Date().toISOString().split('T')[0];
-        const detalleConcepto = `Rendición Fondo Fijo - ${hoy}`;
+        const textoConcepto = `Rendición Fondo Fijo - ${hoy}`;
 
-        // 1. Guardar en Libro Diario Local (para verlo en la pestaña "Libro Diario y Asientos")
+        // 1. Guardar en Libro Diario local (UI inmediata)
         let historialLibro = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
         const numAsientoLocal = 'N° ' + (historialLibro.length + 1).toString().padStart(4, '0');
         
         historialLibro.unshift({
             id: numAsientoLocal,
             fecha: hoy,
-            leyenda: detalleConcepto,
+            leyenda: textoConcepto,
             renglones: [
                 { cuenta: 'Gastos de Administración', debe: totalRendicion, haber: 0 },
-                { cuenta: 'Caja / Efectivo', debe: 0, haber: totalRendicion }
+                { cuenta: 'Caja Chica / Fondo Fijo', debe: 0, haber: totalRendicion }
             ]
         });
         localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibro));
         if (typeof renderLibroDiario === 'function') renderLibroDiario();
 
-        // 2. Intentar guardar en Supabase (tabla asientos)
-        try {
-            const cabeceraAsiento = {
-                fecha: hoy,
-                user_id: user?.id || null
-            };
-            // Se envía 'concepto' o 'leyenda' según exista en la tabla
-            cabeceraAsiento.concepto = detalleConcepto;
+        // 2. Insertar Cabecera en tabla asientos (Supabase)
+        const payloadAsiento = {
+            fecha: hoy,
+            user_id: user?.id || null,
+            concepto: textoConcepto,
+            leyenda: textoConcepto
+        };
 
-            const { data: asientoCreado, error: errAsiento } = await db
-                .from('asientos')
-                .insert([cabeceraAsiento])
-                .select()
-                .maybeSingle();
+        const { data: nuevoAsiento, error: errAsiento } = await db
+            .from('asientos')
+            .insert([payloadAsiento])
+            .select()
+            .single();
 
-            if (asientoCreado && !errAsiento) {
-                // Renglones en asiento_detalles
-                const detalles = [
-                    { asiento_id: asientoCreado.id, debe: totalRendicion, haber: 0 },
-                    { asiento_id: asientoCreado.id, debe: 0, haber: totalRendicion }
-                ];
-                await db.from('asiento_detalles').insert(detalles);
-            }
-        } catch (dbErr) {
-            console.warn('Aviso: no se pudo escribir en asientos de Supabase por estructura de columnas:', dbErr);
+        if (errAsiento) {
+            console.error('Error insertando en asientos:', errAsiento);
+        } else if (nuevoAsiento) {
+            // 3. Insertar Renglones en tabla asiento_detalles (Supabase)
+            const detalles = [
+                {
+                    asiento_id: nuevoAsiento.id,
+                    debe: totalRendicion,
+                    haber: 0,
+                    detalle: 'Gastos Fondo Fijo'
+                },
+                {
+                    asiento_id: nuevoAsiento.id,
+                    debe: 0,
+                    haber: totalRendicion,
+                    detalle: 'Reposición Caja Chica'
+                }
+            ];
+            const { error: errDetalles } = await db.from('asiento_detalles').insert(detalles);
+            if (errDetalles) console.error('Error insertando en asiento_detalles:', errDetalles);
         }
 
-        // 3. Marcar comprobantes como RENDIDOS en fondo_fijo
+        // 4. Pasar comprobantes a RENDIDO en fondo_fijo
         const { error: errUpdate } = await db
             .from('fondo_fijo')
             .update({ estado_rinde: 'RENDIDO' })
@@ -1154,12 +1170,12 @@ async function cerrarYRendirFondoFijo() {
 
         if (errUpdate) throw errUpdate;
 
-        showToast('Fondo Fijo cerrado y Asiento Contable generado.');
+        showToast('Fondo Fijo cerrado y Asiento Contable registrado con éxito.');
         await cargarRegistrosFondoFijo();
 
     } catch (err) {
-        console.error('Error al rendir Fondo Fijo:', err);
-        showToast('Error al procesar el cierre del Fondo Fijo.', 'error');
+        console.error('Error general en rendición:', err);
+        showToast('Ocurrió un error al procesar el cierre.', 'error');
     }
 }
 
