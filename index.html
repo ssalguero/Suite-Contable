@@ -572,7 +572,7 @@
       <h3 class="font-bold text-slate-700 text-sm">Importación Masiva de Rinde (CSV)</h3>
     </div>
     <p class="text-xs text-slate-500">Subí la plantilla con los gastos del período para procesar en lote.</p>
-    <input type="file" id="ff-input-csv" accept=".csv, .txt" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1">
+    <input type="file" id="ff-input-csv" accept=".csv, .txt" onchange="importarCSVFondoFijo(this.files[0])" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1">
     <span id="status-ff-file" class="block text-[11px] text-slate-400 italic">Esperando archivo CSV...</span>
   </div>
 
@@ -610,11 +610,14 @@
 
         <div>
           <label class="block text-xs text-slate-500 font-semibold mb-1">Centro de Costo</label>
-          <select id="ff-centro-costo" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
-            <option value="Administración">Administración</option>
-            <option value="Comercial / Ventas">Comercial / Ventas</option>
-            <option value="Operaciones / Planta">Operaciones / Planta</option>
-            <option value="Mantenimiento">Mantenimiento</option>
+          <select id="ff-tipo-doc" class="w-full border border-slate-300 text-slate-800 text-xs rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="Factura A">Factura A</option>
+            <option value="Factura B">Factura B</option>
+            <option value="Factura C">Factura C</option>
+            <option value="Ticket Factura A">Ticket Factura A</option>
+            <option value="Ticket Factura B">Ticket Factura B</option>
+            <option value="Ticket Fiscal">Ticket Fiscal</option>
+            <option value="Vale de Caja">Vale de Caja</option>
           </select>
         </div>
 
