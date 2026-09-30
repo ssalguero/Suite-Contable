@@ -789,7 +789,7 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
 }
 
 // ==========================================
-// MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
+// MOTOR 5: MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
 // ==========================================
 
 const estadoFondoFijo = {
@@ -844,40 +844,63 @@ async function registrarComprobanteFondoFijo(e) {
     const tipoDoc = document.getElementById('ff-tipo-doc').value;
 
     if (!fecha || !concepto || isNaN(monto) || monto <= 0) {
-        showToast('Por favor, completá todos los campos requeridos correctamente.', 'error');
+        showToast('Completá todos los campos obligatorios.', 'error');
         return;
     }
 
     try {
         const { data: { user } } = await db.auth.getUser();
-        const nuevoRegistro = {
-            fecha,
-            concepto,
-            monto,
-            centro_costo: centroCosto,
-            tipo_doc: tipoDoc,
-            user_id: user?.id || null,
-            estado_rinde: 'ACTIVO'
-        };
-        // Solo agregar empresa_id si existe y no es el valor de prueba
-        if (estadoFondoFijo.empresaIdActual && estadoFondoFijo.empresaIdActual !== 'demo-empresa-id') {
-            nuevoRegistro.empresa_id = estadoFondoFijo.empresaIdActual;
-        }
 
-        const { error } = await db.from('fondo_fijo').insert([nuevoRegistro]);
-        if (error) throw error;
+        // Si estamos editando un comprobante existente
+        if (estadoFondoFijo.registroEnEdicion) {
+            const { error } = await db
+                .from('fondo_fijo')
+                .update({
+                    fecha,
+                    concepto,
+                    monto,
+                    centro_costo: centroCosto,
+                    tipo_doc: tipoDoc
+                })
+                .eq('id', estadoFondoFijo.registroEnEdicion);
+
+            if (error) throw error;
+
+            showToast('Comprobante actualizado correctamente.');
+            estadoFondoFijo.registroEnEdicion = null;
+            const btnSubmit = document.getElementById('btn-registrar-ff');
+            if (btnSubmit) btnSubmit.textContent = '+ Registrar en Rinde';
+
+        } else {
+            // Alta de nuevo comprobante
+            const nuevoRegistro = {
+                fecha,
+                concepto,
+                monto,
+                centro_costo: centroCosto,
+                tipo_doc: tipoDoc,
+                user_id: user?.id || null,
+                estado_rinde: 'ACTIVO'
+            };
+
+            const { error } = await db
+                .from('fondo_fijo')
+                .insert([nuevoRegistro]);
+
+            if (error) throw error;
+
+            showToast('Comprobante registrado con éxito en el rinde activo.');
+        }
 
         form.reset();
         document.getElementById('ff-fecha').valueAsDate = new Date();
-        showToast('Comprobante registrado con éxito en el rinde activo.');
         await cargarRegistrosFondoFijo();
 
     } catch (err) {
-        console.error('Error al registrar comprobante:', err);
-        showToast('Ocurrió un error al guardar el comprobante en Supabase.', 'error');
+        console.error('Error al guardar comprobante:', err);
+        showToast('Error al registrar el comprobante en Supabase.', 'error');
     }
 }
-
 function descargarPlantillaCSV() {
     const encabezados = ['fecha', 'concepto', 'monto', 'tipo_doc', 'centro_costo'];
     const ejemplo = [
@@ -1032,18 +1055,21 @@ function cambiarPaginaFF(nuevaPagina) {
 }
 
 function prepararEdicionFondoFijo(id) {
-    const reg = estadoFondoFijo.registros.find(r => r.id === id);
+    const reg = estadoFondoFijo.registros.find(r => String(r.id) === String(id));
     if (!reg) return;
 
-    estadoFondoFijo.registroEnEdicion = id;
+    estadoFondoFijo.registroEnEdicion = reg.id;
     document.getElementById('ff-fecha').value = reg.fecha;
     document.getElementById('ff-concepto').value = reg.concepto;
     document.getElementById('ff-monto').value = reg.monto;
-    document.getElementById('ff-centro-costo').value = reg.centro_costo;
-    document.getElementById('ff-tipo-doc').value = reg.tipo_doc;
+    document.getElementById('ff-centro-costo').value = reg.centro_costo || 'Administración';
+    document.getElementById('ff-tipo-doc').value = reg.tipo_doc || 'Factura B';
 
     const btnSubmit = document.getElementById('btn-registrar-ff');
-    if (btnSubmit) btnSubmit.textContent = '💾 Actualizar Registro';
+    if (btnSubmit) {
+        btnSubmit.textContent = '💾 Actualizar Registro';
+        btnSubmit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 async function eliminarRegistroFondoFijo(id) {
@@ -1060,17 +1086,78 @@ async function eliminarRegistroFondoFijo(id) {
 }
 
 async function cerrarYRendirFondoFijo() {
-    if (estadoFondoFijo.registros.length === 0) return showToast('No hay comprobantes activos para rendir.', 'error');
+    if (estadoFondoFijo.registros.length === 0) {
+        showToast('No hay comprobantes activos para rendir.', 'error');
+        return;
+    }
+
     const totalRendicion = estadoFondoFijo.registros.reduce((sum, r) => sum + parseFloat(r.monto), 0);
-    if (!confirm(`¿Confirmás el Cierre del Fondo Fijo por un total de $ ${totalRendicion.toLocaleString('es-AR')}?`)) return;
+
+    if (!confirm(`¿Confirmás el Cierre del Fondo Fijo por un total de $ ${totalRendicion.toLocaleString('es-AR', { minimumFractionDigits: 2 })}?`)) {
+        return;
+    }
 
     try {
+        const { data: { user } } = await db.auth.getUser();
         const idsActivos = estadoFondoFijo.registros.map(r => r.id);
-        const { error: errUpdate } = await db.from('fondo_fijo').update({ estado_rinde: 'RENDIDO' }).in('id', idsActivos);
+        const hoy = new Date().toISOString().split('T')[0];
+        const leyendaAsiento = `Rendición y reposición de Fondo Fijo al ${hoy}`;
+
+        // A. Insertar cabecera en Supabase (tabla asientos)
+        const { data: nuevoAsiento, error: errAsiento } = await db
+            .from('asientos')
+            .insert([{
+                fecha: hoy,
+                leyenda: leyendaAsiento,
+                user_id: user?.id || null
+            }])
+            .select()
+            .single();
+
+        // B. Insertar renglones contables (Debe: Gastos Generales / Haber: Fondo Fijo)
+        if (nuevoAsiento && !errAsiento) {
+            const renglonesBD = [
+                {
+                    asiento_id: nuevoAsiento.id,
+                    debe: totalRendicion,
+                    haber: 0
+                },
+                {
+                    asiento_id: nuevoAsiento.id,
+                    debe: 0,
+                    haber: totalRendicion
+                }
+            ];
+            await db.from('asiento_detalles').insert(renglonesBD);
+        }
+
+        // C. Impactar en el visor de Libro Diario (localStorage)
+        let historialLibro = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
+        const numAsientoLocal = 'N° ' + (historialLibro.length + 1).toString().padStart(4, '0');
+        
+        historialLibro.unshift({
+            id: numAsientoLocal,
+            fecha: hoy,
+            leyenda: leyendaAsiento,
+            renglones: [
+                { cuenta: 'Gastos Generales / Varios', debe: totalRendicion, haber: 0 },
+                { cuenta: 'Fondo Fijo / Caja Chica', debe: 0, haber: totalRendicion }
+            ]
+        });
+        localStorage.setItem('suite_libro_diario', JSON.stringify(historialLibro));
+        if (typeof renderLibroDiario === 'function') renderLibroDiario();
+
+        // D. Actualizar comprobantes a RENDIDO en Supabase
+        const { error: errUpdate } = await db
+            .from('fondo_fijo')
+            .update({ estado_rinde: 'RENDIDO' })
+            .in('id', idsActivos);
+
         if (errUpdate) throw errUpdate;
 
-        showToast('Fondo Fijo cerrado y rendido con éxito.');
+        showToast('Fondo Fijo cerrado y Asiento Contable generado con éxito.');
         await cargarRegistrosFondoFijo();
+
     } catch (err) {
         console.error('Error al rendir Fondo Fijo:', err);
         showToast('Error al procesar el cierre del Fondo Fijo.', 'error');
