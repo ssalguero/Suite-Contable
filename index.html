@@ -141,6 +141,10 @@
           <i data-lucide="receipt-text" class="w-4 h-4"></i>
           <span>Facturación (C/V)</span>
         </button>
+        <button onclick="mostrarModuloRecibos()" class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+          <i data-lucide="receipt"></i>
+          <span>Recibos de Cobro</span>
+        </button>
         <button onclick="switchTab('conciliador')" id="nav-conciliador" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="scale" class="w-4 h-4"></i>
           <span>Conciliador Bancario</span>
@@ -541,7 +545,134 @@
     </div>
   </div>
 </section>
-<!-- VISTA 3: CONCILIADOR BANCARIO Y CRUZADOR -->
+<!-- VISTA 3: RECIBOS DE COBRO -->
+<section id="modulo-recibos" class="p-6 bg-slate-50 min-h-screen">
+  <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center pb-4 border-b border-slate-200 mb-6">
+      <div>
+        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="receipt" class="text-indigo-600"></i> Emisión de Recibo de Cobranza (RC)
+        </h2>
+        <p class="text-sm text-slate-500">Cobranza multifactura, liquidación de retenciones sufridas y generación automática de asiento contable.</p>
+      </div>
+      <div class="text-right">
+        <label class="text-xs text-slate-400 font-semibold uppercase">N° Recibo Sugerido</label>
+        <input type="text" id="rc-numero" class="block w-44 text-right font-mono font-bold text-slate-700 border rounded-lg px-2 py-1 text-sm bg-slate-50" readonly />
+      </div>
+    </div>
+
+    <!-- Formulario Principal -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cliente *</label>
+        <select id="rc-cliente-select" onchange="cargarFacturasPendientesCliente(this.value)" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+          <option value="">-- Seleccionar Cliente --</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión *</label>
+        <input type="date" id="rc-fecha" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
+        <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+          <option value="TR">Transferencia Bancaria</option>
+          <option value="EF">Efectivo (Caja Central)</option>
+          <option value="CH">Cheque Físico</option>
+          <option value="ECHQ">E-Cheq</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Grilla Multifactura: Comprobantes de Venta Pendientes -->
+    <div class="mb-6">
+      <h3 class="text-sm font-bold text-slate-700 uppercase mb-2 flex items-center gap-2">
+        <i data-lucide="file-text" class="w-4 h-4 text-slate-500"></i> Comprobantes Pendientes de Cobro
+      </h3>
+      <div class="border rounded-lg overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead class="bg-slate-100 text-slate-600 text-xs font-semibold uppercase">
+            <tr>
+              <th class="p-3 w-10 text-center"><input type="checkbox" id="rc-select-all" onchange="toggleSelectAllComprobantes(this.checked)" /></th>
+              <th class="p-3">Fecha</th>
+              <th class="p-3">Tipo / Nro</th>
+              <th class="p-3 text-right">Total Factura</th>
+              <th class="p-3 text-right">Saldo Pendiente</th>
+              <th class="p-3 text-right w-44">Importe a Imputar ($)</th>
+            </tr>
+          </thead>
+          <tbody id="rc-facturas-tbody" class="divide-y divide-slate-100">
+            <tr>
+              <td colspan="6" class="p-4 text-center text-slate-400 text-xs">Seleccione un cliente para consultar deudas pendientes.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Panel de Retenciones Sufridas (Crédito Fiscal) -->
+    <div class="mb-6">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-sm font-bold text-slate-700 uppercase flex items-center gap-2">
+          <i data-lucide="shield-alert" class="w-4 h-4 text-amber-500"></i> Retenciones Sufridas (Certificados Presentados)
+        </h3>
+        <button type="button" onclick="agregarFilaRetencion()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> Agregar Certificado
+        </button>
+      </div>
+      <div class="border rounded-lg overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead class="bg-slate-100 text-slate-600 text-xs font-semibold uppercase">
+            <tr>
+              <th class="p-2.5">Tipo Régimen</th>
+              <th class="p-2.5">N° Certificado</th>
+              <th class="p-2.5 text-right w-44">Importe Retenido ($)</th>
+              <th class="p-2.5 w-12 text-center">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="rc-retenciones-tbody" class="divide-y divide-slate-100">
+            <!-- Filas dinámicas -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Resumen de Liquidación y Balanceo -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50 rounded-lg border border-slate-200 mb-6">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Observaciones</label>
+        <textarea id="rc-observaciones" rows="3" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500" placeholder="Detalles de la transferencia, banco emisor, cheques..."></textarea>
+      </div>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between text-slate-600">
+          <span>Total Imputado (Cancelación Deudores):</span>
+          <span id="rc-resumen-imputado" class="font-bold text-slate-800">$0.00</span>
+        </div>
+        <div class="flex justify-between text-amber-700">
+          <span>(-) Total Retenciones Sufridas:</span>
+          <span id="rc-resumen-retenciones" class="font-bold">-$0.00</span>
+        </div>
+        <div class="flex justify-between text-base font-bold text-indigo-700 pt-2 border-t border-slate-200">
+          <span>(=) Neto a Percibir (Ingreso Disponible):</span>
+          <span id="rc-resumen-neto">$0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botonera -->
+    <div class="flex justify-end gap-3">
+      <button type="button" onclick="limpiarFormularioRecibo()" class="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-100 font-semibold text-sm">
+        Cancelar
+      </button>
+      <button type="button" onclick="guardarReciboCobro()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold text-sm flex items-center gap-2 shadow-sm">
+        <i data-lucide="check-circle" class="w-4 h-4"></i> Confirmar y Generar Asiento
+      </button>
+    </div>
+  </div>
+</section>
+      
+<!-- VISTA 4: CONCILIADOR BANCARIO Y CRUZADOR -->
 <section id="tab-conciliador" class="hidden space-y-6">
 
   <!-- Encabezado y Acciones de Exportación -->
@@ -637,7 +768,7 @@
 
 </section>
       
-<!-- VISTA 4: GESTOR DE CUENTAS CORRIENTES Y AGING -->
+<!-- VISTA 5: GESTOR DE CUENTAS CORRIENTES Y AGING -->
 <section id="tab-cta-corriente" class="hidden space-y-6">
 
   <!-- Encabezado y Exportación -->
@@ -708,7 +839,7 @@
 
 </section>
 
-<!-- VISTA 5: CRUZADOR IVA DIGITAL -->
+<!-- VISTA 6: CRUZADOR IVA DIGITAL -->
 <section id="tab-cruzador-iva" class="hidden space-y-6">
   <div class="flex justify-between items-center">
     <div>
@@ -755,7 +886,7 @@
     Cargá ambos archivos CSV y presioná "Auditar y Cruzar Registros" para detectar inconsistencias.
   </div>
 </section>
-<!-- VISTA 6: CALC RETENCIONES -->
+<!-- VISTA 7: CALC RETENCIONES -->
       <section id="tab-calc-retenciones" class="hidden space-y-6">
         <div class="flex justify-between items-center">
           <div>
@@ -799,7 +930,7 @@
         </div>
       </section>
 
-<!-- VISTA 7: FONDO FIJO / CAJA CHICA -->
+<!-- VISTA 8: FONDO FIJO / CAJA CHICA -->
 <section id="tab-fondo-fijo" class="hidden space-y-6">
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
@@ -927,7 +1058,7 @@
   </div>
 </section>
 
-<!-- VISTA 8: GESTOR DE ÓRDENES DE PAGO (OP) -->
+<!-- VISTA 9: GESTOR DE ÓRDENES DE PAGO (OP) -->
 <div id="tab-ordenes-pago" class="hidden space-y-6">
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
@@ -1070,7 +1201,7 @@
   </div>
 </div>
 
-<!-- VISTA 9: LIBRO DIARIO Y ASIENTOS MANUALES -->
+<!-- VISTA 10: LIBRO DIARIO Y ASIENTOS MANUALES -->
 <section id="tab-libro-diario" class="hidden space-y-6">
   
   <!-- Encabezado y Acciones -->
