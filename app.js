@@ -1292,10 +1292,29 @@ function actualizarMetricasFondoFijoDashboard() {
     if (elSub) elSub.textContent = `${registrosActivos.length} comprobantes activos`;
 }
 // ==========================================
-// MOTOR 5: ÓRDENES DE PAGO (OP)
+// MOTOR 5: ÓRDENES DE PAGO (OP) - SUPABASE
 // ==========================================
-let historialOP = JSON.parse(localStorage.getItem('suite_historial_op')) || [];
+let historialOP = [];
 let adjuntoBase64Temp = null;
+
+// Escuchar la carga del archivo para convertirlo a Base64
+document.addEventListener('DOMContentLoaded', () => {
+  const inputAdjunto = document.getElementById('op-adjunto');
+  if (inputAdjunto) {
+    inputAdjunto.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        adjuntoBase64Temp = null;
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        adjuntoBase64Temp = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+});
 
 function actualizarCalculoOP() {
   const fecha = document.getElementById('op-fecha')?.value || new Date().toISOString().split('T')[0];
@@ -1317,7 +1336,7 @@ function actualizarCalculoOP() {
       preview.innerHTML = `
         <div class="flex justify-between items-center border-b border-slate-200 pb-3">
           <div>
-            <h4 class="font-bold text-slate-800">ORDEN DE PAGO N° OP-${(historialOP.length + 1).toString().padStart(4, '0')}</h4>
+            <h4 class="font-bold text-slate-800">ORDEN DE PAGO</h4>
             <span class="text-xs text-slate-500">Fecha: ${fecha}</span>
           </div>
           <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">Borrador</span>
@@ -1351,7 +1370,7 @@ function actualizarCalculoOP() {
   }
 }
 
-function generarOP() {
+async function generarOP() {
   const fecha = document.getElementById('op-fecha').value;
   const proveedor = document.getElementById('op-proveedor').value.trim();
   const cuit = document.getElementById('op-cuit').value.trim() || 'S/D';
@@ -1361,70 +1380,238 @@ function generarOP() {
   const medio = document.getElementById('op-medio-pago').value;
   const numComprobante = document.getElementById('op-num-comprobante').value.trim() || '-';
 
-  if (!fecha || !proveedor || !concepto || montoFactura <= 0) return alert('Por favor, completá los datos obligatorios.');
+  if (!fecha || !proveedor || !concepto || montoFactura <= 0) {
+    showToast('Por favor, completá los campos obligatorios.', 'error');
+    return;
+  }
 
-  const neto = montoFactura - retencion;
-  const nuevaOP = {
-    id: 'OP-' + (historialOP.length + 1).toString().padStart(4, '0'),
-    fecha, proveedor, cuit, concepto, montoFactura, retencion, neto, medio, numComprobante,
-    estado: 'Pagado'
-  };
+  const neto = Math.max(0, montoFactura - retencion);
 
-  historialOP.unshift(nuevaOP);
-  localStorage.setItem('suite_historial_op', JSON.stringify(historialOP));
-  renderHistorialOP();
+  try {
+    const { data: { user } } = await db.auth.getUser();
 
-  document.getElementById('form-op').reset();
-  document.getElementById('op-fecha').value = new Date().toISOString().split('T')[0];
-  alert('Orden de Pago registrada con éxito.');
+    // 1. Obtener correlativo de OP
+    const { count } = await db.from('ordenes_pago').select('*', { count: 'exact', head: true });
+    const codigoOP = 'OP-' + String((count || 0) + 1).padStart(4, '0');
+
+    // 2. Insertar Orden de Pago en Supabase
+    const payload = {
+      codigo_op: codigoOP,
+      fecha,
+      proveedor,
+      cuit,
+      concepto,
+      monto_factura: montoFactura,
+      retencion,
+      neto,
+      medio,
+      num_comprobante: numComprobante,
+      adjunto_url: adjuntoBase64Temp || null,
+      estado: 'Pagado',
+      user_id: user?.id || null
+    };
+
+    const { error: errOP } = await db.from('ordenes_pago').insert([payload]);
+    if (errOP) throw errOP;
+
+    // 3. Generar Asiento Automático en Libro Diario (Supabase)
+    const glosaAsiento = `Pago a Proveedor ${proveedor} según ${codigoOP}`;
+    const { data: nuevoAsiento, error: errAsiento } = await db
+      .from('asientos')
+      .insert([{
+        fecha,
+        user_id: user?.id || null,
+        concepto: glosaAsiento
+      }])
+      .select()
+      .single();
+
+    if (!errAsiento && nuevoAsiento) {
+      const lineasAsiento = [
+        // Debe: Cancelación de Proveedores por el Bruto
+        {
+          asiento_id: nuevoAsiento.id,
+          debe: montoFactura,
+          haber: 0,
+          cuenta_nombre: 'Proveedores / Cuentas por Pagar',
+          detalle: `Cancelación comprobante de ${proveedor}`
+        }
+      ];
+
+      // Haber: Retenciones emitidas a pagar (si aplica)
+      if (retencion > 0) {
+        lineasAsiento.push({
+          asiento_id: nuevoAsiento.id,
+          debe: 0,
+          haber: retencion,
+          cuenta_nombre: 'Retenciones Impositivas a Depositar',
+          detalle: 'Retención Ganancias / IIBB practicada'
+        });
+      }
+
+      // Haber: Salida de Fondos por el Neto pagado
+      const cuentaSalida = medio.includes('Efectivo') 
+        ? 'Caja / Efectivo' 
+        : 'Banco Cuentas Corrientes';
+
+      lineasAsiento.push({
+        asiento_id: nuevoAsiento.id,
+        debe: 0,
+        haber: neto,
+        cuenta_nombre: cuentaSalida,
+        detalle: `${medio} N° ${numComprobante}`
+      });
+
+      await db.from('asiento_detalles').insert(lineasAsiento);
+    }
+
+    showToast(`Orden de Pago ${codigoOP} emitida y Asiento generado con éxito.`);
+
+    // Reset de formulario y memoria
+    document.getElementById('form-op').reset();
+    adjuntoBase64Temp = null;
+    document.getElementById('op-fecha').value = new Date().toISOString().split('T')[0];
+    actualizarCalculoOP();
+
+    await renderHistorialOP();
+    if (typeof renderLibroDiario === 'function') await renderLibroDiario();
+    if (typeof actualizarDashboardMetrics === 'function') await actualizarDashboardMetrics();
+
+  } catch (err) {
+    console.error('Error al emitir OP:', err);
+    showToast('Error al registrar la orden de pago en Supabase.', 'error');
+  }
 }
 
-function renderHistorialOP() {
+async function renderHistorialOP() {
   const tbody = document.getElementById('tbody-op-historial');
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  if (historialOP.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">No hay órdenes de pago emitidas.</td></tr>`;
-    return;
-  }
+  const filtro = (document.getElementById('op-buscar-historial')?.value || '').toLowerCase();
 
-  historialOP.forEach((op) => {
-    tbody.innerHTML += `
-      <tr class="hover:bg-slate-50 transition-colors text-xs">
-        <td class="p-3 font-bold text-slate-900">${op.id}<div class="text-[11px] font-normal text-slate-400">${op.fecha}</div></td>
-        <td class="p-3 font-semibold text-slate-800">${op.proveedor}<div class="text-[11px] font-normal text-slate-400">CUIT: ${op.cuit}</div></td>
-        <td class="p-3 text-slate-600 truncate max-w-xs">${op.concepto}</td>
-        <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 rounded text-[11px] border border-slate-200">${op.medio}</span></td>
-        <td class="p-3 font-mono font-bold text-emerald-700">$ ${op.neto.toFixed(2)}</td>
-        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">${op.estado}</span></td>
-        <td class="p-3 text-center">-</td>
-        <td class="p-3 text-center"><button onclick="eliminarOP('${op.id}')" class="text-rose-500 hover:text-rose-700 p-1">🗑️</button></td>
-      </tr>
-    `;
-  });
+  try {
+    const { data: lista, error } = await db
+      .from('ordenes_pago')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) throw error;
+
+    historialOP = lista || [];
+
+    const filtrados = historialOP.filter(op => {
+      return (op.proveedor || '').toLowerCase().includes(filtro) ||
+             (op.cuit || '').toLowerCase().includes(filtro) ||
+             (op.codigo_op || '').toLowerCase().includes(filtro) ||
+             (op.concepto || '').toLowerCase().includes(filtro);
+    });
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">No hay órdenes de pago emitidas.</td></tr>`;
+      return;
+    }
+
+    filtrados.forEach((op) => {
+      const botonAdjunto = op.adjunto_url
+        ? `<a href="${op.adjunto_url}" download="Adjunto_${op.codigo_op}" class="text-indigo-600 hover:text-indigo-900 font-bold p-1" title="Descargar comprobante adjunto">📎 Ver</a>`
+        : `<span class="text-slate-300">-</span>`;
+
+      tbody.innerHTML += `
+        <tr class="hover:bg-slate-50 transition-colors text-xs">
+          <td class="p-3 font-bold text-slate-900">
+            ${op.codigo_op}
+            <div class="text-[11px] font-normal text-slate-400">${op.fecha}</div>
+          </td>
+          <td class="p-3 font-semibold text-slate-800">
+            ${op.proveedor}
+            <div class="text-[11px] font-normal text-slate-400">CUIT: ${op.cuit || 'S/D'}</div>
+          </td>
+          <td class="p-3 text-slate-600 truncate max-w-xs">${op.concepto}</td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 bg-slate-100 rounded text-[11px] border border-slate-200">${op.medio}</span>
+          </td>
+          <td class="p-3 font-mono font-bold text-emerald-700">$ ${parseFloat(op.neto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+          <td class="p-3 text-center">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">${op.estado}</span>
+          </td>
+          <td class="p-3 text-center">${botonAdjunto}</td>
+          <td class="p-3 text-center whitespace-nowrap">
+            <button onclick="descargarPDFOP('${op.id}')" class="text-slate-600 hover:text-indigo-600 p-1 mr-1 cursor-pointer" title="Imprimir PDF">📄</button>
+            <button onclick="eliminarOP('${op.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️️</button>
+          </td>
+        </tr>
+      `;
+    });
+
+  } catch (err) {
+    console.error('Error al cargar historial de OP:', err);
+    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-rose-500">Error al consultar órdenes de pago en la nube.</td></tr>`;
+  }
 }
 
-function eliminarOP(id) {
-  if (confirm(`¿Eliminar la orden ${id}?`)) {
-    historialOP = historialOP.filter(op => op.id !== id);
-    localStorage.setItem('suite_historial_op', JSON.stringify(historialOP));
-    renderHistorialOP();
+async function eliminarOP(id) {
+  if (!confirm('¿Eliminar esta orden de pago de la base de datos?')) return;
+  try {
+    const { error } = await db.from('ordenes_pago').delete().eq('id', id);
+    if (error) throw error;
+    showToast('Orden de Pago eliminada.');
+    await renderHistorialOP();
+  } catch (err) {
+    console.error('Error al borrar OP:', err);
+    showToast('Error al eliminar la orden de pago.', 'error');
   }
 }
 
 function exportarHistorialOPCSV() {
-  if (historialOP.length === 0) return alert('No hay datos para exportar.');
-  let csv = 'ID,Fecha,Proveedor,CUIT,Concepto,Medio,Monto Factura,Retencion,Neto,Estado\n';
+  if (historialOP.length === 0) return showToast('No hay órdenes para exportar.', 'error');
+  let csv = 'Codigo,Fecha,Proveedor,CUIT,Concepto,Medio,Bruto,Retencion,Neto,Estado\n';
   historialOP.forEach(o => {
-    csv += `${o.id},${o.fecha},"${o.proveedor}","${o.cuit}","${o.concepto}",${o.medio},${o.montoFactura},${o.retencion},${o.neto},${o.estado}\n`;
+    csv += `"${o.codigo_op}",${o.fecha},"${o.proveedor}","${o.cuit}","${o.concepto}","${o.medio}",${o.monto_factura},${o.retencion},${o.neto},"${o.estado}"\n`;
   });
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.setAttribute('href', url);
   a.setAttribute('download', `Historial_OP_${new Date().toISOString().slice(0,10)}.csv`);
   a.click();
+  showToast('Exportación CSV completada.');
+}
+
+function descargarPDFOP(id) {
+  const op = historialOP.find(item => String(item.id) === String(id));
+  if (!op) return;
+  if (!window.jspdf) return alert('Librería jsPDF no disponible.');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`ORDEN DE PAGO: ${op.codigo_op}`, 105, 20, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setTextColor(80);
+  doc.text(`Fecha: ${op.fecha}`, 14, 32);
+  doc.text(`Empresa Pagadora: Demostración SA`, 14, 38);
+  doc.text(`Beneficiario / Proveedor: ${op.proveedor} (CUIT: ${op.cuit || 'S/D'})`, 14, 44);
+  doc.text(`Concepto: ${op.concepto}`, 14, 50);
+  doc.text(`Medio de Pago: ${op.medio} (Comp: ${op.num_comprobante || '-'})`, 14, 56);
+
+  if (doc.autoTable) {
+    doc.autoTable({
+      startY: 65,
+      head: [['Descripción del Movimiento', 'Importe']],
+      body: [
+        ['Monto Bruto Factura', `$ ${parseFloat(op.monto_factura).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
+        ['Retención Impositiva Aplicada', `-$ ${parseFloat(op.retencion).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
+        ['Neto Liquidado a Pagar', `$ ${parseFloat(op.neto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
+      ],
+      headStyles: { fillColor: [79, 70, 229] }
+    });
+  }
+
+  doc.save(`${op.codigo_op}_${op.proveedor.replace(/\s+/g, '_')}.pdf`);
 }
 
 // ==========================================
