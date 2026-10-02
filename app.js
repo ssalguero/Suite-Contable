@@ -301,12 +301,14 @@ async function cambiarCircuitoFacturacion(circuito) {
 function calcularTotalesFactura() {
   const neto = parseFloat(document.getElementById('fc-neto')?.value) || 0;
   const alicuota = parseFloat(document.getElementById('fc-alicuota-iva')?.value) || 0;
-  const percepciones = parseFloat(document.getElementById('fc-percepciones')?.value) || 0;
+  const percepIIBB = parseFloat(document.getElementById('fc-percep-iibb')?.value) || 0;
+  const percepIVA = parseFloat(document.getElementById('fc-percep-iva')?.value) || 0;
+  const noGravado = parseFloat(document.getElementById('fc-no-gravado')?.value) || 0;
   const tipoDoc = document.getElementById('fc-tipo-doc')?.value || 'Factura A';
 
   const esNotaCredito = tipoDoc.includes('Nota de Crédito');
   const iva = Math.round((neto * (alicuota / 100)) * 100) / 100;
-  const total = Math.round((neto + iva + percepciones) * 100) / 100;
+  const total = Math.round((neto + iva + percepIIBB + percepIVA + noGravado) * 100) / 100;
 
   const inputIVA = document.getElementById('fc-iva');
   const lblTotal = document.getElementById('fc-lbl-total');
@@ -332,8 +334,10 @@ async function guardarFactura(e) {
   const neto = parseFloat(document.getElementById('fc-neto').value) || 0;
   const alicuota = parseFloat(document.getElementById('fc-alicuota-iva').value) || 0;
   const iva = parseFloat(document.getElementById('fc-iva').value) || 0;
-  const percepciones = parseFloat(document.getElementById('fc-percepciones').value) || 0;
-  const totalBruto = Math.round((neto + iva + percepciones) * 100) / 100;
+  const percepIIBB = parseFloat(document.getElementById('fc-percep-iibb').value) || 0;
+  const percepIVA = parseFloat(document.getElementById('fc-percep-iva').value) || 0;
+  const noGravado = parseFloat(document.getElementById('fc-no-gravado').value) || 0;
+  const totalBruto = Math.round((neto + iva + percepIIBB + percepIVA + noGravado) * 100) / 100;
 
   if (!fecha || !numero_doc || !entidad || !concepto || totalBruto <= 0) {
     showToast('Completá todos los campos obligatorios.', 'error');
@@ -347,7 +351,7 @@ async function guardarFactura(e) {
     const { data: { user } } = await db.auth.getUser();
     const tabla = circuitoFacturacionActual === 'COMPRAS' ? 'comprobantes_compra' : 'comprobantes_venta';
 
-    // 1. Guardar contacto en padrón si no existía
+    // 1. Guardar o actualizar contacto en padrón
     if (cuit && cuit !== 'S/D') {
       await db.from('clientes_proveedores').upsert([{
         tipo: circuitoFacturacionActual === 'COMPRAS' ? 'PROVEEDOR' : 'CLIENTE',
@@ -358,7 +362,7 @@ async function guardarFactura(e) {
       await cargarPadronContactos();
     }
 
-    // 2. Insertar Comprobante
+    // 2. Insertar comprobante con detalle impositivo
     const payload = {
       fecha,
       tipo_doc,
@@ -367,7 +371,10 @@ async function guardarFactura(e) {
       neto_gravado: neto,
       alicuota_iva: alicuota,
       iva,
-      percepciones,
+      percep_iibb: percepIIBB,
+      percep_iva: percepIVA,
+      no_gravado: noGravado,
+      percepciones: percepIIBB + percepIVA,
       total: totalBruto,
       saldo: totalBruto,
       user_id: user?.id || null
@@ -386,7 +393,7 @@ async function guardarFactura(e) {
     const { error: errFactura } = await db.from(tabla).insert([payload]);
     if (errFactura) throw errFactura;
 
-    // 3. Devengamiento Contable en Supabase (Solo comprobantes fiscales; X no genera asiento formal)
+    // 3. Devengamiento contable automático con imputación analítica
     if (!esNoFiscal) {
       const glosa = `${tipo_doc} ${numero_doc} - ${entidad}`;
       const { data: asiento, error: errAsiento } = await db
@@ -405,24 +412,30 @@ async function guardarFactura(e) {
         if (circuitoFacturacionActual === 'COMPRAS') {
           if (!esNC) {
             lineas.push({ asiento_id: asiento.id, debe: neto, haber: 0, cuenta_nombre: 'Mercaderías / Gastos', detalle: concepto });
+            if (noGravado > 0) lineas.push({ asiento_id: asiento.id, debe: noGravado, haber: 0, cuenta_nombre: 'Conceptos No Gravados / Tasas', detalle: 'Exento o no gravado' });
             if (iva > 0) lineas.push({ asiento_id: asiento.id, debe: iva, haber: 0, cuenta_nombre: 'IVA Crédito Fiscal', detalle: `IVA ${alicuota}%` });
-            if (percepciones > 0) lineas.push({ asiento_id: asiento.id, debe: percepciones, haber: 0, cuenta_nombre: 'Percepciones Impositivas', detalle: 'IIBB/IVA' });
+            if (percepIIBB > 0) lineas.push({ asiento_id: asiento.id, debe: percepIIBB, haber: 0, cuenta_nombre: 'Percepciones IIBB a Favor', detalle: 'Percepción IIBB factura' });
+            if (percepIVA > 0) lineas.push({ asiento_id: asiento.id, debe: percepIVA, haber: 0, cuenta_nombre: 'Percepciones IVA a Favor', detalle: 'Percepción IVA factura' });
             lineas.push({ asiento_id: asiento.id, debe: 0, haber: totalBruto, cuenta_nombre: 'Proveedores / Cuentas por Pagar', detalle: `Factura ${numero_doc}` });
           } else {
-            // Nota de Crédito Compra: revierte deuda
             lineas.push({ asiento_id: asiento.id, debe: totalBruto, haber: 0, cuenta_nombre: 'Proveedores / Cuentas por Pagar', detalle: `NC ${numero_doc}` });
             lineas.push({ asiento_id: asiento.id, debe: 0, haber: neto, cuenta_nombre: 'Mercaderías / Gastos', detalle: 'Ajuste crédito' });
+            if (noGravado > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: noGravado, cuenta_nombre: 'Conceptos No Gravados / Tasas', detalle: 'Reversión no gravado' });
             if (iva > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: iva, cuenta_nombre: 'IVA Crédito Fiscal', detalle: `Reversión IVA` });
+            if (percepIIBB > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: percepIIBB, cuenta_nombre: 'Percepciones IIBB a Favor', detalle: 'Reversión IIBB' });
+            if (percepIVA > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: percepIVA, cuenta_nombre: 'Percepciones IVA a Favor', detalle: 'Reversión Percep. IVA' });
           }
         } else {
           if (!esNC) {
             lineas.push({ asiento_id: asiento.id, debe: totalBruto, haber: 0, cuenta_nombre: 'Deudores por Ventas', detalle: `Factura ${numero_doc}` });
             lineas.push({ asiento_id: asiento.id, debe: 0, haber: neto, cuenta_nombre: 'Ventas', detalle: concepto });
+            if (noGravado > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: noGravado, cuenta_nombre: 'Ventas Exentas / No Gravadas', detalle: 'Conceptos no gravados' });
             if (iva > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: iva, cuenta_nombre: 'IVA Débito Fiscal', detalle: `IVA ${alicuota}%` });
+            if (percepIIBB > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: percepIIBB, cuenta_nombre: 'Percepciones IIBB a Depositar', detalle: 'Percep. IIBB aplicada' });
           } else {
-            // Nota de Crédito Venta: revierte crédito por ventas
             lineas.push({ asiento_id: asiento.id, debe: neto, haber: 0, cuenta_nombre: 'Ventas', detalle: 'Bonificación / Anulación' });
-            if (iva > 0) lineas.push({ asiento_id: asiento.id, debe: iva, haber: 0, cuenta_nombre: 'IVA Débito Fiscal', detalle: `Reversión IVA` });
+            if (noGravado > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: noGravado, cuenta_nombre: 'Ventas Exentas / No Gravadas', detalle: 'Reversión exento' });
+            if (iva > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: iva, cuenta_nombre: 'IVA Débito Fiscal', detalle: `Reversión IVA` });
             lineas.push({ asiento_id: asiento.id, debe: 0, haber: totalBruto, cuenta_nombre: 'Deudores por Ventas', detalle: `NC ${numero_doc}` });
           }
         }
@@ -431,7 +444,7 @@ async function guardarFactura(e) {
       }
     }
 
-    showToast(`Comprobante ${tipo_doc} guardado con éxito.`);
+    showToast(`Comprobante ${tipo_doc} guardado y desglosado correctamente.`);
 
     document.getElementById('form-factura').reset();
     document.getElementById('fc-fecha').value = new Date().toISOString().split('T')[0];
@@ -447,7 +460,6 @@ async function guardarFactura(e) {
     showToast('Error al registrar el comprobante en Supabase.', 'error');
   }
 }
-
 async function cargarFacturasDesdeSupabase() {
   const tbody = document.getElementById('tbody-facturas');
   if (!tbody) return;
