@@ -461,7 +461,8 @@
         </div>
 
         <!-- Desglose Impositivo -->
-        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2.5">
+        <!-- Desglose Impositivo Completo -->
+        <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2.5">
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">Neto Gravado ($)</label>
@@ -478,23 +479,31 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-3 gap-2">
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">IVA Liquidado ($)</label>
               <input type="number" step="0.01" id="fc-iva" readonly class="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-slate-100 text-slate-600 font-mono" value="0.00" />
             </div>
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Percep. / No Grav. ($)</label>
-              <input type="number" step="0.01" min="0" id="fc-percepciones" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Percep. IIBB ($)</label>
+              <input type="number" step="0.01" min="0" id="fc-percep-iibb" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Percep. IVA ($)</label>
+              <input type="number" step="0.01" min="0" id="fc-percep-iva" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
             </div>
           </div>
 
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Conceptos No Gravados / Exentos ($)</label>
+            <input type="number" step="0.01" min="0" id="fc-no-gravado" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
+          </div>
+
           <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
-            <span class="font-bold text-slate-800">Total Liquidado:</span>
+            <span class="font-bold text-slate-800">Total Comprobante:</span>
             <span id="fc-lbl-total" class="font-bold text-indigo-700 text-sm font-mono">$ 0.00</span>
           </div>
         </div>
-
         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
           <i data-lucide="check-circle" class="w-4 h-4"></i> Guardar y Asentar en Libro Diario
         </button>
