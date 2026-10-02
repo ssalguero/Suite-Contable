@@ -123,14 +123,9 @@ async function logout() {
 // CONTROL DE NAVEGACIÓN Y PESTAÑAS
 // -------------------------------------------------------------
 function switchTab(tabId) {
-  const tabs = [
-    'dashboard', 'conciliador', 'cta-corriente', 'cruzador-iva', 
-    'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'facturacion', 'libro-diario'
-  ];
-  
-  const tabs = [
-    'dashboard', 'conciliador', 'cta-corriente', 'cruzador-iva', 
-    'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'libro-diario'
+const tabs = [
+    'dashboard', 'facturacion', 'conciliador', 'cta-corriente', 
+    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'libro-diario'
   ];
   
   tabs.forEach(t => {
