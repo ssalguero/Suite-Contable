@@ -699,68 +699,79 @@
       
       <form id="form-op" onsubmit="event.preventDefault(); generarOP();" class="space-y-3.5">
         
+        <!-- Selector de Factura de Compra Pendiente -->
+        <div class="bg-indigo-50/60 p-3 rounded-lg border border-indigo-100">
+          <label class="block text-xs font-bold text-indigo-900 mb-1">Imputar Factura de Compra (Impagas)</label>
+          <select id="op-selector-factura" onchange="seleccionarFacturaParaOP(this.value)" class="w-full px-3 py-2 text-xs border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-medium text-slate-800">
+            <option value="">-- Cargar manualmente o elegir factura pendiente --</option>
+          </select>
+        </div>
+
         <!-- Punto 1: Fecha de Emisión/Pago -->
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">1. Fecha de Emisión / Pago</label>
-          <input id="op-fecha" type="date" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
+          <input id="op-fecha" type="date" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
         </div>
 
         <!-- Punto 2: Proveedor + CUIT -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="sm:col-span-2">
             <label class="block text-xs font-semibold text-slate-600 mb-1">2. Razón Social / Proveedor</label>
-            <input id="op-proveedor" type="text" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
+            <input id="op-proveedor" type="text" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">CUIT Proveedor</label>
-            <input id="op-cuit" type="text" placeholder="30-12345678-9" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <input id="op-cuit" type="text" placeholder="30-12345678-9" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
           </div>
         </div>
 
         <!-- Punto 3: Concepto / Detalle -->
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">3. Concepto / Detalle del Pago</label>
-          <input id="op-concepto" type="text" placeholder="Ej: Pago Factura A-0001-00004523 - Materiales de pintura" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
+          <input id="op-concepto" type="text" placeholder="Ej: Pago Factura A 00001-00065187" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
         </div>
 
-        <!-- Punto 4: Montos y Cálculo Automático -->
+        <!-- Punto 4: Montos y Cálculo Asistido de Retención -->
         <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">4. Monto Bruto Factura ($)</label>
-            <input id="op-monto-factura" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white" required />
+            <label class="block text-xs font-semibold text-slate-600 mb-1">4. Monto Bruto ($)</label>
+            <input id="op-monto-factura" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" required />
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Retención Aplicada ($)</label>
-            <input id="op-retencion" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white" />
+            <div class="flex justify-between items-center mb-1">
+              <label class="block text-xs font-semibold text-slate-600">Retención ($)</label>
+              <button type="button" onclick="calcularRetencionSugeridaOP()" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">Sugerir RG830</button>
+            </div>
+            <input id="op-retencion" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
           </div>
         </div>
 
-        <!-- Punto 5: Medio de Pago y N° Comprobante -->
+        <!-- Punto 5: Medio de Pago y N° Transacción con Sugerencia -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">5. Medio de Pago</label>
-            <select id="op-medio-pago" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <select id="op-medio-pago" onchange="cambiarMedioPagoSugerido(this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
               <option value="Transferencia Bancaria">Transferencia Bancaria</option>
               <option value="Cheque Propio">Cheque Propio</option>
-              <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
               <option value="Echeq">Echeq</option>
+              <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
             </select>
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">N° Comprobante / Transacción</label>
-            <input id="op-num-comprobante" type="text" placeholder="Ej: TR-884920" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <label class="block text-xs font-semibold text-slate-600 mb-1">N° Comprobante / Transacción (Editable)</label>
+            <input id="op-num-comprobante" type="text" placeholder="Ej: TR-659368" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
           </div>
         </div>
 
         <!-- Punto 6: Adjunto Respaldatorio -->
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">6. Adjuntar Factura / Comprobante Respaldatorio</label>
-          <input id="op-adjunto" type="file" accept=".pdf,image/*" onchange="actualizarCalculoOP()" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg" />
+          <label class="block text-xs font-semibold text-slate-600 mb-1">6. Adjuntar Factura / PDF / Recibo</label>
+          <input id="op-adjunto" type="file" accept=".pdf,image/*" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1" />
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2 flex items-center justify-center gap-2">
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2 flex items-center justify-center gap-2">
           <i data-lucide="check-circle" class="w-4 h-4"></i> Emitir Orden de Pago
         </button>
       </form>
