@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inputFechaOP = document.getElementById('op-fecha');
   if (inputFechaOP && !inputFechaOP.value) inputFechaOP.value = new Date().toISOString().split('T')[0];
 
+  const inputFechaRC = document.getElementById('rc-fecha');
+  if (inputFechaRC && !inputFechaRC.value) inputFechaRC.value = new Date().toISOString().split('T')[0];
+
   const inputFechaAsiento = document.getElementById('asiento-fecha');
   if (inputFechaAsiento && !inputFechaAsiento.value) inputFechaAsiento.value = new Date().toISOString().split('T')[0];
 
@@ -43,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (authModal) authModal.classList.add('hidden');
       if (userDisplay) userDisplay.textContent = session.user.email;
       
-      // Consultar datos de Fondo Fijo al iniciar sesión
       cargarRegistrosFondoFijo();
     } else {
       currentUser = null;
@@ -51,81 +53,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (userDisplay) userDisplay.textContent = 'No autenticado';
     }
   });
+
   if (typeof cargarPadronContactos === 'function') cargarPadronContactos();
   if (typeof cambiarCircuitoFacturacion === 'function') cambiarCircuitoFacturacion('VENTAS');
   if (typeof cargarFacturasImpagasParaOP === 'function') cargarFacturasImpagasParaOP();
   if (typeof renderHistorialOP === 'function') renderHistorialOP();
+  if (typeof initRecibos === 'function') initRecibos();
   if (typeof cambiarMedioPagoSugerido === 'function') cambiarMedioPagoSugerido('Transferencia Bancaria');
   if (typeof inicializarAsientoManual === 'function') inicializarAsientoManual();
   if (typeof renderLibroDiario === 'function') renderLibroDiario();
   if (typeof actualizarDashboardMetrics === 'function') actualizarDashboardMetrics();
 });
 
-function setAuthMode(mode) {
-  currentAuthMode = mode;
-  const btnLogin = document.getElementById('btn-login');
-  const btnSignup = document.getElementById('btn-signup');
-
-  if (mode === 'login') {
-    if (btnLogin) btnLogin.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-sm cursor-pointer";
-    if (btnSignup) btnSignup.className = "w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm py-2.5 rounded-lg transition border border-slate-300 cursor-pointer";
-  } else {
-    if (btnSignup) btnSignup.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-sm cursor-pointer";
-    if (btnLogin) btnLogin.className = "w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm py-2.5 rounded-lg transition border border-slate-300 cursor-pointer";
-  }
-}
-
-async function handleAuth(e) {
-  e.preventDefault();
-  const emailInput = document.getElementById('auth-email');
-  const passwordInput = document.getElementById('auth-password');
-  const errorEl = document.getElementById('auth-error');
-
-  const email = emailInput ? emailInput.value.trim() : '';
-  const password = passwordInput ? passwordInput.value : '';
-
-  if (!email || !password) {
-    if (errorEl) {
-      errorEl.textContent = 'Por favor, completá el correo y la contraseña.';
-      errorEl.classList.remove('hidden');
-    }
-    return;
-  }
-
-  if (errorEl) errorEl.classList.add('hidden');
-
-  try {
-    let result;
-    if (currentAuthMode === 'login') {
-      result = await db.auth.signInWithPassword({ email, password });
-    } else {
-      result = await db.auth.signUp({ email, password });
-    }
-
-    if (result.error) throw result.error;
-
-    if (currentAuthMode === 'signup' && !result.data.session) {
-      alert('Registro iniciado correctamente. Por favor, revisá tu correo para confirmar la cuenta.');
-    }
-  } catch (err) {
-    console.error('Error Auth:', err);
-    if (errorEl) {
-      errorEl.textContent = err.message || 'Error al autenticar. Verificá los datos ingresados.';
-      errorEl.classList.remove('hidden');
-    }
-  }
-}
-
-async function logout() {
-  await db.auth.signOut();
-}
-
 // -------------------------------------------------------------
 // CONTROL DE NAVEGACIÓN Y PESTAÑAS
 // -------------------------------------------------------------
 function switchTab(tabId) {
-const tabs = [
-    'dashboard', 'facturacion', 'conciliador', 'cta-corriente', 
+  const tabs = [
+    'dashboard', 'facturacion', 'recibos-cobro', 'conciliador', 'cta-corriente', 
     'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'libro-diario'
   ];
   
@@ -148,8 +93,8 @@ const tabs = [
   }
 
   if (tabId === 'dashboard') actualizarDashboardMetrics();
+  if (tabId === 'recibos-cobro') initRecibos();
 }
-
 // ==========================================
 // MOTOR 1: FACTURACIÓN CON PADRÓN Y MULTICOMPROBANTES
 // ==========================================
@@ -617,25 +562,22 @@ function descargarPlantillaComprasCSV() {
 }
 
 // ==========================================
-// MOTOR 2: RECIBOS DE COBRO
+// MOTOR 2: RECIBOS DE COBRO (CORREGIDO CON db)
 // ==========================================
-// --- ESTADO LOCAL DEL RECIBO ---
-let comprobantesPendientes = [];
-let retencionesSufridas = [];
+let comprobantesPendientesRC = [];
+let retencionesSufridasRC = [];
 
-// Inicialización de fecha y número sugerido
 function initRecibos() {
   const fechaInput = document.getElementById('rc-fecha');
-  if (fechaInput) fechaInput.value = new Date().toISOString().split('T')[0];
+  if (fechaInput && !fechaInput.value) fechaInput.value = new Date().toISOString().split('T')[0];
   generarProximoNumeroRC();
-  cargarClientesSelect();
+  cargarClientesSelectRC();
   if (window.lucide) lucide.createIcons();
 }
 
-// 1. Generar número correlativo
 async function generarProximoNumeroRC() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('recibos_cobro')
       .select('numero')
       .order('created_at', { ascending: false })
@@ -647,87 +589,105 @@ async function generarProximoNumeroRC() {
       const match = data[0].numero.match(/\d+$/);
       if (match) siguienteNro = parseInt(match[0], 10) + 1;
     }
-    document.getElementById('rc-numero').value = `RC-0001-${String(siguienteNro).padStart(8, '0')}`;
+    const inputNum = document.getElementById('rc-numero');
+    if (inputNum) inputNum.value = `RC-0001-${String(siguienteNro).padStart(8, '0')}`;
   } catch (err) {
     console.error('Error al generar número RC:', err);
-    document.getElementById('rc-numero').value = `RC-0001-00000001`;
+    const inputNum = document.getElementById('rc-numero');
+    if (inputNum) inputNum.value = `RC-0001-00000001`;
   }
 }
 
-// 2. Cargar clientes en el selector
-async function cargarClientesSelect() {
-  const { data, error } = await supabase
-    .from('clientes_proveedores')
-    .select('id, razon_social, cuit')
-    .order('razon_social');
-  
-  if (error) return console.error('Error cargando clientes:', error);
+async function cargarClientesSelectRC() {
   const select = document.getElementById('rc-cliente-select');
-  select.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
-  data.forEach(c => {
-    select.innerHTML += `<option value="${c.id}">${c.razon_social} (${c.cuit})</option>`;
-  });
+  if (!select) return;
+
+  try {
+    const { data, error } = await db
+      .from('clientes_proveedores')
+      .select('id, razon_social, cuit')
+      .order('razon_social');
+    
+    if (error) throw error;
+    select.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
+    (data || []).forEach(c => {
+      select.innerHTML += `<option value="${c.id}">${c.razon_social} (${c.cuit})</option>`;
+    });
+  } catch (err) {
+    console.error('Error cargando clientes en RC:', err);
+  }
 }
 
-// 3. Cargar facturas de venta con saldo impago
 async function cargarFacturasPendientesCliente(clienteId) {
   const tbody = document.getElementById('rc-facturas-tbody');
+  if (!tbody) return;
+
   if (!clienteId) {
     tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Seleccione un cliente para consultar deudas pendientes.</td></tr>';
-    comprobantesPendientes = [];
+    comprobantesPendientesRC = [];
     calcularTotalesRC();
     return;
   }
 
   tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Consultando comprobantes...</td></tr>';
 
-  // Consulta comprobantes con saldo > 0
-  const { data, error } = await supabase
-    .from('comprobantes_venta')
-    .select('*')
-    .eq('cliente_id', clienteId)
-    .gt('saldo', 0)
-    .order('fecha', { ascending: true });
+  try {
+    // Buscar la razón social del cliente para matchear en comprobantes_venta
+    const clienteObj = padronContactos.find(c => String(c.id) === String(clienteId));
+    let query = db.from('comprobantes_venta').select('*');
 
-  if (error) {
-    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 text-xs">Error: ${error.message}</td></tr>`;
-    return;
-  }
+    if (clienteObj) {
+      query = query.or(`cliente.eq."${clienteObj.razon_social}",cuit.eq."${clienteObj.cuit}"`);
+    }
 
-  comprobantesPendientes = data || [];
-  if (comprobantesPendientes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">El cliente no registra facturas con saldo pendiente.</td></tr>';
+    const { data, error } = await query.order('fecha', { ascending: true });
+
+    if (error) throw error;
+
+    // Filtrar con saldo > 0 e impagos
+    comprobantesPendientesRC = (data || []).filter(c => (parseFloat(c.saldo) || parseFloat(c.total)) > 0 && c.estado_cobro !== 'Cobrado');
+
+    if (comprobantesPendientesRC.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">El cliente no registra facturas con saldo pendiente.</td></tr>';
+      calcularTotalesRC();
+      return;
+    }
+
+    tbody.innerHTML = comprobantesPendientesRC.map((comp, idx) => {
+      const saldoComp = parseFloat(comp.saldo || comp.total || 0);
+      return `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="p-3 text-center">
+            <input type="checkbox" id="rc-chk-${comp.id}" onchange="toggleComprobanteRC(${idx}, this.checked)" class="rounded border-slate-300" />
+          </td>
+          <td class="p-3 text-slate-600 font-mono text-xs">${comp.fecha}</td>
+          <td class="p-3 font-semibold text-slate-700">${comp.tipo_doc || 'Factura'} ${comp.numero_doc || comp.id}</td>
+          <td class="p-3 text-right font-mono text-slate-600">$${Number(comp.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+          <td class="p-3 text-right font-mono font-bold text-slate-800">$${saldoComp.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+          <td class="p-3 text-right">
+            <input type="number" step="0.01" min="0" max="${saldoComp}" id="rc-imp-${comp.id}" 
+                   value="0.00" disabled oninput="actualizarImporteImputadoRC(${idx}, this.value)"
+                   class="w-full text-right font-mono border rounded px-2 py-1 text-sm bg-slate-100 focus:bg-white" />
+          </td>
+        </tr>
+      `;
+    }).join('');
+
     calcularTotalesRC();
-    return;
+  } catch (err) {
+    console.error('Error:', err);
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 text-xs">Error: ${err.message}</td></tr>`;
   }
-
-  tbody.innerHTML = comprobantesPendientes.map((comp, idx) => `
-    <tr class="hover:bg-slate-50 transition">
-      <td class="p-3 text-center">
-        <input type="checkbox" id="rc-chk-${comp.id}" onchange="toggleComprobante(${idx}, this.checked)" class="rounded border-slate-300" />
-      </td>
-      <td class="p-3 text-slate-600 font-mono text-xs">${comp.fecha}</td>
-      <td class="p-3 font-semibold text-slate-700">${comp.tipo_comprobante || 'FAC'} ${comp.numero || comp.id}</td>
-      <td class="p-3 text-right font-mono text-slate-600">$${Number(comp.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-      <td class="p-3 text-right font-mono font-bold text-slate-800">$${Number(comp.saldo || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-      <td class="p-3 text-right">
-        <input type="number" step="0.01" min="0" max="${comp.saldo}" id="rc-imp-${comp.id}" 
-               value="0.00" disabled oninput="actualizarImporteImputado(${idx}, this.value)"
-               class="w-full text-right font-mono border rounded px-2 py-1 text-sm bg-slate-100 focus:bg-white" />
-      </td>
-    </tr>
-  `).join('');
-
-  calcularTotalesRC();
 }
 
-function toggleComprobante(index, checked) {
-  const comp = comprobantesPendientes[index];
+function toggleComprobanteRC(index, checked) {
+  const comp = comprobantesPendientesRC[index];
+  const saldoComp = parseFloat(comp.saldo || comp.total || 0);
   const input = document.getElementById(`rc-imp-${comp.id}`);
   if (checked) {
     input.disabled = false;
-    input.value = comp.saldo;
-    comp.imputado = Number(comp.saldo);
+    input.value = saldoComp.toFixed(2);
+    comp.imputado = saldoComp;
   } else {
     input.disabled = true;
     input.value = '0.00';
@@ -736,14 +696,24 @@ function toggleComprobante(index, checked) {
   calcularTotalesRC();
 }
 
-function actualizarImporteImputado(index, valor) {
-  const comp = comprobantesPendientes[index];
+function toggleSelectAllComprobantes(checked) {
+  comprobantesPendientesRC.forEach((c, idx) => {
+    const chk = document.getElementById(`rc-chk-${c.id}`);
+    if (chk) {
+      chk.checked = checked;
+      toggleComprobanteRC(idx, checked);
+    }
+  });
+}
+
+function actualizarImporteImputadoRC(index, valor) {
+  const comp = comprobantesPendientesRC[index];
+  const saldoComp = parseFloat(comp.saldo || comp.total || 0);
   const m = parseFloat(valor) || 0;
-  comp.imputado = Math.min(m, comp.saldo);
+  comp.imputado = Math.min(m, saldoComp);
   calcularTotalesRC();
 }
 
-// 4. Gestión de Retenciones Sufridas
 function agregarFilaRetencion() {
   const idRow = Date.now();
   const tbody = document.getElementById('rc-retenciones-tbody');
@@ -781,9 +751,8 @@ function eliminarFilaRetencion(idRow) {
   calcularTotalesRC();
 }
 
-// 5. Cálculo y balanceo en vivo
 function calcularTotalesRC() {
-  const totalImputado = comprobantesPendientes.reduce((acc, c) => acc + (c.imputado || 0), 0);
+  const totalImputado = comprobantesPendientesRC.reduce((acc, c) => acc + (c.imputado || 0), 0);
 
   let totalRetenciones = 0;
   document.querySelectorAll('.ret-monto').forEach(input => {
@@ -792,14 +761,17 @@ function calcularTotalesRC() {
 
   const netoPercibido = Math.max(0, totalImputado - totalRetenciones);
 
-  document.getElementById('rc-resumen-imputado').innerText = `$${totalImputado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-  document.getElementById('rc-resumen-retenciones').innerText = `-$${totalRetenciones.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
-  document.getElementById('rc-resumen-neto').innerText = `$${netoPercibido.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  const elImp = document.getElementById('rc-resumen-imputado');
+  const elRet = document.getElementById('rc-resumen-retenciones');
+  const elNet = document.getElementById('rc-resumen-neto');
+
+  if (elImp) elImp.innerText = `$${totalImputado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  if (elRet) elRet.innerText = `-$${totalRetenciones.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  if (elNet) elNet.innerText = `$${netoPercibido.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 
   return { totalImputado, totalRetenciones, netoPercibido };
 }
 
-// 6. Confirmación, guardado y asiento contable
 async function guardarReciboCobro() {
   const clienteId = document.getElementById('rc-cliente-select').value;
   const fecha = document.getElementById('rc-fecha').value;
@@ -813,7 +785,6 @@ async function guardarReciboCobro() {
   if (totalImputado <= 0) return alert('Debe imputar al menos un comprobante de venta.');
   if (totalRetenciones > totalImputado) return alert('Las retenciones no pueden superar el total de facturas imputadas.');
 
-  // Recopilar retenciones
   const retencionesPayload = [];
   document.querySelectorAll('#rc-retenciones-tbody tr').forEach(tr => {
     const tipo = tr.querySelector('select').value;
@@ -825,14 +796,19 @@ async function guardarReciboCobro() {
   });
 
   try {
-    // A. Crear Asiento Contable
-    const descripcionAsiento = `Cobranza ${numero} - Clientes`;
-    const { data: asientoData, error: asientoError } = await supabase
+    const { data: { user } } = await db.auth.getUser();
+
+    // 1. Asiento Contable Automático
+    const clienteObj = padronContactos.find(c => String(c.id) === String(clienteId));
+    const nombreCliente = clienteObj ? clienteObj.razon_social : 'Cliente';
+    const glosa = `Cobranza ${numero} - ${nombreCliente}`;
+
+    const { data: asientoData, error: asientoError } = await db
       .from('asientos')
       .insert([{
         fecha: fecha,
-        concepto: descripcionAsiento,
-        origen: 'RECIBO_COBRO'
+        concepto: glosa,
+        user_id: user?.id || null
       }])
       .select()
       .single();
@@ -840,40 +816,43 @@ async function guardarReciboCobro() {
     if (asientoError) throw asientoError;
     const asientoId = asientoData.id;
 
-    // Renglones del Asiento:
+    // Renglones de Asiento
     const renglones = [];
-    // 1. Debe: Medio de Disponibilidad (Caja/Banco)
-    const cuentaDisponibilidad = medioCobro === 'EF' ? 'Caja Central' : 'Banco Cuenta Corriente';
-    renglones.push({
-      asiento_id: asientoId,
-      cuenta: cuentaDisponibilidad,
-      debe: netoPercibido,
-      haber: 0
-    });
+    const cuentaDisponibilidad = medioCobro === 'EF' ? 'Caja Central' : 'Banco Cuentas Corrientes';
+    
+    if (netoPercibido > 0) {
+      renglones.push({
+        asiento_id: asientoId,
+        cuenta_nombre: cuentaDisponibilidad,
+        debe: netoPercibido,
+        haber: 0,
+        detalle: `Cobro según ${numero}`
+      });
+    }
 
-    // 2. Debe: Retenciones Sufridas
     retencionesPayload.forEach(r => {
       renglones.push({
         asiento_id: asientoId,
-        cuenta: `Retenciones Sufridas ${r.tipo}`,
+        cuenta_nombre: `Retenciones Sufridas ${r.tipo}`,
         debe: r.importe,
-        haber: 0
+        haber: 0,
+        detalle: `Cert. ${r.certificado || 'S/D'}`
       });
     });
 
-    // 3. Haber: Deudores por Ventas (Total Imputado)
     renglones.push({
       asiento_id: asientoId,
-      cuenta: 'Deudores por Ventas',
+      cuenta_nombre: 'Deudores por Ventas',
       debe: 0,
-      haber: totalImputado
+      haber: totalImputado,
+      detalle: `Cancelación facturas ${nombreCliente}`
     });
 
-    const { error: renglonesError } = await supabase.from('asiento_detalles').insert(renglones);
+    const { error: renglonesError } = await db.from('asiento_detalles').insert(renglones);
     if (renglonesError) throw renglonesError;
 
-    // B. Crear Cabecera de Recibo de Cobro
-    const { data: reciboData, error: reciboError } = await supabase
+    // 2. Cabecera Recibo de Cobro
+    const { data: reciboData, error: reciboError } = await db
       .from('recibos_cobro')
       .insert([{
         numero: numero,
@@ -892,46 +871,52 @@ async function guardarReciboCobro() {
 
     if (reciboError) throw reciboError;
 
-    // C. Guardar Detalles de Imputación y Actualizar Saldos de Comprobantes
-    const comprobantesAfectados = comprobantesPendientes.filter(c => (c.imputado || 0) > 0);
+    // 3. Detalle de Imputación y actualización de comprobantes_venta
+    const comprobantesAfectados = comprobantesPendientesRC.filter(c => (c.imputado || 0) > 0);
     const detallesPayload = comprobantesAfectados.map(c => ({
       recibo_id: reciboData.id,
       comprobante_venta_id: c.id,
       importe_imputado: c.imputado
     }));
 
-    const { error: detError } = await supabase.from('recibo_cobro_detalles').insert(detallesPayload);
+    const { error: detError } = await db.from('recibo_cobro_detalles').insert(detallesPayload);
     if (detError) throw detError;
 
-    // D. Actualizar saldos en comprobantes_venta
     for (const c of comprobantesAfectados) {
-      const nuevoSaldo = Number(c.saldo) - Number(c.imputado);
+      const saldoOriginal = parseFloat(c.saldo !== undefined ? c.saldo : c.total);
+      const nuevoSaldo = Math.max(0, saldoOriginal - Number(c.imputado));
       const updateData = { saldo: nuevoSaldo };
-      if (nuevoSaldo <= 0.001) {
-        updateData.estado = 'COBRADO';
+      if (nuevoSaldo <= 0.01) {
+        updateData.estado_cobro = 'Cobrado';
       }
-      await supabase.from('comprobantes_venta').update(updateData).eq('id', c.id);
+      await db.from('comprobantes_venta').update(updateData).eq('id', c.id);
     }
 
-    alert(`¡Recibo ${numero} emitido con éxito! Asiento generado.`);
+    showToast(`¡Recibo ${numero} emitido con éxito! Asiento generado.`);
     limpiarFormularioRecibo();
+    await cargarFacturasDesdeSupabase();
+    if (typeof renderLibroDiario === 'function') await renderLibroDiario();
+    if (typeof actualizarDashboardMetrics === 'function') await actualizarDashboardMetrics();
 
   } catch (err) {
     console.error('Error al registrar recibo de cobro:', err);
-    alert(`Ocurrió un error al guardar el recibo: ${err.message}`);
+    alert(`Ocurrió un error: ${err.message}`);
   }
 }
 
 function limpiarFormularioRecibo() {
-  document.getElementById('rc-cliente-select').value = '';
-  document.getElementById('rc-observaciones').value = '';
-  document.getElementById('rc-retenciones-tbody').innerHTML = '';
-  document.getElementById('rc-facturas-tbody').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Seleccione un cliente para consultar deudas pendientes.</td></tr>';
-  comprobantesPendientes = [];
+  const sel = document.getElementById('rc-cliente-select');
+  if (sel) sel.value = '';
+  const obs = document.getElementById('rc-observaciones');
+  if (obs) obs.value = '';
+  const tbRet = document.getElementById('rc-retenciones-tbody');
+  if (tbRet) tbRet.innerHTML = '';
+  const tbFac = document.getElementById('rc-facturas-tbody');
+  if (tbFac) tbFac.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Seleccione un cliente para consultar deudas pendientes.</td></tr>';
+  comprobantesPendientesRC = [];
   calcularTotalesRC();
   generarProximoNumeroRC();
 }
-
 // ==========================================
 // MOTOR 3: CONCILIADOR BANCARIO (Fuzzy Engine)
 // ==========================================
