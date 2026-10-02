@@ -79,6 +79,10 @@
           <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
           <span>Dashboard</span>
         </button>
+        <button id="nav-facturacion" onclick="switchTab('facturacion')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="receipt-text" class="w-4 h-4"></i>
+          <span>Facturación (C/V)</span>
+        </button>
         <button onclick="switchTab('conciliador')" id="nav-conciliador" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="scale" class="w-4 h-4"></i>
           <span>Conciliador Bancario</span>
@@ -286,8 +290,147 @@
   </div>
 
 </section>
+<!-- VISTA 2: FACTURACIÓN Y COMPROBANTES (COMPRAS Y VENTAS) -->
+<section id="tab-facturacion" class="hidden space-y-6">
+  <!-- Encabezado y Selector de Circuito -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-slate-800">Gestor de Facturación y Comprobantes</h2>
+      <p class="text-xs text-slate-500">Carga de facturas de compra y venta, desglose impositivo y devengamiento automático en Libro Diario.</p>
+    </div>
+    
+    <!-- Conmutador Compras / Ventas -->
+    <div class="inline-flex bg-slate-200/70 p-1 rounded-xl border border-slate-300">
+      <button type="button" id="btn-tab-fc-compras" onclick="cambiarCircuitoFacturacion('COMPRAS')" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
+        📥 Facturas de Compra (Proveedores)
+      </button>
+      <button type="button" id="btn-tab-fc-ventas" onclick="cambiarCircuitoFacturacion('VENTAS')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+        📤 Facturas de Venta (Clientes)
+      </button>
+    </div>
+  </div>
 
-<!-- VISTA 2: CONCILIADOR BANCARIO Y CRUZADOR -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Formulario de Emisión / Registro -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
+      <h3 id="fc-form-titulo" class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
+        <i data-lucide="file-plus-2" class="w-4 h-4 text-indigo-600"></i> Registrar Factura de Compra
+      </h3>
+
+      <form id="form-factura" onsubmit="guardarFactura(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Emisión</label>
+          <input type="date" id="fc-fecha" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo Comprobante</label>
+            <select id="fc-tipo-doc" class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="Factura A">Factura A</option>
+              <option value="Factura B">Factura B</option>
+              <option value="Factura C">Factura C</option>
+              <option value="Nota de Crédito A">Nota de Crédito A</option>
+              <option value="Nota de Débito A">Nota de Débito A</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Número (Pto-Nro)</label>
+            <input type="text" id="fc-numero-doc" placeholder="00001-00012345" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+        </div>
+
+        <div>
+          <label id="fc-label-entidad" class="block text-xs font-semibold text-slate-600 mb-1">Razón Social Proveedor</label>
+          <input type="text" id="fc-entidad" placeholder="Ej: Materiales del Centro SA" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">CUIT</label>
+          <input type="text" id="fc-cuit" placeholder="30-12345678-9" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Concepto / Detalle Operación</label>
+          <input type="text" id="fc-concepto" placeholder="Ej: Compra de insumos y mercadería" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+
+        <!-- Desglose Impositivo Automático -->
+        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2.5">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Neto Gravado ($)</label>
+              <input type="number" step="0.01" min="0" id="fc-neto" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" required />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Alícuota IVA</label>
+              <select id="fc-alicuota-iva" onchange="calcularTotalesFactura()" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                <option value="21">21.0%</option>
+                <option value="10.5">10.5%</option>
+                <option value="27">27.0%</option>
+                <option value="0">0.0% (Exento)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">IVA Liquidado ($)</label>
+              <input type="number" step="0.01" id="fc-iva" readonly class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-100 text-slate-600 font-mono" value="0.00" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Percep. / No Grav. ($)</label>
+              <input type="number" step="0.01" min="0" id="fc-percepciones" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
+            <span class="font-bold text-slate-800">Total Comprobante:</span>
+            <span id="fc-lbl-total" class="font-bold text-indigo-700 text-sm font-mono">$ 0.00</span>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
+          <i data-lucide="check-circle" class="w-4 h-4"></i> Guardar y Generar Asiento
+        </button>
+      </form>
+    </div>
+
+    <!-- Grilla Historial Comprobantes -->
+    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+      <div>
+        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <h3 id="fc-tabla-titulo" class="text-sm font-bold text-slate-700">Comprobantes de Compra Registrados</h3>
+          <div class="relative w-full sm:w-60">
+            <input type="text" id="fc-buscar" oninput="renderizarTablaFacturas()" placeholder="Buscar por entidad, CUIT o N°..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                <th class="p-2.5">Fecha</th>
+                <th class="p-2.5">Comprobante</th>
+                <th class="p-2.5">Entidad / CUIT</th>
+                <th class="p-2.5 text-right">Neto</th>
+                <th class="p-2.5 text-right">Total</th>
+                <th class="p-2.5 text-center">Estado</th>
+                <th class="p-2.5 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-facturas" class="divide-y divide-slate-100 text-slate-700">
+              <!-- Dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VISTA 3: CONCILIADOR BANCARIO Y CRUZADOR -->
 <section id="tab-conciliador" class="hidden space-y-6">
 
   <!-- Encabezado y Acciones de Exportación -->
@@ -383,7 +526,7 @@
 
 </section>
       
-<!-- VISTA 3: GESTOR DE CUENTAS CORRIENTES Y AGING -->
+<!-- VISTA 4: GESTOR DE CUENTAS CORRIENTES Y AGING -->
 <section id="tab-cta-corriente" class="hidden space-y-6">
 
   <!-- Encabezado y Exportación -->
@@ -454,7 +597,7 @@
 
 </section>
 
-     <!-- VISTA 4: CRUZADOR IVA DIGITAL -->
+<!-- VISTA 5: CRUZADOR IVA DIGITAL -->
 <section id="tab-cruzador-iva" class="hidden space-y-6">
   <div class="flex justify-between items-center">
     <div>
@@ -501,7 +644,7 @@
     Cargá ambos archivos CSV y presioná "Auditar y Cruzar Registros" para detectar inconsistencias.
   </div>
 </section>
-      <!-- VISTA 5: CALC RETENCIONES -->
+<!-- VISTA 6: CALC RETENCIONES -->
       <section id="tab-calc-retenciones" class="hidden space-y-6">
         <div class="flex justify-between items-center">
           <div>
@@ -545,7 +688,7 @@
         </div>
       </section>
 
-     <!-- VISTA 6: FONDO FIJO / CAJA CHICA -->
+<!-- VISTA 7: FONDO FIJO / CAJA CHICA -->
 <section id="tab-fondo-fijo" class="hidden space-y-6">
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
@@ -673,7 +816,7 @@
   </div>
 </section>
 
-      <!-- VISTA 7: GESTOR DE ÓRDENES DE PAGO (OP) -->
+<!-- VISTA 8: GESTOR DE ÓRDENES DE PAGO (OP) -->
 <div id="tab-ordenes-pago" class="hidden space-y-6">
   
   <!-- Encabezado y Acciones -->
@@ -825,7 +968,7 @@
   </div>
 
 </div>
-      <!-- VISTA 8: LIBRO DIARIO Y ASIENTOS MANUALES -->
+<!-- VISTA 9: LIBRO DIARIO Y ASIENTOS MANUALES -->
 <section id="tab-libro-diario" class="hidden space-y-6">
   
   <!-- Encabezado y Acciones -->
