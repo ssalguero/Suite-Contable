@@ -617,7 +617,323 @@ function descargarPlantillaComprasCSV() {
 }
 
 // ==========================================
-// MOTOR 2: CONCILIADOR BANCARIO (Fuzzy Engine)
+// MOTOR 2: RECIBOS DE COBRO
+// ==========================================
+// --- ESTADO LOCAL DEL RECIBO ---
+let comprobantesPendientes = [];
+let retencionesSufridas = [];
+
+// Inicialización de fecha y número sugerido
+function initRecibos() {
+  const fechaInput = document.getElementById('rc-fecha');
+  if (fechaInput) fechaInput.value = new Date().toISOString().split('T')[0];
+  generarProximoNumeroRC();
+  cargarClientesSelect();
+  if (window.lucide) lucide.createIcons();
+}
+
+// 1. Generar número correlativo
+async function generarProximoNumeroRC() {
+  try {
+    const { data, error } = await supabase
+      .from('recibos_cobro')
+      .select('numero')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+    let siguienteNro = 1;
+    if (data && data.length > 0 && data[0].numero) {
+      const match = data[0].numero.match(/\d+$/);
+      if (match) siguienteNro = parseInt(match[0], 10) + 1;
+    }
+    document.getElementById('rc-numero').value = `RC-0001-${String(siguienteNro).padStart(8, '0')}`;
+  } catch (err) {
+    console.error('Error al generar número RC:', err);
+    document.getElementById('rc-numero').value = `RC-0001-00000001`;
+  }
+}
+
+// 2. Cargar clientes en el selector
+async function cargarClientesSelect() {
+  const { data, error } = await supabase
+    .from('clientes_proveedores')
+    .select('id, razon_social, cuit')
+    .order('razon_social');
+  
+  if (error) return console.error('Error cargando clientes:', error);
+  const select = document.getElementById('rc-cliente-select');
+  select.innerHTML = '<option value="">-- Seleccionar Cliente --</option>';
+  data.forEach(c => {
+    select.innerHTML += `<option value="${c.id}">${c.razon_social} (${c.cuit})</option>`;
+  });
+}
+
+// 3. Cargar facturas de venta con saldo impago
+async function cargarFacturasPendientesCliente(clienteId) {
+  const tbody = document.getElementById('rc-facturas-tbody');
+  if (!clienteId) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Seleccione un cliente para consultar deudas pendientes.</td></tr>';
+    comprobantesPendientes = [];
+    calcularTotalesRC();
+    return;
+  }
+
+  tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Consultando comprobantes...</td></tr>';
+
+  // Consulta comprobantes con saldo > 0
+  const { data, error } = await supabase
+    .from('comprobantes_venta')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .gt('saldo', 0)
+    .order('fecha', { ascending: true });
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 text-xs">Error: ${error.message}</td></tr>`;
+    return;
+  }
+
+  comprobantesPendientes = data || [];
+  if (comprobantesPendientes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">El cliente no registra facturas con saldo pendiente.</td></tr>';
+    calcularTotalesRC();
+    return;
+  }
+
+  tbody.innerHTML = comprobantesPendientes.map((comp, idx) => `
+    <tr class="hover:bg-slate-50 transition">
+      <td class="p-3 text-center">
+        <input type="checkbox" id="rc-chk-${comp.id}" onchange="toggleComprobante(${idx}, this.checked)" class="rounded border-slate-300" />
+      </td>
+      <td class="p-3 text-slate-600 font-mono text-xs">${comp.fecha}</td>
+      <td class="p-3 font-semibold text-slate-700">${comp.tipo_comprobante || 'FAC'} ${comp.numero || comp.id}</td>
+      <td class="p-3 text-right font-mono text-slate-600">$${Number(comp.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+      <td class="p-3 text-right font-mono font-bold text-slate-800">$${Number(comp.saldo || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+      <td class="p-3 text-right">
+        <input type="number" step="0.01" min="0" max="${comp.saldo}" id="rc-imp-${comp.id}" 
+               value="0.00" disabled oninput="actualizarImporteImputado(${idx}, this.value)"
+               class="w-full text-right font-mono border rounded px-2 py-1 text-sm bg-slate-100 focus:bg-white" />
+      </td>
+    </tr>
+  `).join('');
+
+  calcularTotalesRC();
+}
+
+function toggleComprobante(index, checked) {
+  const comp = comprobantesPendientes[index];
+  const input = document.getElementById(`rc-imp-${comp.id}`);
+  if (checked) {
+    input.disabled = false;
+    input.value = comp.saldo;
+    comp.imputado = Number(comp.saldo);
+  } else {
+    input.disabled = true;
+    input.value = '0.00';
+    comp.imputado = 0;
+  }
+  calcularTotalesRC();
+}
+
+function actualizarImporteImputado(index, valor) {
+  const comp = comprobantesPendientes[index];
+  const m = parseFloat(valor) || 0;
+  comp.imputado = Math.min(m, comp.saldo);
+  calcularTotalesRC();
+}
+
+// 4. Gestión de Retenciones Sufridas
+function agregarFilaRetencion() {
+  const idRow = Date.now();
+  const tbody = document.getElementById('rc-retenciones-tbody');
+  const tr = document.createElement('tr');
+  tr.id = `ret-row-${idRow}`;
+  tr.innerHTML = `
+    <td class="p-2">
+      <select class="w-full border rounded p-1 text-xs" onchange="calcularTotalesRC()">
+        <option value="IIBB">Retención IIBB Sufrida</option>
+        <option value="GANANCIAS">Retención Ganancias Sufrida</option>
+        <option value="IVA">Retención IVA Sufrida</option>
+        <option value="SUSS">Retención SUSS Sufrida</option>
+      </select>
+    </td>
+    <td class="p-2">
+      <input type="text" placeholder="N° Certificado" class="w-full border rounded p-1 text-xs" />
+    </td>
+    <td class="p-2 text-right">
+      <input type="number" step="0.01" min="0" value="0.00" oninput="calcularTotalesRC()" class="ret-monto w-full text-right font-mono border rounded p-1 text-xs" />
+    </td>
+    <td class="p-2 text-center">
+      <button type="button" onclick="eliminarFilaRetencion('${idRow}')" class="text-red-500 hover:text-red-700">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+      </button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+  if (window.lucide) lucide.createIcons();
+  calcularTotalesRC();
+}
+
+function eliminarFilaRetencion(idRow) {
+  const row = document.getElementById(`ret-row-${idRow}`);
+  if (row) row.remove();
+  calcularTotalesRC();
+}
+
+// 5. Cálculo y balanceo en vivo
+function calcularTotalesRC() {
+  const totalImputado = comprobantesPendientes.reduce((acc, c) => acc + (c.imputado || 0), 0);
+
+  let totalRetenciones = 0;
+  document.querySelectorAll('.ret-monto').forEach(input => {
+    totalRetenciones += parseFloat(input.value) || 0;
+  });
+
+  const netoPercibido = Math.max(0, totalImputado - totalRetenciones);
+
+  document.getElementById('rc-resumen-imputado').innerText = `$${totalImputado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  document.getElementById('rc-resumen-retenciones').innerText = `-$${totalRetenciones.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  document.getElementById('rc-resumen-neto').innerText = `$${netoPercibido.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+
+  return { totalImputado, totalRetenciones, netoPercibido };
+}
+
+// 6. Confirmación, guardado y asiento contable
+async function guardarReciboCobro() {
+  const clienteId = document.getElementById('rc-cliente-select').value;
+  const fecha = document.getElementById('rc-fecha').value;
+  const numero = document.getElementById('rc-numero').value;
+  const medioCobro = document.getElementById('rc-medio-cobro').value;
+  const observaciones = document.getElementById('rc-observaciones').value;
+
+  const { totalImputado, totalRetenciones, netoPercibido } = calcularTotalesRC();
+
+  if (!clienteId) return alert('Seleccione un cliente.');
+  if (totalImputado <= 0) return alert('Debe imputar al menos un comprobante de venta.');
+  if (totalRetenciones > totalImputado) return alert('Las retenciones no pueden superar el total de facturas imputadas.');
+
+  // Recopilar retenciones
+  const retencionesPayload = [];
+  document.querySelectorAll('#rc-retenciones-tbody tr').forEach(tr => {
+    const tipo = tr.querySelector('select').value;
+    const cert = tr.querySelector('input[type="text"]').value;
+    const monto = parseFloat(tr.querySelector('.ret-monto').value) || 0;
+    if (monto > 0) {
+      retencionesPayload.push({ tipo, certificado: cert, importe: monto });
+    }
+  });
+
+  try {
+    // A. Crear Asiento Contable
+    const descripcionAsiento = `Cobranza ${numero} - Clientes`;
+    const { data: asientoData, error: asientoError } = await supabase
+      .from('asientos')
+      .insert([{
+        fecha: fecha,
+        concepto: descripcionAsiento,
+        origen: 'RECIBO_COBRO'
+      }])
+      .select()
+      .single();
+
+    if (asientoError) throw asientoError;
+    const asientoId = asientoData.id;
+
+    // Renglones del Asiento:
+    const renglones = [];
+    // 1. Debe: Medio de Disponibilidad (Caja/Banco)
+    const cuentaDisponibilidad = medioCobro === 'EF' ? 'Caja Central' : 'Banco Cuenta Corriente';
+    renglones.push({
+      asiento_id: asientoId,
+      cuenta: cuentaDisponibilidad,
+      debe: netoPercibido,
+      haber: 0
+    });
+
+    // 2. Debe: Retenciones Sufridas
+    retencionesPayload.forEach(r => {
+      renglones.push({
+        asiento_id: asientoId,
+        cuenta: `Retenciones Sufridas ${r.tipo}`,
+        debe: r.importe,
+        haber: 0
+      });
+    });
+
+    // 3. Haber: Deudores por Ventas (Total Imputado)
+    renglones.push({
+      asiento_id: asientoId,
+      cuenta: 'Deudores por Ventas',
+      debe: 0,
+      haber: totalImputado
+    });
+
+    const { error: renglonesError } = await supabase.from('asiento_detalles').insert(renglones);
+    if (renglonesError) throw renglonesError;
+
+    // B. Crear Cabecera de Recibo de Cobro
+    const { data: reciboData, error: reciboError } = await supabase
+      .from('recibos_cobro')
+      .insert([{
+        numero: numero,
+        fecha: fecha,
+        cliente_id: clienteId,
+        total_cobrado: totalImputado,
+        total_retenciones: totalRetenciones,
+        total_neto_percibido: netoPercibido,
+        medio_cobro: medioCobro,
+        retenciones_sufridas: retencionesPayload,
+        observaciones: observaciones,
+        asiento_id: asientoId
+      }])
+      .select()
+      .single();
+
+    if (reciboError) throw reciboError;
+
+    // C. Guardar Detalles de Imputación y Actualizar Saldos de Comprobantes
+    const comprobantesAfectados = comprobantesPendientes.filter(c => (c.imputado || 0) > 0);
+    const detallesPayload = comprobantesAfectados.map(c => ({
+      recibo_id: reciboData.id,
+      comprobante_venta_id: c.id,
+      importe_imputado: c.imputado
+    }));
+
+    const { error: detError } = await supabase.from('recibo_cobro_detalles').insert(detallesPayload);
+    if (detError) throw detError;
+
+    // D. Actualizar saldos en comprobantes_venta
+    for (const c of comprobantesAfectados) {
+      const nuevoSaldo = Number(c.saldo) - Number(c.imputado);
+      const updateData = { saldo: nuevoSaldo };
+      if (nuevoSaldo <= 0.001) {
+        updateData.estado = 'COBRADO';
+      }
+      await supabase.from('comprobantes_venta').update(updateData).eq('id', c.id);
+    }
+
+    alert(`¡Recibo ${numero} emitido con éxito! Asiento generado.`);
+    limpiarFormularioRecibo();
+
+  } catch (err) {
+    console.error('Error al registrar recibo de cobro:', err);
+    alert(`Ocurrió un error al guardar el recibo: ${err.message}`);
+  }
+}
+
+function limpiarFormularioRecibo() {
+  document.getElementById('rc-cliente-select').value = '';
+  document.getElementById('rc-observaciones').value = '';
+  document.getElementById('rc-retenciones-tbody').innerHTML = '';
+  document.getElementById('rc-facturas-tbody').innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Seleccione un cliente para consultar deudas pendientes.</td></tr>';
+  comprobantesPendientes = [];
+  calcularTotalesRC();
+  generarProximoNumeroRC();
+}
+
+// ==========================================
+// MOTOR 3: CONCILIADOR BANCARIO (Fuzzy Engine)
 // ==========================================
 let resultadoConciliacionGlobal = null;
 
@@ -815,7 +1131,7 @@ function exportarInformeConciliacionCSV() {
 }
 
 // ==========================================
-// MOTOR 3: CUENTAS CORRIENTES (FIFO & Aging)
+// MOTOR 4: CUENTAS CORRIENTES (FIFO & Aging)
 // ==========================================
 let datosCtaCteProcesados = [];
 
@@ -991,7 +1307,7 @@ function exportarCtaCteCSV() {
 }
 
 // ==========================================
-// MOTOR 4: CRUZADOR IVA DIGITAL (ARCA vs. Interno)
+// MOTOR 5: CRUZADOR IVA DIGITAL (ARCA vs. Interno)
 // ==========================================
 let datosArcaIVA = [];
 let datosInternoIVA = [];
@@ -1136,7 +1452,7 @@ function runCruzadorIvaDemo() {
 }
 
 // ==========================================
-// MOTOR 5: CÁLCULO RETENCIONES (RG 830)
+// MOTOR 6: CÁLCULO RETENCIONES (RG 830)
 // ==========================================
 async function calculateRetentionsUI() {
   const net = parseFloat(document.getElementById('ret-neto').value) || 0;
@@ -1262,7 +1578,7 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
 }
 
 // ==========================================
-// MOTOR 6: MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
+// MOTOR 7: MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
 // ==========================================
 
 const estadoFondoFijo = {
@@ -1762,7 +2078,7 @@ function actualizarMetricasFondoFijoDashboard() {
     if (elSub) elSub.textContent = `${registrosActivos.length} comprobantes activos`;
 }
 // ==========================================
-// MOTOR 7 : ÓRDENES DE PAGO (OP) - MULTIFACTURA
+// MOTOR 8 : ÓRDENES DE PAGO (OP) - MULTIFACTURA
 // ==========================================
 let historialOP = [];
 let facturasComprasDisponibles = [];
@@ -2217,7 +2533,7 @@ function descargarPDFOP(id) {
 }
 
 // ==========================================
-// MOTOR 8: LIBRO DIARIO Y ASIENTOS
+// MOTOR 9: LIBRO DIARIO Y ASIENTOS
 // ==========================================
 let historialLibroDiario = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
 
