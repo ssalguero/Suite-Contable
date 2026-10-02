@@ -56,6 +56,64 @@
       </form>
     </div>
   </div>
+  <div id="modal-nuevo-contacto" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
+        <h3 class="text-sm font-bold flex items-center gap-2">
+          <i data-lucide="user-plus" class="w-4 h-4 text-indigo-400"></i> Nuevo Contacto Comercial
+        </h3>
+        <button type="button" onclick="cerrarModalContacto()" class="text-slate-400 hover:text-white p-1 text-base">✕</button>
+      </div>
+
+      <form id="form-nuevo-contacto" onsubmit="guardarContactoRapido(event)" class="p-5 space-y-3.5 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Tipo de Contacto</label>
+          <select id="contacto-tipo" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="CLIENTE">Cliente</option>
+            <option value="PROVEEDOR">Proveedor</option>
+            <option value="AMBOS">Ambos (Cliente y Proveedor)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Razón Social / Nombre Comercial</label>
+          <input type="text" id="contacto-razon-social" required placeholder="Ej: Materiales del Centro SA" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">CUIT</label>
+            <input type="text" id="contacto-cuit" required placeholder="30-12345678-9" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Condición Frente al IVA</label>
+            <select id="contacto-condicion-iva" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="Responsable Inscripto">Responsable Inscripto</option>
+              <option value="Monotributo">Monotributo</option>
+              <option value="Exento">Exento</option>
+              <option value="Consumidor Final">Consumidor Final</option>
+              <option value="Exterior">Exterior</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Alícuota IIBB (%)</label>
+            <input type="number" step="0.01" id="contacto-iibb" value="0.00" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">CBU / Alias Bancario</label>
+            <input type="text" id="contacto-cbu" placeholder="alias.banco" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-sm cursor-pointer mt-2">
+          Guardar en Padrón
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- Sidebar / Barra Lateral -->
   <aside class="bg-slate-900 text-slate-300 w-64 min-h-screen flex flex-col justify-between border-r border-slate-800 shrink-0">
@@ -292,83 +350,130 @@
 </section>
 <!-- VISTA 2: FACTURACIÓN Y COMPROBANTES (COMPRAS Y VENTAS) -->
 <section id="tab-facturacion" class="hidden space-y-6">
-  <!-- Encabezado y Selector de Circuito -->
+  <!-- Encabezado y Conmutador (Ventas primero) -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h2 class="text-xl font-bold text-slate-800">Gestor de Facturación y Comprobantes</h2>
-      <p class="text-xs text-slate-500">Carga de facturas de compra y venta, desglose impositivo y devengamiento automático en Libro Diario.</p>
+      <p class="text-xs text-slate-500">Emisión de ventas, compras, notas de crédito/débito y devengamiento contable automático.</p>
     </div>
     
-    <!-- Conmutador Compras / Ventas -->
     <div class="inline-flex bg-slate-200/70 p-1 rounded-xl border border-slate-300">
-      <button type="button" id="btn-tab-fc-compras" onclick="cambiarCircuitoFacturacion('COMPRAS')" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
-        📥 Facturas de Compra (Proveedores)
-      </button>
-      <button type="button" id="btn-tab-fc-ventas" onclick="cambiarCircuitoFacturacion('VENTAS')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+      <button type="button" id="btn-tab-fc-ventas" onclick="cambiarCircuitoFacturacion('VENTAS')" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-emerald-700 shadow-xs transition-all cursor-pointer">
         📤 Facturas de Venta (Clientes)
+      </button>
+      <button type="button" id="btn-tab-fc-compras" onclick="cambiarCircuitoFacturacion('COMPRAS')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+        📥 Facturas de Compra (Proveedores)
       </button>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Formulario de Emisión / Registro -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
-      <h3 id="fc-form-titulo" class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
-        <i data-lucide="file-plus-2" class="w-4 h-4 text-indigo-600"></i> Registrar Factura de Compra
-      </h3>
+  <!-- Panel Exclusivo de Importación para Compras -->
+  <div id="panel-importacion-compras" class="hidden bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+      <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs">
+        <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+        <span>Importación Masiva de Comprobantes de Compra (Mis Comprobantes ARCA / CSV)</span>
+      </div>
+      <button type="button" onclick="descargarPlantillaComprasCSV()" class="text-[11px] text-slate-500 hover:text-indigo-600 underline">Descargar Formato Modelo</button>
+    </div>
+    <div class="flex items-center gap-3">
+      <input type="file" id="fc-input-csv-compras" accept=".csv, .txt" onchange="importarCSVCompras(this.files[0])" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg" />
+      <span id="fc-status-import" class="text-xs text-slate-400 italic whitespace-nowrap">Esperando archivo...</span>
+    </div>
+  </div>
 
-      <form id="form-factura" onsubmit="guardarFactura(event)" class="space-y-3">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Formulario de Facturación -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+        <h3 id="fc-form-titulo" class="text-sm font-bold text-slate-700 flex items-center gap-2">
+          <i data-lucide="file-plus-2" class="w-4 h-4 text-emerald-600"></i> Emitir Factura de Venta
+        </h3>
+        <button type="button" onclick="abrirModalContacto()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 cursor-pointer">
+          + Nuevo Contacto
+        </button>
+      </div>
+
+      <form id="form-factura" onsubmit="guardarFactura(event)" class="space-y-3 text-xs">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha de Emisión</label>
-          <input type="date" id="fc-fecha" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <label class="block font-semibold text-slate-600 mb-1">Fecha de Emisión</label>
+          <input type="date" id="fc-fecha" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo Comprobante</label>
-            <select id="fc-tipo-doc" class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            <label class="block font-semibold text-slate-600 mb-1">Tipo Comprobante</label>
+            <select id="fc-tipo-doc" onchange="adaptarFormularioPorTipoDoc(this.value)" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+              <!-- Facturas -->
               <option value="Factura A">Factura A</option>
               <option value="Factura B">Factura B</option>
               <option value="Factura C">Factura C</option>
+              <option value="Factura M">Factura M</option>
+              <option value="Factura E">Factura E (Export.)</option>
+              <option value="Factura X">Factura X (No Fiscal)</option>
+              <!-- Notas de Crédito -->
               <option value="Nota de Crédito A">Nota de Crédito A</option>
+              <option value="Nota de Crédito B">Nota de Crédito B</option>
+              <option value="Nota de Crédito C">Nota de Crédito C</option>
+              <!-- Notas de Débito -->
               <option value="Nota de Débito A">Nota de Débito A</option>
+              <option value="Nota de Débito B">Nota de Débito B</option>
+              <option value="Nota de Débito C">Nota de Débito C</option>
+              <!-- Recibos Oficiales -->
+              <option value="Recibo A">Recibo Oficial A</option>
+              <option value="Recibo B">Recibo Oficial B</option>
+              <option value="Recibo C">Recibo Oficial C</option>
+              <option value="Recibo X">Recibo X</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Número (Pto-Nro)</label>
-            <input type="text" id="fc-numero-doc" placeholder="00001-00012345" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+            <label class="block font-semibold text-slate-600 mb-1">Número (Pto-Nro)</label>
+            <input type="text" id="fc-numero-doc" placeholder="00001-00012345" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
           </div>
         </div>
 
         <div>
-          <label id="fc-label-entidad" class="block text-xs font-semibold text-slate-600 mb-1">Razón Social Proveedor</label>
-          <input type="text" id="fc-entidad" placeholder="Ej: Materiales del Centro SA" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <label id="fc-label-entidad" class="block font-semibold text-slate-600 mb-1">Razón Social Cliente</label>
+          <input type="text" id="fc-entidad" list="lista-padron-contactos" onchange="seleccionarContactoPadron(this.value)" placeholder="Escribí o seleccioná de la lista..." required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <datalist id="lista-padron-contactos"></datalist>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">CUIT</label>
+            <input type="text" id="fc-cuit" placeholder="30-12345678-9" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Condición IVA</label>
+            <select id="fc-condicion-iva" class="w-full px-2 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50">
+              <option value="Responsable Inscripto">Resp. Inscripto</option>
+              <option value="Monotributo">Monotributo</option>
+              <option value="Exento">Exento</option>
+              <option value="Consumidor Final">Consumidor Final</option>
+              <option value="Exterior">Exterior</option>
+            </select>
+          </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">CUIT</label>
-          <input type="text" id="fc-cuit" placeholder="30-12345678-9" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          <label class="block font-semibold text-slate-600 mb-1">Concepto / Detalle de la Operación</label>
+          <input type="text" id="fc-concepto" placeholder="Ej: Servicios de auditoría profesional" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Concepto / Detalle Operación</label>
-          <input type="text" id="fc-concepto" placeholder="Ej: Compra de insumos y mercadería" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-        </div>
-
-        <!-- Desglose Impositivo Automático -->
+        <!-- Desglose Impositivo -->
         <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2.5">
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">Neto Gravado ($)</label>
-              <input type="number" step="0.01" min="0" id="fc-neto" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" required />
+              <input type="number" step="0.01" min="0" id="fc-neto" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" required />
             </div>
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">Alícuota IVA</label>
-              <select id="fc-alicuota-iva" onchange="calcularTotalesFactura()" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+              <select id="fc-alicuota-iva" onchange="calcularTotalesFactura()" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
                 <option value="21">21.0%</option>
                 <option value="10.5">10.5%</option>
                 <option value="27">27.0%</option>
-                <option value="0">0.0% (Exento)</option>
+                <option value="0">0.0% (Exento/X)</option>
               </select>
             </div>
           </div>
@@ -376,33 +481,33 @@
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">IVA Liquidado ($)</label>
-              <input type="number" step="0.01" id="fc-iva" readonly class="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-100 text-slate-600 font-mono" value="0.00" />
+              <input type="number" step="0.01" id="fc-iva" readonly class="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-slate-100 text-slate-600 font-mono" value="0.00" />
             </div>
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">Percep. / No Grav. ($)</label>
-              <input type="number" step="0.01" min="0" id="fc-percepciones" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
+              <input type="number" step="0.01" min="0" id="fc-percepciones" oninput="calcularTotalesFactura()" placeholder="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
             </div>
           </div>
 
           <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
-            <span class="font-bold text-slate-800">Total Comprobante:</span>
+            <span class="font-bold text-slate-800">Total Liquidado:</span>
             <span id="fc-lbl-total" class="font-bold text-indigo-700 text-sm font-mono">$ 0.00</span>
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
-          <i data-lucide="check-circle" class="w-4 h-4"></i> Guardar y Generar Asiento
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
+          <i data-lucide="check-circle" class="w-4 h-4"></i> Guardar y Asentar en Libro Diario
         </button>
       </form>
     </div>
 
-    <!-- Grilla Historial Comprobantes -->
+    <!-- Grilla Historial -->
     <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
       <div>
         <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <h3 id="fc-tabla-titulo" class="text-sm font-bold text-slate-700">Comprobantes de Compra Registrados</h3>
+          <h3 id="fc-tabla-titulo" class="text-sm font-bold text-slate-700">Comprobantes de Venta Registrados</h3>
           <div class="relative w-full sm:w-60">
-            <input type="text" id="fc-buscar" oninput="renderizarTablaFacturas()" placeholder="Buscar por entidad, CUIT o N°..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <input type="text" id="fc-buscar" oninput="renderizarTablaFacturas()" placeholder="Buscar entidad, CUIT o N°..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
             <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
           </div>
         </div>
@@ -420,16 +525,13 @@
                 <th class="p-2.5 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody id="tbody-facturas" class="divide-y divide-slate-100 text-slate-700">
-              <!-- Dinámico -->
-            </tbody>
+            <tbody id="tbody-facturas" class="divide-y divide-slate-100 text-slate-700"></tbody>
           </table>
         </div>
       </div>
     </div>
   </div>
 </section>
-
 <!-- VISTA 3: CONCILIADOR BANCARIO Y CRUZADOR -->
 <section id="tab-conciliador" class="hidden space-y-6">
 
@@ -818,12 +920,10 @@
 
 <!-- VISTA 8: GESTOR DE ÓRDENES DE PAGO (OP) -->
 <div id="tab-ordenes-pago" class="hidden space-y-6">
-  
-  <!-- Encabezado y Acciones -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h2 class="text-xl font-bold text-slate-800">Generador de Órdenes de Pago (OP)</h2>
-      <p class="text-xs text-slate-500">Emisión de órdenes de pago a proveedores con retenciones, comprobantes adjuntos y estados.</p>
+      <p class="text-xs text-slate-500">Emisión individual o multifactura con retenciones, comprobantes adjuntos y asientos automáticos.</p>
     </div>
     <div class="flex items-center gap-2">
       <button onclick="exportarHistorialOPCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm">
@@ -833,68 +933,67 @@
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    
-    <!-- Formulario de Entrada (6 Puntos) -->
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
       <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
-        <i data-lucide="file-plus" class="w-4 h-4 text-indigo-600"></i> Datos del Comprobante
+        <i data-lucide="file-plus" class="w-4 h-4 text-indigo-600"></i> Datos del Pago a Proveedor
       </h3>
       
-      <form id="form-op" onsubmit="event.preventDefault(); generarOP();" class="space-y-3.5">
-        
-        <!-- Selector de Factura de Compra Pendiente -->
-        <div class="bg-indigo-50/60 p-3 rounded-lg border border-indigo-100">
-          <label class="block text-xs font-bold text-indigo-900 mb-1">Imputar Factura de Compra (Impagas)</label>
-          <select id="op-selector-factura" onchange="seleccionarFacturaParaOP(this.value)" class="w-full px-3 py-2 text-xs border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-medium text-slate-800">
-            <option value="">-- Cargar manualmente o elegir factura pendiente --</option>
+      <form id="form-op" onsubmit="event.preventDefault(); generarOP();" class="space-y-3.5 text-xs">
+        <!-- Selector Multifactura -->
+        <div class="bg-indigo-50/60 p-3 rounded-lg border border-indigo-100 space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="block font-bold text-indigo-900">1. Seleccionar Proveedor con Deuda Pendiente</label>
+            <span id="op-cant-fc-badge" class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold">0 comprobantes</span>
+          </div>
+          
+          <select id="op-selector-proveedor" onchange="filtrarFacturasPorProveedorOP(this.value)" class="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-medium text-slate-800">
+            <option value="">-- Cargar manualmente o elegir proveedor con facturas impagas --</option>
           </select>
+
+          <!-- Checkboxes de facturas impagas -->
+          <div id="op-contenedor-multicheck" class="hidden mt-2 p-2.5 bg-white rounded-lg border border-slate-200 max-h-40 overflow-y-auto space-y-1.5"></div>
         </div>
 
-        <!-- Punto 1: Fecha de Emisión/Pago -->
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">1. Fecha de Emisión / Pago</label>
-          <input id="op-fecha" type="date" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
+          <label class="block font-semibold text-slate-600 mb-1">Fecha de Pago</label>
+          <input id="op-fecha" type="date" onchange="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
         </div>
 
-        <!-- Punto 2: Proveedor + CUIT -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="sm:col-span-2">
-            <label class="block text-xs font-semibold text-slate-600 mb-1">2. Razón Social / Proveedor</label>
-            <input id="op-proveedor" type="text" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
+            <label class="block font-semibold text-slate-600 mb-1">Razón Social Proveedor</label>
+            <input id="op-proveedor" type="text" placeholder="Ej: Pinturerías Rex SA" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">CUIT Proveedor</label>
-            <input id="op-cuit" type="text" placeholder="30-12345678-9" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+            <label class="block font-semibold text-slate-600 mb-1">CUIT Proveedor</label>
+            <input id="op-cuit" type="text" placeholder="30-12345678-9" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
           </div>
         </div>
 
-        <!-- Punto 3: Concepto / Detalle -->
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">3. Concepto / Detalle del Pago</label>
-          <input id="op-concepto" type="text" placeholder="Ej: Pago Factura A 00001-00065187" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
+          <label class="block font-semibold text-slate-600 mb-1">Concepto / Detalle del Pago</label>
+          <input id="op-concepto" type="text" placeholder="Ej: Pago Facturas de pintura y obra" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
         </div>
 
-        <!-- Punto 4: Montos y Cálculo Asistido de Retención -->
         <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">4. Monto Bruto ($)</label>
-            <input id="op-monto-factura" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" required />
+            <label class="block font-semibold text-slate-600 mb-1">Total Facturas Agrupadas ($)</label>
+            <input id="op-monto-factura" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono font-bold" required />
           </div>
 
           <div>
             <div class="flex justify-between items-center mb-1">
-              <label class="block text-xs font-semibold text-slate-600">Retención ($)</label>
+              <label class="block font-semibold text-slate-600">Retención Aplicada ($)</label>
               <button type="button" onclick="calcularRetencionSugeridaOP()" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">Sugerir RG830</button>
             </div>
-            <input id="op-retencion" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
+            <input id="op-retencion" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
           </div>
         </div>
 
-        <!-- Punto 5: Medio de Pago y N° Transacción con Sugerencia -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">5. Medio de Pago</label>
-            <select id="op-medio-pago" onchange="cambiarMedioPagoSugerido(this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            <label class="block font-semibold text-slate-600 mb-1">Medio de Pago</label>
+            <select id="op-medio-pago" onchange="cambiarMedioPagoSugerido(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
               <option value="Transferencia Bancaria">Transferencia Bancaria</option>
               <option value="Cheque Propio">Cheque Propio</option>
               <option value="Echeq">Echeq</option>
@@ -903,24 +1002,23 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">N° Comprobante / Transacción (Editable)</label>
-            <input id="op-num-comprobante" type="text" placeholder="Ej: TR-659368" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+            <label class="block font-semibold text-slate-600 mb-1">N° Comprobante / Transacción</label>
+            <input id="op-num-comprobante" type="text" placeholder="Ej: TR-659368" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
           </div>
         </div>
 
-        <!-- Punto 6: Adjunto Respaldatorio -->
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">6. Adjuntar Factura / PDF / Recibo</label>
-          <input id="op-adjunto" type="file" accept=".pdf,image/*" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1" />
+          <label class="block font-semibold text-slate-600 mb-1">Adjuntar Factura / PDF / Comprobante</label>
+          <input id="op-adjunto" type="file" accept=".pdf,image/*" class="block w-full text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1" />
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2 flex items-center justify-center gap-2">
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2 flex items-center justify-center gap-2">
           <i data-lucide="check-circle" class="w-4 h-4"></i> Emitir Orden de Pago
         </button>
       </form>
     </div>
 
-    <!-- Previsualización Dinámica -->
+    <!-- Vista Previa -->
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
       <div>
         <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
@@ -932,15 +1030,14 @@
         </div>
       </div>
     </div>
-
   </div>
 
-  <!-- Tabla Historial con Estados y Búsqueda -->
+  <!-- Historial de OP -->
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
       <h3 class="text-sm font-bold text-slate-700">Historial de Órdenes Emitidas</h3>
       <div class="relative w-full sm:w-64">
-        <input id="op-buscar-historial" type="text" oninput="renderHistorialOP()" placeholder="Buscar por proveedor, CUIT o ID..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+        <input id="op-buscar-historial" type="text" oninput="renderHistorialOP()" placeholder="Buscar proveedor, CUIT o OP..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
         <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
       </div>
     </div>
@@ -958,16 +1055,12 @@
             <th class="p-3 text-center">Acciones</th>
           </tr>
         </thead>
-        <tbody id="tbody-op-historial" class="divide-y divide-slate-100 text-slate-700">
-          <tr>
-            <td colspan="8" class="p-4 text-center text-slate-400">No hay órdenes de pago emitidas.</td>
-          </tr>
-        </tbody>
+        <tbody id="tbody-op-historial" class="divide-y divide-slate-100 text-slate-700"></tbody>
       </table>
     </div>
   </div>
-
 </div>
+
 <!-- VISTA 9: LIBRO DIARIO Y ASIENTOS MANUALES -->
 <section id="tab-libro-diario" class="hidden space-y-6">
   
