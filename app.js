@@ -68,6 +68,65 @@ document.addEventListener('DOMContentLoaded', async () => {
 // -------------------------------------------------------------
 // CONTROL DE NAVEGACIÓN Y PESTAÑAS
 // -------------------------------------------------------------
+function setAuthMode(mode) {
+  currentAuthMode = mode;
+  const btnLogin = document.getElementById('btn-login');
+  const btnSignup = document.getElementById('btn-signup');
+
+  if (mode === 'login') {
+    if (btnLogin) btnLogin.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-sm cursor-pointer";
+    if (btnSignup) btnSignup.className = "w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm py-2.5 rounded-lg transition border border-slate-300 cursor-pointer";
+  } else {
+    if (btnSignup) btnSignup.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-sm cursor-pointer";
+    if (btnLogin) btnLogin.className = "w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm py-2.5 rounded-lg transition border border-slate-300 cursor-pointer";
+  }
+}
+
+async function handleAuth(e) {
+  if (e) e.preventDefault();
+  const emailInput = document.getElementById('auth-email');
+  const passwordInput = document.getElementById('auth-password');
+  const errorEl = document.getElementById('auth-error');
+
+  const email = emailInput ? emailInput.value.trim() : '';
+  const password = passwordInput ? passwordInput.value : '';
+
+  if (!email || !password) {
+    if (errorEl) {
+      errorEl.textContent = 'Por favor, completá el correo y la contraseña.';
+      errorEl.classList.remove('hidden');
+    }
+    return;
+  }
+
+  if (errorEl) errorEl.classList.add('hidden');
+
+  try {
+    let result;
+    if (currentAuthMode === 'login') {
+      result = await db.auth.signInWithPassword({ email, password });
+    } else {
+      result = await db.auth.signUp({ email, password });
+    }
+
+    if (result.error) throw result.error;
+
+    if (currentAuthMode === 'signup' && !result.data.session) {
+      alert('Registro iniciado correctamente. Por favor, revisá tu correo para confirmar la cuenta.');
+    }
+  } catch (err) {
+    console.error('Error Auth:', err);
+    if (errorEl) {
+      errorEl.textContent = err.message || 'Error al autenticar. Verificá los datos ingresados.';
+      errorEl.classList.remove('hidden');
+    }
+  }
+}
+
+async function logout() {
+  await db.auth.signOut();
+}
+
 function switchTab(tabId) {
   const tabs = [
     'dashboard', 'facturacion', 'recibos-cobro', 'conciliador', 'cta-corriente', 
