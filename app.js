@@ -49,6 +49,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   if (typeof renderHistorialOP === 'function') renderHistorialOP();
+  if (typeof cargarFacturasImpagasParaOP === 'function') cargarFacturasImpagasParaOP();
+  if (typeof cambiarMedioPagoSugerido === 'function') cambiarMedioPagoSugerido('Transferencia Bancaria');
   if (typeof inicializarAsientoManual === 'function') inicializarAsientoManual();
   if (typeof renderLibroDiario === 'function') renderLibroDiario();
   if (typeof actualizarDashboardMetrics === 'function') actualizarDashboardMetrics();
@@ -1035,9 +1037,7 @@ async function cargarRegistrosFondoFijo() {
     }
 }
 
-// ==========================================
 // CONMUTADOR DE FILTRO: ACTIVOS / RENDIDOS
-// ==========================================
 function cambiarFiltroEstadoFF(nuevoEstado) {
     estadoFondoFijo.filtros.estadoRinde = nuevoEstado;
     estadoFondoFijo.paginacion.paginaActual = 1;
@@ -1171,9 +1171,8 @@ async function eliminarRegistroFondoFijo(id) {
     }
 }
 
-// ==========================================
+
 // CIERRE, RENDICIÓN Y ASIENTO POR CENTRO DE COSTO
-// ==========================================
 async function cerrarYRendirFondoFijo() {
     if (estadoFondoFijo.registros.length === 0) {
         showToast('No hay comprobantes activos para rendir.', 'error');
@@ -1295,6 +1294,7 @@ function actualizarMetricasFondoFijoDashboard() {
 // MOTOR 5: ÓRDENES DE PAGO (OP) - SUPABASE
 // ==========================================
 let historialOP = [];
+let facturasComprasDisponibles = [];
 let adjuntoBase64Temp = null;
 
 // Escuchar la carga del archivo para convertirlo a Base64
@@ -1316,12 +1316,97 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// 1. Cargar selector con facturas impagas desde Supabase
+async function cargarFacturasImpagasParaOP() {
+  const selectEl = document.getElementById('op-selector-factura');
+  if (!selectEl) return;
+
+  try {
+    const { data: facturas, error } = await db
+      .from('comprobantes_compra')
+      .select('*')
+      .neq('estado_pago', 'Pagado')
+      .order('fecha', { ascending: false });
+
+    if (error) throw error;
+
+    facturasComprasDisponibles = facturas || [];
+    selectEl.innerHTML = '<option value="">-- Cargar manualmente o elegir factura pendiente --</option>';
+
+    facturasComprasDisponibles.forEach(fc => {
+      const opt = document.createElement('option');
+      opt.value = fc.id;
+      opt.textContent = `${fc.proveedor} | ${fc.tipo_doc} ${fc.numero_doc} | Saldo: $ ${parseFloat(fc.saldo).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+      selectEl.appendChild(opt);
+    });
+  } catch (err) {
+    console.warn('Aviso al cargar facturas pendientes:', err);
+  }
+}
+
+// 2. Autocompletar formulario al elegir factura pendiente
+function seleccionarFacturaParaOP(facturaId) {
+  if (!facturaId) return;
+  const fc = facturasComprasDisponibles.find(f => String(f.id) === String(facturaId));
+  if (!fc) return;
+
+  document.getElementById('op-proveedor').value = fc.proveedor;
+  document.getElementById('op-cuit').value = fc.cuit || '';
+  document.getElementById('op-concepto').value = `Pago ${fc.tipo_doc} N° ${fc.numero_doc} - ${fc.concepto || ''}`;
+  document.getElementById('op-monto-factura').value = fc.saldo || fc.total;
+
+  const medioActivo = document.getElementById('op-medio-pago')?.value || 'Transferencia Bancaria';
+  cambiarMedioPagoSugerido(medioActivo);
+  actualizarCalculoOP();
+}
+
+// 3. Generador de N° de transacción sugerido editable (TR, CH, ECHQ, REC)
+function cambiarMedioPagoSugerido(medio) {
+  const inputComp = document.getElementById('op-num-comprobante');
+  if (!inputComp) return;
+
+  const correlativo = String(Date.now()).slice(-6);
+
+  if (medio === 'Transferencia Bancaria') {
+    inputComp.value = `TR-${correlativo}`;
+  } else if (medio === 'Cheque Propio') {
+    inputComp.value = `CH-${correlativo}`;
+  } else if (medio === 'Echeq') {
+    inputComp.value = `ECHQ-${correlativo}`;
+  } else if (medio === 'Efectivo / Caja Chica') {
+    inputComp.value = `REC-${correlativo}`;
+  }
+
+  actualizarCalculoOP();
+}
+
+// 4. Cálculo asistido de retención impositiva (RG 830 + IIBB)
+function calcularRetencionSugeridaOP() {
+  const bruto = parseFloat(document.getElementById('op-monto-factura')?.value) || 0;
+  if (bruto <= 0) {
+    showToast('Ingresá primero el monto bruto de la factura.', 'error');
+    return;
+  }
+
+  const baseNoImponible = 67200;
+  const sujeto = Math.max(0, bruto - baseNoImponible);
+  const retencionGanancias = sujeto * 0.02;
+  const retencionIIBB = bruto * 0.015;
+
+  const totalSugerido = Math.round((retencionGanancias + retencionIIBB) * 100) / 100;
+  document.getElementById('op-retencion').value = totalSugerido;
+
+  showToast(`Retención sugerida calculada: $ ${totalSugerido.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`);
+  actualizarCalculoOP();
+}
+
+// 5. Previsualización dinámica con correlativo estimado
 function actualizarCalculoOP() {
   const fecha = document.getElementById('op-fecha')?.value || new Date().toISOString().split('T')[0];
   const proveedor = document.getElementById('op-proveedor')?.value || 'Sin especificar';
   const cuit = document.getElementById('op-cuit')?.value || '-';
   const concepto = document.getElementById('op-concepto')?.value || 'Sin detalle';
-  
+
   const montoFactura = parseFloat(document.getElementById('op-monto-factura')?.value) || 0;
   const retencion = parseFloat(document.getElementById('op-retencion')?.value) || 0;
   const neto = Math.max(0, montoFactura - retencion);
@@ -1332,11 +1417,12 @@ function actualizarCalculoOP() {
 
   if (preview) {
     if (montoFactura > 0) {
+      const codigoSiguiente = 'OP-' + String(historialOP.length + 1).padStart(4, '0');
       preview.className = "space-y-3.5 text-left text-slate-700";
       preview.innerHTML = `
         <div class="flex justify-between items-center border-b border-slate-200 pb-3">
           <div>
-            <h4 class="font-bold text-slate-800">ORDEN DE PAGO</h4>
+            <h4 class="font-bold text-slate-800">ORDEN DE PAGO (${codigoSiguiente})</h4>
             <span class="text-xs text-slate-500">Fecha: ${fecha}</span>
           </div>
           <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">Borrador</span>
@@ -1351,15 +1437,15 @@ function actualizarCalculoOP() {
         <div class="border border-slate-200 rounded-lg overflow-hidden text-xs">
           <div class="flex justify-between p-2.5 bg-white border-b border-slate-200">
             <span>Monto Bruto Factura:</span>
-            <span class="font-mono font-medium">$ ${montoFactura.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+            <span class="font-mono font-medium">$ ${montoFactura.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
           </div>
           <div class="flex justify-between p-2.5 bg-white border-b border-slate-200 text-rose-600">
             <span>Retenciones Aplicadas:</span>
-            <span class="font-mono font-medium">-$ ${retencion.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+            <span class="font-mono font-medium">-$ ${retencion.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
           </div>
           <div class="flex justify-between p-2.5 bg-emerald-50 font-bold text-emerald-800 text-sm">
             <span>Monto Neto a Pagar:</span>
-            <span class="font-mono">$ ${neto.toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+            <span class="font-mono">$ ${neto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
       `;
@@ -1370,6 +1456,7 @@ function actualizarCalculoOP() {
   }
 }
 
+// 6. Emisión formal de OP, persistencia y asiento contable
 async function generarOP() {
   const fecha = document.getElementById('op-fecha').value;
   const proveedor = document.getElementById('op-proveedor').value.trim();
@@ -1379,6 +1466,7 @@ async function generarOP() {
   const retencion = parseFloat(document.getElementById('op-retencion').value) || 0;
   const medio = document.getElementById('op-medio-pago').value;
   const numComprobante = document.getElementById('op-num-comprobante').value.trim() || '-';
+  const facturaIdSeleccionada = document.getElementById('op-selector-factura')?.value;
 
   if (!fecha || !proveedor || !concepto || montoFactura <= 0) {
     showToast('Por favor, completá los campos obligatorios.', 'error');
@@ -1390,11 +1478,11 @@ async function generarOP() {
   try {
     const { data: { user } } = await db.auth.getUser();
 
-    // 1. Obtener correlativo de OP
+    // A. Correlativo de OP
     const { count } = await db.from('ordenes_pago').select('*', { count: 'exact', head: true });
     const codigoOP = 'OP-' + String((count || 0) + 1).padStart(4, '0');
 
-    // 2. Insertar Orden de Pago en Supabase
+    // B. Guardar Orden de Pago en Supabase
     const payload = {
       codigo_op: codigoOP,
       fecha,
@@ -1414,7 +1502,14 @@ async function generarOP() {
     const { error: errOP } = await db.from('ordenes_pago').insert([payload]);
     if (errOP) throw errOP;
 
-    // 3. Generar Asiento Automático en Libro Diario (Supabase)
+    // C. Si provino de una Factura de Compra, marcar como Pagada
+    if (facturaIdSeleccionada) {
+      await db.from('comprobantes_compra')
+        .update({ estado_pago: 'Pagado', saldo: 0 })
+        .eq('id', facturaIdSeleccionada);
+    }
+
+    // D. Registrar Asiento Contable en Supabase
     const glosaAsiento = `Pago a Proveedor ${proveedor} según ${codigoOP}`;
     const { data: nuevoAsiento, error: errAsiento } = await db
       .from('asientos')
@@ -1428,17 +1523,15 @@ async function generarOP() {
 
     if (!errAsiento && nuevoAsiento) {
       const lineasAsiento = [
-        // Debe: Cancelación de Proveedores por el Bruto
         {
           asiento_id: nuevoAsiento.id,
           debe: montoFactura,
           haber: 0,
           cuenta_nombre: 'Proveedores / Cuentas por Pagar',
-          detalle: `Cancelación comprobante de ${proveedor}`
+          detalle: `Cancelación factura ${proveedor}`
         }
       ];
 
-      // Haber: Retenciones emitidas a pagar (si aplica)
       if (retencion > 0) {
         lineasAsiento.push({
           asiento_id: nuevoAsiento.id,
@@ -1449,7 +1542,6 @@ async function generarOP() {
         });
       }
 
-      // Haber: Salida de Fondos por el Neto pagado
       const cuentaSalida = medio.includes('Efectivo') 
         ? 'Caja / Efectivo' 
         : 'Banco Cuentas Corrientes';
@@ -1467,13 +1559,14 @@ async function generarOP() {
 
     showToast(`Orden de Pago ${codigoOP} emitida y Asiento generado con éxito.`);
 
-    // Reset de formulario y memoria
+    // Reset de formulario
     document.getElementById('form-op').reset();
     adjuntoBase64Temp = null;
     document.getElementById('op-fecha').value = new Date().toISOString().split('T')[0];
-    actualizarCalculoOP();
+    cambiarMedioPagoSugerido('Transferencia Bancaria');
 
     await renderHistorialOP();
+    await cargarFacturasImpagasParaOP();
     if (typeof renderLibroDiario === 'function') await renderLibroDiario();
     if (typeof actualizarDashboardMetrics === 'function') await actualizarDashboardMetrics();
 
@@ -1483,6 +1576,7 @@ async function generarOP() {
   }
 }
 
+// 7. Renderizado de la tabla de OP
 async function renderHistorialOP() {
   const tbody = document.getElementById('tbody-op-historial');
   if (!tbody) return;
@@ -1538,7 +1632,7 @@ async function renderHistorialOP() {
           <td class="p-3 text-center">${botonAdjunto}</td>
           <td class="p-3 text-center whitespace-nowrap">
             <button onclick="descargarPDFOP('${op.id}')" class="text-slate-600 hover:text-indigo-600 p-1 mr-1 cursor-pointer" title="Imprimir PDF">📄</button>
-            <button onclick="eliminarOP('${op.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️️</button>
+            <button onclick="eliminarOP('${op.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑</button>
           </td>
         </tr>
       `;
@@ -1546,10 +1640,11 @@ async function renderHistorialOP() {
 
   } catch (err) {
     console.error('Error al cargar historial de OP:', err);
-    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-rose-500">Error al consultar órdenes de pago en la nube.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-rose-500">Error al consultar órdenes de pago en la base de datos.</td></tr>`;
   }
 }
 
+// 8. Eliminación de OP
 async function eliminarOP(id) {
   if (!confirm('¿Eliminar esta orden de pago de la base de datos?')) return;
   try {
@@ -1563,6 +1658,7 @@ async function eliminarOP(id) {
   }
 }
 
+// 9. Exportación a CSV
 function exportarHistorialOPCSV() {
   if (historialOP.length === 0) return showToast('No hay órdenes para exportar.', 'error');
   let csv = 'Codigo,Fecha,Proveedor,CUIT,Concepto,Medio,Bruto,Retencion,Neto,Estado\n';
@@ -1578,6 +1674,7 @@ function exportarHistorialOPCSV() {
   showToast('Exportación CSV completada.');
 }
 
+// 10. Descarga de OP individual en PDF
 function descargarPDFOP(id) {
   const op = historialOP.find(item => String(item.id) === String(id));
   if (!op) return;
