@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Setear fecha de hoy en los formularios
+  const inputFechaFC = document.getElementById('fc-fecha');
+  if (inputFechaFC && !inputFechaFC.value) inputFechaFC.value = new Date().toISOString().split('T')[0];
+  if (typeof cargarFacturasDesdeSupabase === 'function') cargarFacturasDesdeSupabase();
+  
   const inputFechaFF = document.getElementById('ff-fecha');
   if (inputFechaFF) inputFechaFF.valueAsDate = new Date();
 
@@ -121,6 +125,11 @@ async function logout() {
 function switchTab(tabId) {
   const tabs = [
     'dashboard', 'conciliador', 'cta-corriente', 'cruzador-iva', 
+    'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'facturacion', 'libro-diario'
+  ];
+  
+  const tabs = [
+    'dashboard', 'conciliador', 'cta-corriente', 'cruzador-iva', 
     'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'libro-diario'
   ];
   
@@ -146,7 +155,249 @@ function switchTab(tabId) {
 }
 
 // ==========================================
-// MOTOR 1: CONCILIADOR BANCARIO (Fuzzy Engine)
+// MOTOR 1: GESTOR DE FACTURACIÓN (COMPRAS Y VENTAS)
+// ==========================================
+let circuitoFacturacionActual = 'COMPRAS'; // 'COMPRAS' o 'VENTAS'
+let listaFacturasActuales = [];
+
+function cambiarCircuitoFacturacion(circuito) {
+  circuitoFacturacionActual = circuito;
+  const btnCompras = document.getElementById('btn-tab-fc-compras');
+  const btnVentas = document.getElementById('btn-tab-fc-ventas');
+  const formTitulo = document.getElementById('fc-form-titulo');
+  const labelEntidad = document.getElementById('fc-label-entidad');
+  const inputEntidad = document.getElementById('fc-entidad');
+  const tablaTitulo = document.getElementById('fc-tabla-titulo');
+
+  if (circuito === 'COMPRAS') {
+    btnCompras.className = 'px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer';
+    btnVentas.className = 'px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer';
+    if (formTitulo) formTitulo.innerHTML = `<i data-lucide="file-plus-2" class="w-4 h-4 text-indigo-600"></i> Registrar Factura de Compra`;
+    if (labelEntidad) labelEntidad.textContent = 'Razón Social Proveedor';
+    if (inputEntidad) inputEntidad.placeholder = 'Ej: Pinturerías Rex SA';
+    if (tablaTitulo) tablaTitulo.textContent = 'Comprobantes de Compra Registrados';
+  } else {
+    btnVentas.className = 'px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-emerald-700 shadow-xs transition-all cursor-pointer';
+    btnCompras.className = 'px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer';
+    if (formTitulo) formTitulo.innerHTML = `<i data-lucide="file-plus-2" class="w-4 h-4 text-emerald-600"></i> Emitir Factura de Venta`;
+    if (labelEntidad) labelEntidad.textContent = 'Razón Social Cliente';
+    if (inputEntidad) inputEntidad.placeholder = 'Ej: Distribuidora Perez SRL';
+    if (tablaTitulo) tablaTitulo.textContent = 'Comprobantes de Venta Registrados';
+  }
+
+  if (window.lucide) lucide.createIcons();
+  cargarFacturasDesdeSupabase();
+}
+
+function calcularTotalesFactura() {
+  const neto = parseFloat(document.getElementById('fc-neto')?.value) || 0;
+  const alicuota = parseFloat(document.getElementById('fc-alicuota-iva')?.value) || 0;
+  const percepciones = parseFloat(document.getElementById('fc-percepciones')?.value) || 0;
+
+  const iva = Math.round((neto * (alicuota / 100)) * 100) / 100;
+  const total = Math.round((neto + iva + percepciones) * 100) / 100;
+
+  const inputIVA = document.getElementById('fc-iva');
+  const lblTotal = document.getElementById('fc-lbl-total');
+
+  if (inputIVA) inputIVA.value = iva.toFixed(2);
+  if (lblTotal) lblTotal.textContent = `$ ${total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+}
+
+async function guardarFactura(e) {
+  if (e) e.preventDefault();
+
+  const fecha = document.getElementById('fc-fecha').value;
+  const tipo_doc = document.getElementById('fc-tipo-doc').value;
+  const numero_doc = document.getElementById('fc-numero-doc').value.trim();
+  const entidad = document.getElementById('fc-entidad').value.trim();
+  const cuit = document.getElementById('fc-cuit').value.trim() || 'S/D';
+  const concepto = document.getElementById('fc-concepto').value.trim();
+  
+  const neto = parseFloat(document.getElementById('fc-neto').value) || 0;
+  const alicuota = parseFloat(document.getElementById('fc-alicuota-iva').value) || 0;
+  const iva = parseFloat(document.getElementById('fc-iva').value) || 0;
+  const percepciones = parseFloat(document.getElementById('fc-percepciones').value) || 0;
+  const total = Math.round((neto + iva + percepciones) * 100) / 100;
+
+  if (!fecha || !numero_doc || !entidad || !concepto || total <= 0) {
+    showToast('Completá todos los campos obligatorios.', 'error');
+    return;
+  }
+
+  try {
+    const { data: { user } } = await db.auth.getUser();
+    const tabla = circuitoFacturacionActual === 'COMPRAS' ? 'comprobantes_compra' : 'comprobantes_venta';
+
+    // 1. Registro del Comprobante
+    const payload = {
+      fecha,
+      tipo_doc,
+      numero_doc,
+      concepto,
+      neto_gravado: neto,
+      alicuota_iva: alicuota,
+      iva,
+      percepciones,
+      total,
+      saldo: total,
+      user_id: user?.id || null
+    };
+
+    if (circuitoFacturacionActual === 'COMPRAS') {
+      payload.proveedor = entidad;
+      payload.cuit = cuit;
+      payload.estado_pago = 'Impago';
+    } else {
+      payload.cliente = entidad;
+      payload.cuit = cuit;
+      payload.estado_cobro = 'Impago';
+    }
+
+    const { error: errFactura } = await db.from(tabla).insert([payload]);
+    if (errFactura) throw errFactura;
+
+    // 2. Devengamiento Contable Automático en Supabase
+    const glosa = circuitoFacturacionActual === 'COMPRAS'
+      ? `Devengamiento Compra: ${tipo_doc} ${numero_doc} - ${entidad}`
+      : `Devengamiento Venta: ${tipo_doc} ${numero_doc} - ${entidad}`;
+
+    const { data: asiento, error: errAsiento } = await db
+      .from('asientos')
+      .insert([{
+        fecha,
+        user_id: user?.id || null,
+        concepto: glosa
+      }])
+      .select()
+      .single();
+
+    if (!errAsiento && asiento) {
+      const lineas = [];
+
+      if (circuitoFacturacionActual === 'COMPRAS') {
+        // Asiento Compra:
+        // Debe: Mercaderías / Gastos Generales (Neto)
+        // Debe: IVA Crédito Fiscal
+        // Debe: Percepciones Impositivas (si hay)
+        // Haber: Proveedores (Total)
+        lineas.push({ asiento_id: asiento.id, debe: neto, haber: 0, cuenta_nombre: 'Mercaderías / Gastos', detalle: concepto });
+        if (iva > 0) lineas.push({ asiento_id: asiento.id, debe: iva, haber: 0, cuenta_nombre: 'IVA Crédito Fiscal', detalle: `IVA ${alicuota}%` });
+        if (percepciones > 0) lineas.push({ asiento_id: asiento.id, debe: percepciones, haber: 0, cuenta_nombre: 'Percepciones Impositivas', detalle: 'IIBB / IVA' });
+        lineas.push({ asiento_id: asiento.id, debe: 0, haber: total, cuenta_nombre: 'Proveedores / Cuentas por Pagar', detalle: `Factura ${numero_doc}` });
+      } else {
+        // Asiento Venta:
+        // Debe: Deudores por Ventas (Total)
+        // Haber: Ventas (Neto)
+        // Haber: IVA Débito Fiscal
+        lineas.push({ asiento_id: asiento.id, debe: total, haber: 0, cuenta_nombre: 'Deudores por Ventas', detalle: `Factura ${numero_doc}` });
+        lineas.push({ asiento_id: asiento.id, debe: 0, haber: neto, cuenta_nombre: 'Ventas', detalle: concepto });
+        if (iva > 0) lineas.push({ asiento_id: asiento.id, debe: 0, haber: iva, cuenta_nombre: 'IVA Débito Fiscal', detalle: `IVA ${alicuota}%` });
+      }
+
+      await db.from('asiento_detalles').insert(lineas);
+    }
+
+    showToast(`Comprobante guardado y Asiento generado con éxito.`);
+
+    // Reset Formulario
+    document.getElementById('form-factura').reset();
+    document.getElementById('fc-fecha').value = new Date().toISOString().split('T')[0];
+    calcularTotalesFactura();
+
+    await cargarFacturasDesdeSupabase();
+    if (typeof cargarFacturasImpagasParaOP === 'function') await cargarFacturasImpagasParaOP();
+    if (typeof renderLibroDiario === 'function') await renderLibroDiario();
+    if (typeof actualizarDashboardMetrics === 'function') await actualizarDashboardMetrics();
+
+  } catch (err) {
+    console.error('Error guardando factura:', err);
+    showToast('Error al guardar el comprobante en Supabase.', 'error');
+  }
+}
+
+async function cargarFacturasDesdeSupabase() {
+  const tbody = document.getElementById('tbody-facturas');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const tabla = circuitoFacturacionActual === 'COMPRAS' ? 'comprobantes_compra' : 'comprobantes_venta';
+
+  try {
+    const { data, error } = await db
+      .from(tabla)
+      .select('*')
+      .order('fecha', { ascending: false });
+
+    if (error) throw error;
+    listaFacturasActuales = data || [];
+    renderizarTablaFacturas();
+  } catch (err) {
+    console.error('Error cargando comprobantes:', err);
+    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-rose-500">Error al consultar comprobantes.</td></tr>`;
+  }
+}
+
+function renderizarTablaFacturas() {
+  const tbody = document.getElementById('tbody-facturas');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const filtro = (document.getElementById('fc-buscar')?.value || '').toLowerCase();
+
+  const filtrados = listaFacturasActuales.filter(f => {
+    const ent = (f.proveedor || f.cliente || '').toLowerCase();
+    const nro = (f.numero_doc || '').toLowerCase();
+    const cuit = (f.cuit || '').toLowerCase();
+    return ent.includes(filtro) || nro.includes(filtro) || cuit.includes(filtro);
+  });
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">No hay comprobantes cargados.</td></tr>`;
+    return;
+  }
+
+  filtrados.forEach(f => {
+    const entidad = f.proveedor || f.cliente;
+    const estado = f.estado_pago || f.estado_cobro || 'Impago';
+    const claseEstado = estado === 'Pagado' || estado === 'Cobrado' 
+      ? 'bg-emerald-100 text-emerald-800' 
+      : 'bg-amber-100 text-amber-800';
+
+    tbody.innerHTML += `
+      <tr class="hover:bg-slate-50 transition-colors text-xs">
+        <td class="p-2.5 text-slate-600 whitespace-nowrap">${f.fecha}</td>
+        <td class="p-2.5 font-bold text-slate-800">${f.tipo_doc}<div class="text-[11px] font-mono font-normal text-slate-400">${f.numero_doc}</div></td>
+        <td class="p-2.5 font-semibold text-slate-800">${entidad}<div class="text-[11px] font-normal text-slate-400">CUIT: ${f.cuit || 'S/D'}</div></td>
+        <td class="p-2.5 text-right font-mono text-slate-600">$ ${parseFloat(f.neto_gravado || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-2.5 text-right font-mono font-bold text-slate-900">$ ${parseFloat(f.total).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${claseEstado}">${estado}</span></td>
+        <td class="p-2.5 text-center">
+          <button onclick="eliminarFactura('${f.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function eliminarFactura(id) {
+  if (!confirm('¿Eliminar este comprobante?')) return;
+  const tabla = circuitoFacturacionActual === 'COMPRAS' ? 'comprobantes_compra' : 'comprobantes_venta';
+
+  try {
+    const { error } = await db.from(tabla).delete().eq('id', id);
+    if (error) throw error;
+    showToast('Comprobante eliminado con éxito.');
+    await cargarFacturasDesdeSupabase();
+    if (typeof cargarFacturasImpagasParaOP === 'function') await cargarFacturasImpagasParaOP();
+  } catch (err) {
+    console.error('Error eliminando comprobante:', err);
+    showToast('Error al eliminar.', 'error');
+  }
+}
+
+// ==========================================
+// MOTOR 2: CONCILIADOR BANCARIO (Fuzzy Engine)
 // ==========================================
 let resultadoConciliacionGlobal = null;
 
@@ -344,7 +595,7 @@ function exportarInformeConciliacionCSV() {
 }
 
 // ==========================================
-// MOTOR 2: CUENTAS CORRIENTES (FIFO & Aging)
+// MOTOR 3: CUENTAS CORRIENTES (FIFO & Aging)
 // ==========================================
 let datosCtaCteProcesados = [];
 
@@ -520,7 +771,7 @@ function exportarCtaCteCSV() {
 }
 
 // ==========================================
-// MOTOR 3: CRUZADOR IVA DIGITAL (ARCA vs. Interno)
+// MOTOR 4: CRUZADOR IVA DIGITAL (ARCA vs. Interno)
 // ==========================================
 let datosArcaIVA = [];
 let datosInternoIVA = [];
@@ -665,7 +916,7 @@ function runCruzadorIvaDemo() {
 }
 
 // ==========================================
-// MOTOR 4: CÁLCULO RETENCIONES (RG 830)
+// MOTOR 5: CÁLCULO RETENCIONES (RG 830)
 // ==========================================
 async function calculateRetentionsUI() {
   const net = parseFloat(document.getElementById('ret-neto').value) || 0;
@@ -791,7 +1042,7 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
 }
 
 // ==========================================
-// MOTOR 5: MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
+// MOTOR 6: MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
 // ==========================================
 
 const estadoFondoFijo = {
@@ -1291,7 +1542,7 @@ function actualizarMetricasFondoFijoDashboard() {
     if (elSub) elSub.textContent = `${registrosActivos.length} comprobantes activos`;
 }
 // ==========================================
-// MOTOR 5: ÓRDENES DE PAGO (OP) - SUPABASE
+// MOTOR 7 : ÓRDENES DE PAGO (OP) - SUPABASE
 // ==========================================
 let historialOP = [];
 let facturasComprasDisponibles = [];
@@ -1712,7 +1963,7 @@ function descargarPDFOP(id) {
 }
 
 // ==========================================
-// MOTOR 6: LIBRO DIARIO Y ASIENTOS
+// MOTOR 8: LIBRO DIARIO Y ASIENTOS
 // ==========================================
 let historialLibroDiario = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
 
