@@ -153,7 +153,10 @@ function switchTab(tabId) {
   }
 
   if (tabId === 'dashboard') actualizarDashboardMetrics();
-  if (tabId === 'recibos-cobro') initRecibos(); renderHistorialRC();
+  if (tabId === 'recibos-cobro') {
+  initRecibos();
+  renderHistorialRC();
+}
   if (tabId === 'mayor-balance') cargarMayorYBalance();
   if (tabId === 'plan-cuentas') cargarPlanCuentas();
 }
@@ -842,14 +845,15 @@ function descargarPDFFactura(id) {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  const esCompra = circuitoFacturacionActual === 'COMPRAS';
-doc.text(esCompra ? 'PROVEEDOR' : 'CLIENTE', 14, 45);
 
   dibujarMembretePDF(doc, f.tipo_doc.toUpperCase(), f.numero_doc, f.fecha);
 
+  const esCompra = circuitoFacturacionActual === 'COMPRAS';
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('CLIENTE', 14, 45);
+  doc.setTextColor(30, 41, 59);
+  doc.text(esCompra ? 'PROVEEDOR' : 'CLIENTE', 14, 45);
+
   doc.setFont('helvetica', 'normal');
   doc.text(`Razón Social: ${f.cliente || f.proveedor}`, 14, 50);
   doc.text(`CUIT: ${f.cuit || 'S/D'}`, 14, 55);
@@ -873,7 +877,6 @@ doc.text(esCompra ? 'PROVEEDOR' : 'CLIENTE', 14, 45);
 
   doc.save(`${f.tipo_doc}_${f.numero_doc}.pdf`);
 }
-
 // ==========================================
 // MOTOR 2: RECIBOS DE COBRO (CORREGIDO CON db)
 // ==========================================
