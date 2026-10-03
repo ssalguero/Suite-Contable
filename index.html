@@ -179,6 +179,10 @@
           <i data-lucide="book-open" class="w-4 h-4"></i>
           <span>Libro Diario y Asientos</span>
         </button>
+        <button id="nav-plan-cuentas" onclick="switchTab('plan-cuentas')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="list-tree" class="w-4 h-4"></i>
+          <span>Plan de Cuentas Maestro</span>
+        </button>
       </nav>
     </div>
 
@@ -1353,6 +1357,161 @@
           <div id="contenedor-libro-diario" class="divide-y divide-slate-200 text-xs"></div>
         </div>
       </section>
+
+      <!-- VISTA 12: PLAN DE CUENTAS MAESTRO -->
+<section id="tab-plan-cuentas" class="hidden space-y-6">
+  <!-- Encabezado -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+        <i data-lucide="list-tree" class="w-5 h-5 text-indigo-600"></i> Plan de Cuentas Maestro
+      </h2>
+      <p class="text-xs text-slate-500">Administración del catálogo contable oficial, clasificación por naturaleza e importación de clientes.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="exportarPlanCuentasCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm">
+        <i data-lucide="download" class="w-4 h-4"></i> Exportar Catálogo (CSV)
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel de Importación y Reemplazo Masivo -->
+  <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
+      <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs">
+        <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+        <span>Importación Masiva de Plan de Cuentas (CSV)</span>
+      </div>
+      <button type="button" onclick="descargarPlantillaPlanCuentasCSV()" class="text-[11px] text-slate-500 hover:text-indigo-600 underline">
+        Descargar Plantilla CSV
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+      <div class="md:col-span-2">
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Archivo CSV del Cliente</label>
+        <input type="file" id="pc-input-csv" accept=".csv, .txt" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg" />
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Modo de Carga</label>
+        <select id="pc-modo-importacion" class="w-full text-xs border border-slate-300 rounded-lg p-2 font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="UPSERT">Fusionar / Actualizar existentes</option>
+          <option value="REEMPLAZAR">⚠️ Reemplazo Total (Vaciar y Cargar)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between pt-2">
+      <span id="pc-status-import" class="text-xs text-slate-400 italic">Formato: codigo, nombre, tipo, saldo_habitual, es_imputable</span>
+      <button type="button" onclick="procesarArchivoPlanCuentasCSV()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-sm flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="file-up" class="w-3.5 h-3.5"></i> Procesar Importación
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Formulario Manual / Edición -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
+      <h3 id="pc-form-titulo" class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
+        <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Nueva Cuenta Contable
+      </h3>
+
+      <form id="form-plan-cuenta" onsubmit="guardarCuentaContable(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="pc-id-edicion" value="" />
+
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Código Jerárquico *</label>
+          <input type="text" id="pc-codigo" placeholder="Ej: 1.1.01.003" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Nombre de la Cuenta *</label>
+          <input type="text" id="pc-nombre" placeholder="Ej: Valores al Cobro" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Tipo / Naturaleza *</label>
+            <select id="pc-tipo" onchange="autoSugerirSaldoHabitual(this.value)" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="ACTIVO">Activo</option>
+              <option value="PASIVO">Pasivo</option>
+              <option value="PATRIMONIO_NETO">Patrimonio Neto</option>
+              <option value="RESULTADO_POSITIVO">Resultado Positivo</option>
+              <option value="RESULTADO_NEGATIVO">Resultado Negativo</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Saldo Habitual</label>
+            <select id="pc-saldo" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50">
+              <option value="DEUDOR">Deudor</option>
+              <option value="ACREEDOR">Acreedor</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <input type="checkbox" id="pc-imputable" checked class="rounded border-slate-300 accent-indigo-600 cursor-pointer" />
+          <label for="pc-imputable" class="font-medium text-slate-700 cursor-pointer">Cuenta Imputable (recibe asientos directos)</label>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" id="btn-cancelar-pc" onclick="limpiarFormularioPlanCuenta()" class="hidden w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg transition text-xs">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-submit-pc" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i> Guardar Cuenta
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Catálogo de Cuentas -->
+    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+      <div>
+        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-slate-700">Catálogo de Cuentas</h3>
+            <span id="badge-total-cuentas" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">0 cuentas</span>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <select id="pc-filtro-tipo" onchange="renderizarTablaPlanCuentas()" class="text-xs border border-slate-300 rounded-lg p-1.5 outline-none bg-white font-medium">
+              <option value="TODOS">Todos los Tipos</option>
+              <option value="ACTIVO">Activo</option>
+              <option value="PASIVO">Pasivo</option>
+              <option value="PATRIMONIO_NETO">Patrimonio Neto</option>
+              <option value="RESULTADO_POSITIVO">Resultados Positivos</option>
+              <option value="RESULTADO_NEGATIVO">Resultados Negativos</option>
+            </select>
+            <div class="relative w-full sm:w-48">
+              <input type="text" id="pc-buscar" oninput="renderizarTablaPlanCuentas()" placeholder="Buscar código o nombre..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                <th class="p-2.5 font-mono">Código</th>
+                <th class="p-2.5">Nombre de Cuenta</th>
+                <th class="p-2.5">Naturaleza</th>
+                <th class="p-2.5 text-center">Saldo</th>
+                <th class="p-2.5 text-center">Imputable</th>
+                <th class="p-2.5 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-plan-cuentas" class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td colspan="6" class="p-6 text-center text-slate-400">Cargando catálogo contable...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
     </main>
   </div>
