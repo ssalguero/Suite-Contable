@@ -681,6 +681,7 @@ function renderizarTablaFacturas() {
         <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${claseEstado}">${estado}</span></td>
         <td class="p-2.5 text-center">
           <button onclick="eliminarFactura('${f.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️</button>
+          <button onclick="descargarPDFFactura('${f.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1 cursor-pointer" title="Descargar PDF">📄</button>
         </td>
       </tr>
     `;
@@ -777,6 +778,42 @@ function descargarPlantillaComprasCSV() {
   a.download = 'plantilla_compras_arca.csv';
   a.click();
 }
+function descargarPDFFactura(id) {
+  const f = listaFacturasActuales.find(item => String(item.id) === String(id));
+  if (!f) return;
+  if (!window.jspdf) return alert('Librería jsPDF no disponible.');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  dibujarMembretePDF(doc, f.tipo_doc.toUpperCase(), f.numero_doc, f.fecha);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENTE', 14, 45);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Razón Social: ${f.cliente || f.proveedor}`, 14, 50);
+  doc.text(`CUIT: ${f.cuit || 'S/D'}`, 14, 55);
+
+  doc.autoTable({
+    startY: 62,
+    head: [['Detalle / Concepto', 'Neto Gravado', 'IVA', 'Percepciones', 'Total ($)']],
+    body: [
+      [
+        f.concepto,
+        `$ ${parseFloat(f.neto_gravado || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}`,
+        `$ ${parseFloat(f.iva || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}`,
+        `$ ${parseFloat(f.percepciones || 0).toLocaleString('es-AR', {minimumFractionDigits: 2})}`,
+        `$ ${parseFloat(f.total).toLocaleString('es-AR', {minimumFractionDigits: 2})}`
+      ]
+    ],
+    headStyles: { fillColor: [79, 70, 229] },
+    styles: { fontSize: 8 },
+    columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } }
+  });
+
+  doc.save(`${f.tipo_doc}_${f.numero_doc}.pdf`);
+}
 
 // ==========================================
 // MOTOR 2: RECIBOS DE COBRO (CORREGIDO CON db)
@@ -789,6 +826,7 @@ function initRecibos() {
   if (fechaInput && !fechaInput.value) fechaInput.value = new Date().toISOString().split('T')[0];
   generarProximoNumeroRC();
   cargarClientesSelectRC();
+  renderHistorialRC();
   if (window.lucide) lucide.createIcons();
 }
 
@@ -1133,6 +1171,127 @@ function limpiarFormularioRecibo() {
   comprobantesPendientesRC = [];
   calcularTotalesRC();
   generarProximoNumeroRC();
+}
+async function descargarPDFRecibo(reciboId) {
+  if (!window.jspdf) return alert('Librería jsPDF no disponible.');
+
+  try {
+    // Consultar recibo con sus detalles
+    const { data: rc, error } = await db
+      .from('recibos_cobro')
+      .select('*, clientes_proveedores(razon_social, cuit, condicion_iva)')
+      .eq('id', reciboId)
+      .single();
+
+    if (error || !rc) throw error;
+
+    const cliente = rc.clientes_proveedores || {};
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // Dibujar membrete
+    dibujarMembretePDF(doc, 'RECIBO DE COBRO', rc.numero, rc.fecha);
+
+    // Datos del Cliente
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('DATOS DEL CLIENTE', 14, 45);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Cliente: ${cliente.razon_social || 'Cliente'}`, 14, 50);
+    doc.text(`CUIT: ${cliente.cuit || 'S/D'}`, 14, 55);
+    doc.text(`Condición IVA: ${cliente.condicion_iva || 'Consumidor Final'}`, 120, 50);
+    doc.text(`Medio de Cobro: ${rc.medio_cobro}`, 120, 55);
+
+    // Retenciones Sufridas si hubo
+    const retenciones = rc.retenciones_sufridas || [];
+    let cuerpoTabla = [
+      ['Total Facturas Canceladas', `$ ${parseFloat(rc.total_cobrado).toLocaleString('es-AR', {minimumFractionDigits: 2})}`]
+    ];
+
+    retenciones.forEach(r => {
+      cuerpoTabla.push([
+        `Retención Sufrida: ${r.tipo} (Cert. ${r.certificado || 'S/D'})`,
+        `-$ ${parseFloat(r.importe).toLocaleString('es-AR', {minimumFractionDigits: 2})}`
+      ]);
+    });
+
+    cuerpoTabla.push([
+      'NETO PERCIBIDO (DISPONIBILIDADES)',
+      `$ ${parseFloat(rc.total_neto_percibido).toLocaleString('es-AR', {minimumFractionDigits: 2})}`
+    ]);
+
+    doc.autoTable({
+      startY: 62,
+      head: [['Concepto / Imputación', 'Importe ($)']],
+      body: cuerpoTabla,
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 9 },
+      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    // Observaciones y Leyenda al pie
+    const finalY = doc.lastAutoTable.finalY + 10;
+    if (rc.observaciones) {
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Observaciones: ${rc.observaciones}`, 14, finalY);
+    }
+
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(datosEmpresaActual?.leyenda_comprobantes || 'Comprobante emitido mediante Suite Contable', 105, 280, { align: 'center' });
+
+    doc.save(`Recibo_${rc.numero}.pdf`);
+
+  } catch (err) {
+    console.error('Error al generar PDF de Recibo:', err);
+    alert('Error al generar el PDF del recibo.');
+  }
+}
+let listaHistorialRC = [];
+
+async function renderHistorialRC() {
+  const tbody = document.getElementById('tbody-rc-historial');
+  if (!tbody) return;
+
+  try {
+    const { data, error } = await db
+      .from('recibos_cobro')
+      .select('*, clientes_proveedores(razon_social, cuit)')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    listaHistorialRC = data || [];
+
+    const filtro = (document.getElementById('rc-buscar-historial')?.value || '').toLowerCase();
+    const filtrados = listaHistorialRC.filter(r => {
+      const cli = (r.clientes_proveedores?.razon_social || '').toLowerCase();
+      const num = (r.numero || '').toLowerCase();
+      return cli.includes(filtro) || num.includes(filtro);
+    });
+
+    if (filtrados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-400">No hay recibos registrados.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtrados.map(rc => `
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="p-3 font-bold text-slate-900">${rc.numero}<div class="text-[11px] font-normal text-slate-400">${rc.fecha}</div></td>
+        <td class="p-3 font-semibold text-slate-800">${rc.clientes_proveedores?.razon_social || 'Cliente'}<div class="text-[11px] font-normal text-slate-400">CUIT: ${rc.clientes_proveedores?.cuit || 'S/D'}</div></td>
+        <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 rounded text-[11px] border border-slate-200">${rc.medio_cobro}</span></td>
+        <td class="p-3 text-right font-mono text-slate-600">$${parseFloat(rc.total_cobrado).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono text-rose-600">-$${parseFloat(rc.total_retenciones).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono font-bold text-indigo-700">$${parseFloat(rc.total_neto_percibido).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-center">
+          <button onclick="descargarPDFRecibo('${rc.id}')" class="text-indigo-600 hover:text-indigo-800 font-bold p-1 cursor-pointer" title="Descargar PDF">📄 PDF</button>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    console.error('Error cargando historial de recibos:', err);
+  }
 }
 // ==========================================
 // MOTOR 3: CONCILIADOR BANCARIO (Fuzzy Engine)
@@ -2706,30 +2865,39 @@ function descargarPDFOP(id) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.setFontSize(16);
-  doc.setTextColor(30, 41, 59);
-  doc.text(`ORDEN DE PAGO: ${op.codigo_op}`, 105, 20, { align: 'center' });
+  dibujarMembretePDF(doc, 'ORDEN DE PAGO', op.codigo_op, op.fecha);
 
-  doc.setFontSize(10);
-  doc.setTextColor(80);
-  doc.text(`Fecha: ${op.fecha}`, 14, 32);
-  doc.text(`Empresa Pagadora: Demostración SA`, 14, 38);
-  doc.text(`Beneficiario / Proveedor: ${op.proveedor} (CUIT: ${op.cuit || 'S/D'})`, 14, 44);
-  doc.text(`Concepto: ${op.concepto}`, 14, 50);
-  doc.text(`Medio de Pago: ${op.medio} (Comp: ${op.num_comprobante || '-'})`, 14, 56);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATOS DEL PROVEEDOR / BENEFICIARIO', 14, 45);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Proveedor: ${op.proveedor}`, 14, 50);
+  doc.text(`CUIT: ${op.cuit || 'S/D'}`, 14, 55);
+  doc.text(`Medio de Pago: ${op.medio}`, 120, 50);
+  doc.text(`N° Transacción / Comp: ${op.num_comprobante || '-'}`, 120, 55);
 
-  if (doc.autoTable) {
-    doc.autoTable({
-      startY: 65,
-      head: [['Descripción del Movimiento', 'Importe']],
-      body: [
-        ['Monto Bruto Factura', `$ ${parseFloat(op.monto_factura).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
-        ['Retención Impositiva Aplicada', `-$ ${parseFloat(op.retencion).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
-        ['Neto Liquidado a Pagar', `$ ${parseFloat(op.neto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
-      ],
-      headStyles: { fillColor: [79, 70, 229] }
-    });
-  }
+  doc.autoTable({
+    startY: 62,
+    head: [['Descripción del Movimiento', 'Importe ($)']],
+    body: [
+      ['Total Bruto Comprobantes Imputados', `$ ${parseFloat(op.monto_factura).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
+      ['Retenciones Impositivas Practicadas', `-$ ${parseFloat(op.retencion).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`],
+      ['NETO LIQUIDADO A PAGAR', `$ ${parseFloat(op.neto).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`]
+    ],
+    headStyles: { fillColor: [79, 70, 229] },
+    styles: { fontSize: 9 },
+    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 12;
+  doc.setFontSize(8);
+  doc.setTextColor(100);
+  doc.text(`Concepto: ${op.concepto}`, 14, finalY);
+
+  // Espacio de Firma y Conformidad
+  doc.setDrawColor(200);
+  doc.line(130, finalY + 35, 185, finalY + 35);
+  doc.text('Firma y Aclaración Recibido', 135, finalY + 40);
 
   doc.save(`${op.codigo_op}_${op.proveedor.replace(/\s+/g, '_')}.pdf`);
 }
