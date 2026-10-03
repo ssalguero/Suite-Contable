@@ -139,6 +139,10 @@
           <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
           <span>Dashboard</span>
         </button>
+        <button onclick="abrirModalEmpresa()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+          <span>Configuración de Empresa</span>
+        </button>
         <button id="nav-facturacion" onclick="switchTab('facturacion')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="receipt-text" class="w-4 h-4"></i>
           <span>Facturación (C/V)</span>
@@ -229,7 +233,7 @@
     <!-- Secciones de Contenido -->
     <main class="flex-1 p-6">
       
-      <!-- VISTA 1: DASHBOARD -->
+      <!-- VISTA 0: DASHBOARD -->
       <section id="tab-dashboard" class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -346,6 +350,99 @@
           </div>
         </div>
       </section>
+
+        <!-- VISTA 1: CONFIGURACION EMPRESA -->
+<div id="modal-config-empresa" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <!-- Header -->
+    <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800 shrink-0">
+      <h3 class="text-sm font-bold flex items-center gap-2">
+        <i data-lucide="building" class="w-4 h-4 text-indigo-400"></i> Datos Fiscales e Identidad Corporativa
+      </h3>
+      <button type="button" onclick="cerrarModalEmpresa()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
+    </div>
+
+    <!-- Formulario con scroll -->
+    <form id="form-config-empresa" onsubmit="guardarDatosEmpresa(event)" class="p-6 space-y-4 text-xs overflow-y-auto">
+      
+      <!-- Zona de Carga de Logo -->
+      <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
+        <div class="w-28 h-28 bg-white rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0 relative group">
+          <img id="empresa-logo-preview" src="" alt="Logo" class="hidden w-full h-full object-contain p-1" />
+          <div id="empresa-logo-placeholder" class="text-center text-slate-400 p-2">
+            <i data-lucide="image" class="w-6 h-6 mx-auto mb-1"></i>
+            <span class="text-[10px]">Sin Logo</span>
+          </div>
+        </div>
+        <div class="space-y-1.5 flex-1">
+          <label class="block font-bold text-slate-700">Logo Corporativo para Comprobantes</label>
+          <p class="text-slate-500 text-[11px]">Formatos admitidos: PNG, JPG o WebP. Se integrará automáticamente en los encabezados de facturas, recibos de cobro y órdenes de pago.</p>
+          <div class="flex gap-2 pt-1">
+            <input type="file" id="empresa-logo-input" accept="image/*" onchange="procesarArchivoLogo(this)" class="block text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+            <button type="button" onclick="removerLogoEmpresa()" id="btn-remover-logo" class="hidden text-rose-600 hover:text-rose-800 text-[11px] font-semibold underline cursor-pointer">Quitar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos Fiscales Principales -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Razón Social *</label>
+          <input type="text" id="empresa-razon-social" required placeholder="Ej: Demostración SA" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nombre de Fantasía</label>
+          <input type="text" id="empresa-nombre-fantasia" placeholder="Ej: Demostración Comercial" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">CUIT *</label>
+          <input type="text" id="empresa-cuit" required placeholder="30-12345678-9" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Condición IVA</label>
+          <select id="empresa-condicion-iva" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="Responsable Inscripto">Responsable Inscripto</option>
+            <option value="Monotributo">Monotributo</option>
+            <option value="Exento">Exento</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">N° Ingresos Brutos (IIBB)</label>
+          <input type="text" id="empresa-iibb" placeholder="30-12345678-9" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Domicilio Comercial / Legal</label>
+          <input type="text" id="empresa-domicilio" placeholder="Ej: Av. Corrientes 1234, CABA" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Fecha Inicio de Actividades</label>
+          <input type="date" id="empresa-inicio-actividades" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-700 mb-1">Leyenda al Pie de Comprobantes</label>
+        <input type="text" id="empresa-leyenda" placeholder="Ej: Documento no válido como factura fiscal / comprobante interno" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+
+      <!-- Botones -->
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+        <button type="button" onclick="cerrarModalEmpresa()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 transition">
+          Cancelar
+        </button>
+        <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition shadow-sm flex items-center gap-1.5 cursor-pointer">
+          <i data-lucide="check" class="w-4 h-4"></i> Guardar Cambios
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
       <!-- VISTA 2: FACTURACIÓN (C/V) -->
       <section id="tab-facturacion" class="hidden space-y-6">
