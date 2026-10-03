@@ -153,7 +153,7 @@ function switchTab(tabId) {
   }
 
   if (tabId === 'dashboard') actualizarDashboardMetrics();
-  if (tabId === 'recibos-cobro') initRecibos();
+  if (tabId === 'recibos-cobro') initRecibos(); renderHistorialRC();
   if (tabId === 'mayor-balance') cargarMayorYBalance();
   if (tabId === 'plan-cuentas') cargarPlanCuentas();
 }
@@ -778,6 +778,63 @@ function descargarPlantillaComprasCSV() {
   a.download = 'plantilla_compras_arca.csv';
   a.click();
 }
+
+// Dibuja el membrete corporativo con logo en cualquier documento PDF
+function dibujarMembretePDF(doc, tituloDocumento, numeroDoc, fechaDoc) {
+  const emp = datosEmpresaActual || {
+    razon_social: 'Demostración SA',
+    nombre_fantasia: 'Demostración Comercial',
+    cuit: '30-71123456-9',
+    condicion_iva: 'Responsable Inscripto',
+    iibb: '30-71123456-9',
+    domicilio_comercial: 'Av. Corrientes 1234, CABA'
+  };
+
+  // 1. Logo si existe
+  if (emp.logo_base64) {
+    try {
+      doc.addImage(emp.logo_base64, 'PNG', 14, 12, 32, 18, undefined, 'FAST');
+    } catch (e) {
+      console.warn('No se pudo renderizar imagen en PDF:', e);
+    }
+  }
+
+  // 2. Datos de la Empresa Emisora
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text(emp.nombre_fantasia || emp.razon_social, emp.logo_base64 ? 50 : 14, 18);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Razón Social: ${emp.razon_social}`, emp.logo_base64 ? 50 : 14, 23);
+  doc.text(`CUIT: ${emp.cuit} | IVA: ${emp.condicion_iva}`, emp.logo_base64 ? 50 : 14, 27);
+  doc.text(`IIBB: ${emp.iibb || '-'} | Domicilio: ${emp.domicilio_comercial || '-'}`, emp.logo_base64 ? 50 : 14, 31);
+
+  // 3. Cuadro de Identificación del Comprobante (Margen derecho)
+  doc.setDrawColor(203, 213, 225);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(130, 12, 66, 22, 2, 2, 'FD');
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(79, 70, 229);
+  doc.text(tituloDocumento, 163, 19, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.setTextColor(30, 41, 59);
+  doc.text(numeroDoc, 163, 25, { align: 'center' });
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Fecha: ${fechaDoc}`, 163, 30, { align: 'center' });
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(14, 38, 196, 38);
+}
+
 function descargarPDFFactura(id) {
   const f = listaFacturasActuales.find(item => String(item.id) === String(id));
   if (!f) return;
@@ -785,6 +842,8 @@ function descargarPDFFactura(id) {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
+  const esCompra = circuitoFacturacionActual === 'COMPRAS';
+doc.text(esCompra ? 'PROVEEDOR' : 'CLIENTE', 14, 45);
 
   dibujarMembretePDF(doc, f.tipo_doc.toUpperCase(), f.numero_doc, f.fecha);
 
@@ -1149,6 +1208,7 @@ async function guardarReciboCobro() {
 
     showToast(`¡Recibo ${numero} emitido con éxito! Asiento generado.`);
     limpiarFormularioRecibo();
+    renderHistorialRC();
     await cargarFacturasDesdeSupabase();
     if (typeof renderLibroDiario === 'function') await renderLibroDiario();
     if (typeof actualizarDashboardMetrics === 'function') await actualizarDashboardMetrics();
