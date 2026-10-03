@@ -171,6 +171,10 @@
           <i data-lucide="file-check" class="w-4 h-4"></i>
           <span>Órdenes de Pago (OP)</span>
         </button>
+        <button id="nav-mayor-balance" onclick="switchTab('mayor-balance')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="scale" class="w-4 h-4"></i>
+          <span>Mayor y Sumas y Saldos</span>
+        </button>
         <button id="nav-libro-diario" onclick="switchTab('libro-diario')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
           <i data-lucide="book-open" class="w-4 h-4"></i>
           <span>Libro Diario y Asientos</span>
@@ -1136,7 +1140,128 @@
         </div>
       </section>
 
-      <!-- VISTA 10: LIBRO DIARIO Y ASIENTOS -->
+      <!-- VISTA 10: MAYOR CONTABLE Y BALANCE DE SUMAS Y SALDOS -->
+<section id="tab-mayor-balance" class="hidden space-y-6">
+  <!-- Encabezado y Selector de Vista -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-slate-800">Mayor Contable y Balance de Sumas y Saldos</h2>
+      <p class="text-xs text-slate-500">Consolidación en tiempo real de cuentas contables, partidas acumuladas y saldos deudores/acreedores.</p>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <div class="inline-flex bg-slate-200/70 p-1 rounded-xl border border-slate-300">
+        <button type="button" id="btn-subtab-sumas-saldos" onclick="cambiarVistaMayorBalance('SUMAS_SALDOS')" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
+          📊 Balance Sumas y Saldos
+        </button>
+        <button type="button" id="btn-subtab-mayor" onclick="cambiarVistaMayorBalance('MAYOR')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+          📖 Mayor Analítico
+        </button>
+      </div>
+      <button onclick="exportarReporteContableCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm">
+        <i data-lucide="download" class="w-4 h-4"></i> Exportar (CSV)
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de Filtros Globales -->
+  <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-wrap items-center gap-3">
+      <div>
+        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Fecha Desde</label>
+        <input type="date" id="filtro-balance-desde" onchange="cargarMayorYBalance()" class="text-xs border rounded-lg p-1.5 border-slate-300 text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Fecha Hasta</label>
+        <input type="date" id="filtro-balance-hasta" onchange="cargarMayorYBalance()" class="text-xs border rounded-lg p-1.5 border-slate-300 text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div id="contenedor-filtro-cuenta-mayor" class="hidden">
+        <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Cuenta a Mayorizar</label>
+        <select id="filtro-cuenta-mayor" onchange="renderizarMayorAnalitico()" class="text-xs border rounded-lg p-1.5 border-slate-300 text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 font-semibold bg-white w-56">
+          <option value="">-- Seleccionar Cuenta --</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="cargarMayorYBalance()" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-lg border border-indigo-200 flex items-center gap-1.5">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Actualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- PANEL 1: BALANCE DE SUMAS Y SALDOS -->
+  <div id="panel-sumas-saldos" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+      <h3 class="text-sm font-bold text-slate-700">Matriz de Sumas y Saldos Consolidados</h3>
+      <span id="badge-balance-cuadre" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+        Cuadrado (Partida Doble)
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+            <th class="p-3">Cuenta Contable</th>
+            <th class="p-3 text-right">Sumas Debe ($)</th>
+            <th class="p-3 text-right">Sumas Haber ($)</th>
+            <th class="p-3 text-right text-emerald-700 bg-emerald-50/50">Saldo Deudor ($)</th>
+            <th class="p-3 text-right text-indigo-700 bg-indigo-50/50">Saldo Acreedor ($)</th>
+            <th class="p-3 text-center">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-sumas-saldos" class="divide-y divide-slate-100 text-slate-700">
+          <tr>
+            <td colspan="6" class="p-6 text-center text-slate-400">Cargando sumas y saldos...</td>
+          </tr>
+        </tbody>
+        <tfoot id="tfoot-sumas-saldos" class="font-bold text-slate-900 bg-slate-50 border-t-2 border-slate-300">
+          <!-- Totales de cuadre calculados -->
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- PANEL 2: MAYOR ANALÍTICO POR CUENTA -->
+  <div id="panel-mayor-analitico" class="hidden space-y-4">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+      <div>
+        <h3 id="mayor-cuenta-titulo" class="text-base font-bold text-indigo-800">Seleccione una cuenta para mayorizar</h3>
+        <p class="text-xs text-slate-500">Historial cronológico de débitos, créditos y saldo progresivo.</p>
+      </div>
+      <div class="flex items-center gap-4 text-xs font-mono">
+        <div>Total Débitos: <strong id="mayor-total-debe" class="text-slate-800">$0.00</strong></div>
+        <div>Total Créditos: <strong id="mayor-total-haber" class="text-slate-800">$0.00</strong></div>
+        <div>Saldo Actual: <strong id="mayor-saldo-final" class="text-indigo-700 text-sm">$0.00</strong></div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+              <th class="p-3">Fecha</th>
+              <th class="p-3">Asiento / Ref</th>
+              <th class="p-3">Concepto / Glosa</th>
+              <th class="p-3">Detalle Renglón</th>
+              <th class="p-3 text-right">Debe ($)</th>
+              <th class="p-3 text-right">Haber ($)</th>
+              <th class="p-3 text-right text-indigo-900 bg-indigo-50/40">Saldo Progresivo ($)</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-mayor-renglones" class="divide-y divide-slate-100 text-slate-700">
+            <tr>
+              <td colspan="7" class="p-6 text-center text-slate-400">Seleccione una cuenta contable para ver sus movimientos.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+      <!-- VISTA 11: LIBRO DIARIO Y ASIENTOS -->
       <section id="tab-libro-diario" class="hidden space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
