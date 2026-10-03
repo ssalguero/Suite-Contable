@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof cambiarMedioPagoSugerido === 'function') cambiarMedioPagoSugerido('Transferencia Bancaria');
   if (typeof inicializarAsientoManual === 'function') inicializarAsientoManual();
   if (typeof renderLibroDiario === 'function') renderLibroDiario();
+  if (typeof cargarPlanCuentas === 'function') cargarPlanCuentas();
   if (typeof actualizarDashboardMetrics === 'function') actualizarDashboardMetrics();
 });
 
@@ -130,7 +131,7 @@ async function logout() {
 function switchTab(tabId) {
   const tabs = [
     'dashboard', 'facturacion', 'recibos-cobro', 'conciliador', 'cta-corriente', 
-    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'mayor-balance', 'libro-diario'
+    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'mayor-balance', 'libro-diario', 'plan-cuentas'
   ];
   
   tabs.forEach(t => {
@@ -154,6 +155,7 @@ function switchTab(tabId) {
   if (tabId === 'dashboard') actualizarDashboardMetrics();
   if (tabId === 'recibos-cobro') initRecibos();
   if (tabId === 'mayor-balance') cargarMayorYBalance();
+  if (tabId === 'plan-cuentas') cargarPlanCuentas();
 }
 // ==========================================
 // MOTOR 1: FACTURACIÓN CON PADRÓN Y MULTICOMPROBANTES
@@ -3148,4 +3150,290 @@ async function actualizarDashboardMetrics() {
   } catch (err) {
     console.warn('Error actualizando KPIs:', err);
   }
+}
+// ==========================================
+// MOTOR 12: PLAN DE CUENTAS MAESTRO (CRUD & IMPORT/REPLACE)
+// ==========================================
+let listaPlanCuentas = [];
+
+async function cargarPlanCuentas() {
+  const tbody = document.getElementById('tbody-plan-cuentas');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Cargando catálogo contable...</td></tr>';
+
+  try {
+    const { data, error } = await db
+      .from('cuentas_contables')
+      .select('*')
+      .order('codigo', { ascending: true });
+
+    if (error) throw error;
+    listaPlanCuentas = data || [];
+
+    renderizarTablaPlanCuentas();
+    actualizarDatalistCuentasContables();
+
+  } catch (err) {
+    console.error('Error cargando plan de cuentas:', err);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-500">Error al cargar cuentas: ${err.message}</td></tr>`;
+  }
+}
+
+function autoSugerirSaldoHabitual(tipo) {
+  const selSaldo = document.getElementById('pc-saldo');
+  if (!selSaldo) return;
+  if (tipo === 'ACTIVO' || tipo === 'RESULTADO_NEGATIVO') {
+    selSaldo.value = 'DEUDOR';
+  } else {
+    selSaldo.value = 'ACREEDOR';
+  }
+}
+
+function renderizarTablaPlanCuentas() {
+  const tbody = document.getElementById('tbody-plan-cuentas');
+  const badgeTotal = document.getElementById('badge-total-cuentas');
+  if (!tbody) return;
+
+  const filtroTexto = (document.getElementById('pc-buscar')?.value || '').toLowerCase();
+  const filtroTipo = document.getElementById('pc-filtro-tipo')?.value || 'TODOS';
+
+  const filtrados = listaPlanCuentas.filter(c => {
+    const coincideTexto = c.codigo.toLowerCase().includes(filtroTexto) || c.nombre.toLowerCase().includes(filtroTexto);
+    const coincideTipo = filtroTipo === 'TODOS' || c.tipo === filtroTipo;
+    return coincideTexto && coincideTipo;
+  });
+
+  if (badgeTotal) badgeTotal.textContent = `${listaPlanCuentas.length} cuentas`;
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">No se encontraron cuentas contables con esos criterios.</td></tr>';
+    return;
+  }
+
+  const badgesTipo = {
+    'ACTIVO': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    'PASIVO': 'bg-amber-100 text-amber-800 border-amber-200',
+    'PATRIMONIO_NETO': 'bg-purple-100 text-purple-800 border-purple-200',
+    'RESULTADO_POSITIVO': 'bg-sky-100 text-sky-800 border-sky-200',
+    'RESULTADO_NEGATIVO': 'bg-rose-100 text-rose-800 border-rose-200'
+  };
+
+  tbody.innerHTML = filtrados.map(c => `
+    <tr class="hover:bg-slate-50 transition-colors">
+      <td class="p-2.5 font-mono font-bold text-slate-700">${c.codigo}</td>
+      <td class="p-2.5 font-semibold text-slate-800">${c.nombre}</td>
+      <td class="p-2.5">
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgesTipo[c.tipo] || 'bg-slate-100 text-slate-700'}">
+          ${c.tipo.replace('_', ' ')}
+        </span>
+      </td>
+      <td class="p-2.5 text-center font-mono text-[11px] font-bold ${c.saldo_habitual === 'DEUDOR' ? 'text-emerald-700' : 'text-indigo-700'}">
+        ${c.saldo_habitual}
+      </td>
+      <td class="p-2.5 text-center">
+        <span class="text-xs">${c.es_imputable ? '✅' : '🔒'}</span>
+      </td>
+      <td class="p-2.5 text-center whitespace-nowrap">
+        <button onclick="prepararEdicionPlanCuenta('${c.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1 cursor-pointer" title="Editar">✏️️</button>
+        <button onclick="eliminarCuentaContable('${c.id}', '${c.nombre}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function guardarCuentaContable(e) {
+  if (e) e.preventDefault();
+  const idEdicion = document.getElementById('pc-id-edicion').value;
+  const codigo = document.getElementById('pc-codigo').value.trim();
+  const nombre = document.getElementById('pc-nombre').value.trim();
+  const tipo = document.getElementById('pc-tipo').value;
+  const saldo = document.getElementById('pc-saldo').value;
+  const esImputable = document.getElementById('pc-imputable').checked;
+
+  if (!codigo || !nombre) return alert('Por favor complete el código y el nombre de la cuenta.');
+
+  const payload = {
+    codigo,
+    nombre,
+    tipo,
+    saldo_habitual: saldo,
+    es_imputable: esImputable
+  };
+
+  try {
+    if (idEdicion) {
+      const { error } = await db.from('cuentas_contables').update(payload).eq('id', idEdicion);
+      if (error) throw error;
+      showToast(`Cuenta ${nombre} actualizada.`);
+    } else {
+      const { error } = await db.from('cuentas_contables').insert([payload]);
+      if (error) throw error;
+      showToast(`Cuenta ${nombre} agregada al catálogo.`);
+    }
+
+    limpiarFormularioPlanCuenta();
+    await cargarPlanCuentas();
+
+  } catch (err) {
+    console.error('Error guardando cuenta contable:', err);
+    showToast(`Error: ${err.message}`, 'error');
+  }
+}
+
+function prepararEdicionPlanCuenta(id) {
+  const cuenta = listaPlanCuentas.find(c => String(c.id) === String(id));
+  if (!cuenta) return;
+
+  document.getElementById('pc-id-edicion').value = cuenta.id;
+  document.getElementById('pc-codigo').value = cuenta.codigo;
+  document.getElementById('pc-nombre').value = cuenta.nombre;
+  document.getElementById('pc-tipo').value = cuenta.tipo;
+  document.getElementById('pc-saldo').value = cuenta.saldo_habitual;
+  document.getElementById('pc-imputable').checked = cuenta.es_imputable;
+
+  document.getElementById('pc-form-titulo').innerHTML = `<i data-lucide="edit" class="w-4 h-4 text-amber-600"></i> Editar Cuenta: ${cuenta.nombre}`;
+  document.getElementById('btn-submit-pc').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Actualizar Cuenta`;
+  document.getElementById('btn-cancelar-pc').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function limpiarFormularioPlanCuenta() {
+  document.getElementById('form-plan-cuenta').reset();
+  document.getElementById('pc-id-edicion').value = '';
+  document.getElementById('pc-imputable').checked = true;
+  document.getElementById('pc-form-titulo').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Nueva Cuenta Contable`;
+  document.getElementById('btn-submit-pc').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Guardar Cuenta`;
+  document.getElementById('btn-cancelar-pc').classList.add('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+async function eliminarCuentaContable(id, nombre) {
+  if (!confirm(`¿Estás seguro de eliminar la cuenta contable "${nombre}"?`)) return;
+
+  try {
+    const { error } = await db.from('cuentas_contables').delete().eq('id', id);
+    if (error) throw error;
+    showToast(`Cuenta ${nombre} eliminada del catálogo.`);
+    await cargarPlanCuentas();
+  } catch (err) {
+    console.error('Error eliminando cuenta:', err);
+    showToast('No se puede eliminar la cuenta si posee movimientos o restricciones.', 'error');
+  }
+}
+
+function actualizarDatalistCuentasContables() {
+  const datalist = document.getElementById('plan-cuentas-sugeridas');
+  if (!datalist) return;
+  datalist.innerHTML = '';
+
+  const imputables = listaPlanCuentas.filter(c => c.es_imputable);
+  imputables.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.nombre;
+    opt.label = `${c.codigo} (${c.tipo})`;
+    datalist.appendChild(opt);
+  });
+}
+
+function descargarPlantillaPlanCuentasCSV() {
+  const encabezado = "codigo,nombre,tipo,saldo_habitual,es_imputable\n";
+  const ejemplos = [
+    '1.1.01.001,"Caja Central","ACTIVO","DEUDOR","SI"',
+    '1.1.02.001,"Banco Santander Cta Cte","ACTIVO","DEUDOR","SI"',
+    '2.1.01.001,"Proveedores Locales","PASIVO","ACREEDOR","SI"',
+    '4.1.01.001,"Ventas Mayoristas","RESULTADO_POSITIVO","ACREEDOR","SI"',
+    '5.2.01.001,"Gastos Generales","RESULTADO_NEGATIVO","DEUDOR","SI"'
+  ].join('\n');
+
+  descargarArchivoCSV(encabezado + ejemplos, 'plantilla_plan_cuentas.csv');
+}
+
+async function procesarArchivoPlanCuentasCSV() {
+  const inputFile = document.getElementById('pc-input-csv');
+  const file = inputFile?.files[0];
+  const modo = document.getElementById('pc-modo-importacion')?.value || 'UPSERT';
+  const statusEl = document.getElementById('pc-status-import');
+
+  if (!file) return alert('Por favor selecciona un archivo CSV.');
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const texto = e.target.result;
+      const lineas = texto.split(/\r\n|\n/).filter(l => l.trim() !== '');
+
+      if (lineas.length <= 1) return alert('El archivo CSV no contiene registros.');
+
+      const cuentasNuevas = [];
+
+      for (let i = 1; i < lineas.length; i++) {
+        const cols = lineas[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lineas[i].split(',');
+        if (cols && cols.length >= 2) {
+          const codigo = cols[0]?.replace(/"/g, '').trim();
+          const nombre = cols[1]?.replace(/"/g, '').trim();
+          let tipo = cols[2]?.replace(/"/g, '').trim().toUpperCase() || 'ACTIVO';
+          let saldo = cols[3]?.replace(/"/g, '').trim().toUpperCase() || (tipo === 'ACTIVO' || tipo === 'RESULTADO_NEGATIVO' ? 'DEUDOR' : 'ACREEDOR');
+          const imputableRaw = cols[4]?.replace(/"/g, '').trim().toUpperCase() || 'SI';
+          const esImputable = imputableRaw === 'SI' || imputableRaw === 'TRUE' || imputableRaw === '1';
+
+          if (!['ACTIVO', 'PASIVO', 'PATRIMONIO_NETO', 'RESULTADO_POSITIVO', 'RESULTADO_NEGATIVO'].includes(tipo)) {
+            tipo = 'ACTIVO';
+          }
+          if (!['DEUDOR', 'ACREEDOR'].includes(saldo)) {
+            saldo = (tipo === 'ACTIVO' || tipo === 'RESULTADO_NEGATIVO') ? 'DEUDOR' : 'ACREEDOR';
+          }
+
+          if (codigo && nombre) {
+            cuentasNuevas.push({
+              codigo,
+              nombre,
+              tipo,
+              saldo_habitual: saldo,
+              es_imputable: esImputable
+            });
+          }
+        }
+      }
+
+      if (cuentasNuevas.length === 0) return alert('No se encontraron filas con datos válidos.');
+
+      if (modo === 'REEMPLAZAR') {
+        const confirmar = confirm(`⚠️ ATENCIÓN: El modo 'Reemplazo Total' vaciará el catálogo actual e insertará ${cuentasNuevas.length} cuentas. ¿Deseas continuar?`);
+        if (!confirmar) return;
+
+        const { error: errDelete } = await db.from('cuentas_contables').delete().neq('codigo', '___IMPOSIBLE___');
+        if (errDelete) throw errDelete;
+      }
+
+      const { error: errInsert } = await db
+        .from('cuentas_contables')
+        .upsert(cuentasNuevas, { onConflict: 'codigo' });
+
+      if (errInsert) throw errInsert;
+
+      if (statusEl) {
+        statusEl.textContent = `✓ Éxito: ${cuentasNuevas.length} cuentas procesadas (${modo === 'REEMPLAZAR' ? 'Catálogo Reemplazado' : 'Fusión Completa'}).`;
+        statusEl.className = 'text-xs text-emerald-600 font-bold';
+      }
+
+      showToast(`Se cargaron ${cuentasNuevas.length} cuentas contables.`);
+      if (inputFile) inputFile.value = '';
+
+      await cargarPlanCuentas();
+
+    } catch (err) {
+      console.error('Error al importar plan de cuentas:', err);
+      alert(`Error al procesar el archivo: ${err.message}`);
+    }
+  };
+
+  reader.readAsText(file, 'UTF-8');
+}
+
+function exportarPlanCuentasCSV() {
+  if (listaPlanCuentas.length === 0) return alert('No hay cuentas para exportar.');
+  let csv = 'Codigo,Nombre,Naturaleza,Saldo Habitual,Imputable\n';
+  listaPlanCuentas.forEach(c => {
+    csv += `"${c.codigo}","${c.nombre}","${c.tipo}","${c.saldo_habitual}",${c.es_imputable ? 'SI' : 'NO'}\n`;
+  });
+  descargarArchivoCSV(csv, `Plan_Cuentas_Maestro_${new Date().toISOString().slice(0, 10)}.csv`);
 }
