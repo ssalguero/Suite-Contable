@@ -157,6 +157,161 @@ function switchTab(tabId) {
   if (tabId === 'mayor-balance') cargarMayorYBalance();
   if (tabId === 'plan-cuentas') cargarPlanCuentas();
 }
+
+// ==========================================
+// MOTOR 0: CONFIGURACIÓN DE EMPRESA Y LOGO CORPORATIVO
+// ==========================================
+let datosEmpresaActual = null;
+let logoBase64Temp = null;
+
+// Cargar datos al iniciar
+document.addEventListener('DOMContentLoaded', () => {
+  cargarDatosEmpresa();
+});
+
+async function cargarDatosEmpresa() {
+  try {
+    const { data, error } = await db
+      .from('empresas')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data) {
+      datosEmpresaActual = data;
+      actualizarEncabezadoEmpresa(data);
+    }
+  } catch (err) {
+    console.warn('Aviso cargando empresa:', err);
+  }
+}
+
+function actualizarEncabezadoEmpresa(emp) {
+  // Actualizar el nombre que figura en el header superior
+  const headerEmpresa = document.querySelector('header strong.text-slate-700');
+  if (headerEmpresa && emp.razon_social) {
+    headerEmpresa.textContent = emp.nombre_fantasia || emp.razon_social;
+  }
+}
+
+function abrirModalEmpresa() {
+  const modal = document.getElementById('modal-config-empresa');
+  if (!modal) return;
+
+  if (datosEmpresaActual) {
+    document.getElementById('empresa-razon-social').value = datosEmpresaActual.razon_social || '';
+    document.getElementById('empresa-nombre-fantasia').value = datosEmpresaActual.nombre_fantasia || '';
+    document.getElementById('empresa-cuit').value = datosEmpresaActual.cuit || '';
+    document.getElementById('empresa-condicion-iva').value = datosEmpresaActual.condicion_iva || 'Responsable Inscripto';
+    document.getElementById('empresa-iibb').value = datosEmpresaActual.iibb || '';
+    document.getElementById('empresa-domicilio').value = datosEmpresaActual.domicilio_comercial || '';
+    document.getElementById('empresa-inicio-actividades').value = datosEmpresaActual.inicio_actividades || '';
+    document.getElementById('empresa-leyenda').value = datosEmpresaActual.leyenda_comprobantes || '';
+
+    logoBase64Temp = datosEmpresaActual.logo_base64 || null;
+    mostrarPreviewLogo(logoBase64Temp);
+  }
+
+  modal.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function cerrarModalEmpresa() {
+  const modal = document.getElementById('modal-config-empresa');
+  if (modal) modal.classList.add('hidden');
+}
+
+function procesarArchivoLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // Limitar a máximo 2MB para rendimiento
+  if (file.size > 2 * 1024 * 1024) {
+    alert('El archivo no debe superar los 2MB.');
+    input.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    logoBase64Temp = e.target.result;
+    mostrarPreviewLogo(logoBase64Temp);
+  };
+  reader.readAsDataURL(file);
+}
+
+function mostrarPreviewLogo(base64) {
+  const img = document.getElementById('empresa-logo-preview');
+  const placeholder = document.getElementById('empresa-logo-placeholder');
+  const btnRemover = document.getElementById('btn-remover-logo');
+
+  if (base64) {
+    if (img) {
+      img.src = base64;
+      img.classList.remove('hidden');
+    }
+    if (placeholder) placeholder.classList.add('hidden');
+    if (btnRemover) btnRemover.classList.remove('hidden');
+  } else {
+    if (img) {
+      img.src = '';
+      img.classList.add('hidden');
+    }
+    if (placeholder) placeholder.classList.remove('hidden');
+    if (btnRemover) btnRemover.classList.add('hidden');
+  }
+}
+
+function removerLogoEmpresa() {
+  logoBase64Temp = null;
+  mostrarPreviewLogo(null);
+  const input = document.getElementById('empresa-logo-input');
+  if (input) input.value = '';
+}
+
+async function guardarDatosEmpresa(e) {
+  if (e) e.preventDefault();
+
+  const razon_social = document.getElementById('empresa-razon-social').value.trim();
+  const nombre_fantasia = document.getElementById('empresa-nombre-fantasia').value.trim();
+  const cuit = document.getElementById('empresa-cuit').value.trim();
+  const condicion_iva = document.getElementById('empresa-condicion-iva').value;
+  const iibb = document.getElementById('empresa-iibb').value.trim();
+  const domicilio_comercial = document.getElementById('empresa-domicilio').value.trim();
+  const inicio_actividades = document.getElementById('empresa-inicio-actividades').value || null;
+  const leyenda_comprobantes = document.getElementById('empresa-leyenda').value.trim();
+
+  const payload = {
+    razon_social,
+    nombre_fantasia,
+    cuit,
+    condicion_iva,
+    iibb,
+    domicilio_comercial,
+    inicio_actividades,
+    leyenda_comprobantes,
+    logo_base64: logoBase64Temp
+  };
+
+  try {
+    const { error } = await db
+      .from('empresas')
+      .upsert([payload], { onConflict: 'cuit' });
+
+    if (error) throw error;
+
+    showToast('Datos de la empresa y logo guardados correctamente.');
+    cerrarModalEmpresa();
+    await cargarDatosEmpresa();
+
+  } catch (err) {
+    console.error('Error al guardar datos de la empresa:', err);
+    alert(`Error: ${err.message}`);
+  }
+}
+
 // ==========================================
 // MOTOR 1: FACTURACIÓN CON PADRÓN Y MULTICOMPROBANTES
 // ==========================================
