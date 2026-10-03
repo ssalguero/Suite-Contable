@@ -745,6 +745,34 @@
             </button>
           </div>
         </div>
+        <!-- Historial de Recibos Emitidos para Descarga/Impresión -->
+<div class="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+  <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <h3 class="text-sm font-bold text-slate-700">Historial de Recibos de Cobro Emitidos</h3>
+    <div class="relative w-full sm:w-64">
+      <input id="rc-buscar-historial" type="text" oninput="renderHistorialRC()" placeholder="Buscar cliente o N°..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+      <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+    </div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs border-collapse">
+      <thead>
+        <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+          <th class="p-3">N° Recibo / Fecha</th>
+          <th class="p-3">Cliente</th>
+          <th class="p-3">Medio</th>
+          <th class="p-3 text-right">Total Facturas</th>
+          <th class="p-3 text-right">Retenciones</th>
+          <th class="p-3 text-right">Neto Cobrado</th>
+          <th class="p-3 text-center">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-rc-historial" class="divide-y divide-slate-100 text-slate-700">
+        <!-- Renderizado dinámico -->
+      </tbody>
+    </table>
+  </div>
+</div>
       </section>
 
       <!-- VISTA 4: CONCILIADOR BANCARIO -->
