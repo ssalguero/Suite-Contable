@@ -130,7 +130,7 @@ async function logout() {
 function switchTab(tabId) {
   const tabs = [
     'dashboard', 'facturacion', 'recibos-cobro', 'conciliador', 'cta-corriente', 
-    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'libro-diario'
+    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'mayor-balance', 'libro-diario'
   ];
   
   tabs.forEach(t => {
@@ -153,6 +153,7 @@ function switchTab(tabId) {
 
   if (tabId === 'dashboard') actualizarDashboardMetrics();
   if (tabId === 'recibos-cobro') initRecibos();
+  if (tabId === 'mayor-balance') cargarMayorYBalance();
 }
 // ==========================================
 // MOTOR 1: FACTURACIÓN CON PADRÓN Y MULTICOMPROBANTES
@@ -2577,7 +2578,301 @@ function descargarPDFOP(id) {
 }
 
 // ==========================================
-// MOTOR 9: LIBRO DIARIO Y ASIENTOS
+// MOTOR 9: MAYOR CONTABLE Y BALANCE DE SUMAS Y SALDOS
+// ==========================================
+let vistaMayorBalanceActual = 'SUMAS_SALDOS';
+let datosAsientosGlobal = [];
+let datosDetallesGlobal = [];
+let balanceConsolidado = [];
+
+function cambiarVistaMayorBalance(vista) {
+  vistaMayorBalanceActual = vista;
+  const btnSS = document.getElementById('btn-subtab-sumas-saldos');
+  const btnM = document.getElementById('btn-subtab-mayor');
+  const panelSS = document.getElementById('panel-sumas-saldos');
+  const panelM = document.getElementById('panel-mayor-analitico');
+  const filtroCuenta = document.getElementById('contenedor-filtro-cuenta-mayor');
+
+  if (vista === 'SUMAS_SALDOS') {
+    btnSS.className = 'px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer';
+    btnM.className = 'px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer';
+    panelSS.classList.remove('hidden');
+    panelM.classList.add('hidden');
+    filtroCuenta.classList.add('hidden');
+  } else {
+    btnM.className = 'px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer';
+    btnSS.className = 'px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer';
+    panelM.classList.remove('hidden');
+    panelSS.classList.add('hidden');
+    filtroCuenta.classList.remove('hidden');
+    renderizarMayorAnalitico();
+  }
+}
+
+async function cargarMayorYBalance() {
+  const tbodySS = document.getElementById('tbody-sumas-saldos');
+  if (tbodySS) tbodySS.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Consultando libro mayor y asientos en Supabase...</td></tr>';
+
+  const fDesde = document.getElementById('filtro-balance-desde')?.value;
+  const fHasta = document.getElementById('filtro-balance-hasta')?.value;
+
+  try {
+    let queryAsientos = db.from('asientos').select('*').order('fecha', { ascending: true });
+    if (fDesde) queryAsientos = queryAsientos.gte('fecha', fDesde);
+    if (fHasta) queryAsientos = queryAsientos.lte('fecha', fHasta);
+
+    const { data: asientos, error: errA } = await queryAsientos;
+    if (errA) throw errA;
+    datosAsientosGlobal = asientos || [];
+
+    if (datosAsientosGlobal.length === 0) {
+      if (tbodySS) tbodySS.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">No hay movimientos contables en el rango de fechas seleccionado.</td></tr>';
+      actualizarTotalesBalance(0, 0, 0, 0);
+      return;
+    }
+
+    const idsAsientos = datosAsientosGlobal.map(a => a.id);
+    const { data: renglones, error: errR } = await db
+      .from('asiento_detalles')
+      .select('*')
+      .in('asiento_id', idsAsientos);
+
+    if (errR) throw errR;
+    datosDetallesGlobal = renglones || [];
+
+    // Consolidación por Cuenta Contable
+    const mapaCuentas = {};
+
+    datosDetallesGlobal.forEach(r => {
+      const nombreCuenta = r.cuenta_nombre || r.cuenta || r.detalle || 'Cuentas Generales';
+      if (!mapaCuentas[nombreCuenta]) {
+        mapaCuentas[nombreCuenta] = {
+          cuenta: nombreCuenta,
+          debe: 0,
+          haber: 0
+        };
+      }
+      mapaCuentas[nombreCuenta].debe += parseFloat(r.debe || 0);
+      mapaCuentas[nombreCuenta].haber += parseFloat(r.haber || 0);
+    });
+
+    balanceConsolidado = Object.values(mapaCuentas).map(item => {
+      const diff = item.debe - item.haber;
+      return {
+        ...item,
+        saldoDeudor: diff > 0 ? diff : 0,
+        saldoAcreedor: diff < 0 ? Math.abs(diff) : 0
+      };
+    });
+
+    balanceConsolidado.sort((a, b) => a.cuenta.localeCompare(b.cuenta));
+
+    renderizarTablaSumasSaldos();
+    actualizarSelectorCuentasMayor();
+
+  } catch (err) {
+    console.error('Error cargando balance:', err);
+    if (tbodySS) tbodySS.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-500">Error al procesar sumas y saldos: ${err.message}</td></tr>`;
+  }
+}
+
+function renderizarTablaSumasSaldos() {
+  const tbody = document.getElementById('tbody-sumas-saldos');
+  if (!tbody) return;
+
+  if (balanceConsolidado.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Sin datos de asientos contables.</td></tr>';
+    actualizarTotalesBalance(0, 0, 0, 0);
+    return;
+  }
+
+  let totDebe = 0, totHaber = 0, totSDeudor = 0, totSAcreedor = 0;
+
+  tbody.innerHTML = balanceConsolidado.map(b => {
+    totDebe += b.debe;
+    totHaber += b.haber;
+    totSDeudor += b.saldoDeudor;
+    totSAcreedor += b.saldoAcreedor;
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="p-3 font-semibold text-slate-800">${b.cuenta}</td>
+        <td class="p-3 text-right font-mono text-slate-600">$ ${b.debe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+        <td class="p-3 text-right font-mono text-slate-600">$ ${b.haber.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+        <td class="p-3 text-right font-mono font-bold text-emerald-700 bg-emerald-50/20">$ ${b.saldoDeudor > 0 ? b.saldoDeudor.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '-'}</td>
+        <td class="p-3 text-right font-mono font-bold text-indigo-700 bg-indigo-50/20">$ ${b.saldoAcreedor > 0 ? b.saldoAcreedor.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '-'}</td>
+        <td class="p-3 text-center">
+          <button onclick="verMayorDeCuenta('${encodeURIComponent(b.cuenta)}')" class="text-xs bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-semibold px-2 py-1 rounded border border-slate-200 cursor-pointer">
+            Ver Mayor
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  actualizarTotalesBalance(totDebe, totHaber, totSDeudor, totSAcreedor);
+}
+
+function actualizarTotalesBalance(totDebe, totHaber, totSDeudor, totSAcreedor) {
+  const tfoot = document.getElementById('tfoot-sumas-saldos');
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr>
+        <td class="p-3 uppercase">Totales Balance:</td>
+        <td class="p-3 text-right font-mono">$ ${totDebe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+        <td class="p-3 text-right font-mono">$ ${totHaber.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+        <td class="p-3 text-right font-mono text-emerald-800 bg-emerald-50/60">$ ${totSDeudor.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+        <td class="p-3 text-right font-mono text-indigo-800 bg-indigo-50/60">$ ${totSAcreedor.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+        <td></td>
+      </tr>
+    `;
+  }
+
+  const difSumas = Math.abs(totDebe - totHaber);
+  const difSaldos = Math.abs(totSDeudor - totSAcreedor);
+  const badge = document.getElementById('badge-balance-cuadre');
+  if (badge) {
+    if (difSumas < 0.05 && difSaldos < 0.05) {
+      badge.className = "text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200";
+      badge.textContent = "Cuadrado (Partida Doble OK)";
+    } else {
+      badge.className = "text-xs font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200";
+      badge.textContent = `Desbalanceado (Dif: $${difSumas.toFixed(2)})`;
+    }
+  }
+}
+
+function actualizarSelectorCuentasMayor() {
+  const select = document.getElementById('filtro-cuenta-mayor');
+  if (!select) return;
+
+  const cuentaActual = select.value;
+  select.innerHTML = '<option value="">-- Seleccionar Cuenta --</option>';
+  balanceConsolidado.forEach(b => {
+    select.innerHTML += `<option value="${b.cuenta}">${b.cuenta}</option>`;
+  });
+  if (cuentaActual) select.value = cuentaActual;
+}
+
+function verMayorDeCuenta(cuentaCodificada) {
+  const cuenta = decodeURIComponent(cuentaCodificada);
+  cambiarVistaMayorBalance('MAYOR');
+  const select = document.getElementById('filtro-cuenta-mayor');
+  if (select) {
+    select.value = cuenta;
+    renderizarMayorAnalitico();
+  }
+}
+
+function renderizarMayorAnalitico() {
+  const cuentaSeleccionada = document.getElementById('filtro-cuenta-mayor')?.value;
+  const tbody = document.getElementById('tbody-mayor-renglones');
+  const titEl = document.getElementById('mayor-cuenta-titulo');
+  const elDebe = document.getElementById('mayor-total-debe');
+  const elHaber = document.getElementById('mayor-total-haber');
+  const elSaldo = document.getElementById('mayor-saldo-final');
+
+  if (!cuentaSeleccionada) {
+    if (titEl) titEl.textContent = 'Seleccione una cuenta contable para mayorizar';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Seleccione una cuenta contable en el filtro superior.</td></tr>';
+    if (elDebe) elDebe.textContent = '$0.00';
+    if (elHaber) elHaber.textContent = '$0.00';
+    if (elSaldo) elSaldo.textContent = '$0.00';
+    return;
+  }
+
+  if (titEl) titEl.textContent = `Mayor: ${cuentaSeleccionada}`;
+
+  // Filtrar renglones de esa cuenta vinculados a sus asientos
+  const renglonesCuenta = [];
+  datosDetallesGlobal.forEach(r => {
+    const nombre = r.cuenta_nombre || r.cuenta || r.detalle || 'Cuentas Generales';
+    if (nombre === cuentaSeleccionada) {
+      const asientoPadre = datosAsientosGlobal.find(a => a.id === r.asiento_id);
+      renglonesCuenta.push({
+        ...r,
+        fecha: asientoPadre?.fecha || 'S/F',
+        glosa: asientoPadre?.concepto || asientoPadre?.leyenda || 'Asiento contable',
+        asientoRef: `Asiento ${String(asientoPadre?.id || '').slice(0, 8)}`
+      });
+    }
+  });
+
+  renglonesCuenta.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+  let acumuladoDebe = 0;
+  let acumuladoHaber = 0;
+  let saldoProgresivo = 0;
+
+  tbody.innerHTML = renglonesCuenta.map(r => {
+    const debe = parseFloat(r.debe || 0);
+    const haber = parseFloat(r.haber || 0);
+    acumuladoDebe += debe;
+    acumuladoHaber += haber;
+    saldoProgresivo += (debe - haber);
+
+    const formatoSaldo = saldoProgresivo >= 0 
+      ? `$ ${saldoProgresivo.toLocaleString('es-AR', { minimumFractionDigits: 2 })} (D)`
+      : `$ ${Math.abs(saldoProgresivo).toLocaleString('es-AR', { minimumFractionDigits: 2 })} (A)`;
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="p-3 text-slate-600 font-mono">${r.fecha}</td>
+        <td class="p-3 text-slate-500 font-mono">${r.asientoRef}</td>
+        <td class="p-3 font-semibold text-slate-800">${r.glosa}</td>
+        <td class="p-3 text-slate-500">${r.detalle || '-'}</td>
+        <td class="p-3 text-right font-mono text-slate-700">${debe > 0 ? '$ ' + debe.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '-'}</td>
+        <td class="p-3 text-right font-mono text-slate-700">${haber > 0 ? '$ ' + haber.toLocaleString('es-AR', { minimumFractionDigits: 2 }) : '-'}</td>
+        <td class="p-3 text-right font-mono font-bold text-indigo-900 bg-indigo-50/20">${formatoSaldo}</td>
+      </tr>
+    `;
+  }).join('');
+
+  if (renglonesCuenta.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">No se registran movimientos para esta cuenta.</td></tr>';
+  }
+
+  const saldoFinal = acumuladoDebe - acumuladoHaber;
+  if (elDebe) elDebe.textContent = `$ ${acumuladoDebe.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  if (elHaber) elHaber.textContent = `$ ${acumuladoHaber.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  if (elSaldo) {
+    elSaldo.textContent = saldoFinal >= 0 
+      ? `$ ${saldoFinal.toLocaleString('es-AR', { minimumFractionDigits: 2 })} (Deudor)` 
+      : `$ ${Math.abs(saldoFinal).toLocaleString('es-AR', { minimumFractionDigits: 2 })} (Acreedor)`;
+  }
+}
+
+function exportarReporteContableCSV() {
+  if (vistaMayorBalanceActual === 'SUMAS_SALDOS') {
+    if (balanceConsolidado.length === 0) return alert('No hay datos para exportar.');
+    let csv = 'Cuenta Contable,Sumas Debe,Sumas Haber,Saldo Deudor,Saldo Acreedor\n';
+    balanceConsolidado.forEach(b => {
+      csv += `"${b.cuenta}",${b.debe},${b.haber},${b.saldoDeudor},${b.saldoAcreedor}\n`;
+    });
+    descargarArchivoCSV(csv, `Balance_Sumas_Saldos_${new Date().toISOString().slice(0, 10)}.csv`);
+  } else {
+    const cuenta = document.getElementById('filtro-cuenta-mayor')?.value;
+    if (!cuenta) return alert('Seleccione una cuenta contable para exportar su mayor.');
+    let csv = 'Fecha,Asiento,Concepto,Detalle,Debe,Haber\n';
+    datosDetallesGlobal.filter(r => (r.cuenta_nombre || r.cuenta || r.detalle) === cuenta).forEach(r => {
+      const a = datosAsientosGlobal.find(as => as.id === r.asiento_id);
+      csv += `${a?.fecha || ''},"${a?.id || ''}","${a?.concepto || ''}","${r.detalle || ''}",${r.debe || 0},${r.haber || 0}\n`;
+    });
+    descargarArchivoCSV(csv, `Mayor_${cuenta.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`);
+  }
+}
+
+function descargarArchivoCSV(contenido, nombreArchivo) {
+  const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreArchivo;
+  a.click();
+}
+
+// ==========================================
+// MOTOR 10: LIBRO DIARIO Y ASIENTOS
 // ==========================================
 let historialLibroDiario = JSON.parse(localStorage.getItem('suite_libro_diario')) || [];
 
