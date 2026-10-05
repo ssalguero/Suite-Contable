@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof renderLibroDiario === 'function') renderLibroDiario();
   if (typeof cargarPlanCuentas === 'function') cargarPlanCuentas();
   if (typeof actualizarDashboardMetrics === 'function') actualizarDashboardMetrics();
+  if (typeof cargarResumenesTarjetaCorp === 'function') cargarResumenesTarjetaCorp();
 });
 
 // -------------------------------------------------------------
