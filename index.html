@@ -191,6 +191,10 @@
           <i data-lucide="layers" class="w-4 h-4"></i>
           <span>Talonarios y CAI</span>
         </button>
+       <button id="nav-tarjetas" onclick="switchTab('tarjetas')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+         <i data-lucide="credit-card" class="w-4 h-4"></i>
+         <span>Tarjetas y Cupones</span>
+      </button>
       </nav>
     </div>
 
@@ -666,6 +670,40 @@
                 <option value="EF">Efectivo (Caja Central)</option>
                 <option value="CH">Cheque Físico</option>
                 <option value="ECHQ">E-Cheq</option>
+                <option value="TJ_CRED">Tarjeta de Crédito</option>
+                <option value="TJ_DEB">Tarjeta de Débito</option>
+                  <div id="rc-panel-cupon" class="hidden mt-3 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2">
+                    <div class="font-bold text-[11px] text-indigo-900 flex items-center gap-1.5">
+                      <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Datos del Cupón de Tarjeta
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                      <div>
+                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Marca</label>
+                        <select id="rc-cupon-marca" class="w-full p-1.5 border border-slate-300 rounded bg-white">
+                          <option value="Visa">Visa</option>
+                          <option value="Mastercard">Mastercard</option>
+                          <option value="AMEX">American Express</option>
+                          <option value="Cabal">Cabal</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">N° Cupón *</label>
+                        <input type="text" id="rc-cupon-numero" placeholder="Ej: 4892" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Terminal</label>
+                        <input type="text" id="rc-cupon-terminal" placeholder="Ej: 001" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Lote</label>
+                        <input type="text" id="rc-cupon-lote" placeholder="Ej: 14" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+                      </div>
+                      <div>
+                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Cuotas</label>
+                        <input type="number" id="rc-cupon-cuotas" min="1" max="48" value="1" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+                      </div>
+                    </div>
+                  </div>
               </select>
             </div>
           </div>
@@ -1755,6 +1793,170 @@
     </div>
   </div>
 </section>
+      <!-- VISTA 14: GESTIÓN DE TARJETAS, CUPONES Y LIQUIDACIONES -->
+<section id="tab-tarjetas" class="hidden space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+        <i data-lucide="credit-card" class="w-5 h-5 text-indigo-600"></i> Tesorería: Tarjetas y Liquidación de Cupones
+      </h2>
+      <p class="text-xs text-slate-500">Cartera de cupones a acreditar, retenciones financieras Sircreb/AFIP y conciliación bancaria de lotes.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="abrirModalLiquidacionTarjetas()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-sm flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="file-check" class="w-4 h-4"></i> Liquidar Cupones Seleccionados
+      </button>
+    </div>
+  </div>
+
+  <!-- Métricas Rápidas de Cupones -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-xs font-semibold text-slate-400">Total Cupones a Acreditar</p>
+      <h4 id="stat-cupones-monto" class="text-xl font-bold text-indigo-600 mt-1">$ 0.00</h4>
+      <p id="stat-cupones-cant" class="text-[11px] text-slate-500 mt-0.5">0 cupones pendientes</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-xs font-semibold text-slate-400">Liquidado en el Mes</p>
+      <h4 id="stat-cupones-liquidados-monto" class="text-xl font-bold text-emerald-600 mt-1">$ 0.00</h4>
+      <p class="text-[11px] text-slate-500 mt-0.5">Acreditado en banco</p>
+    </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-xs font-semibold text-slate-400">Retenciones Sufridas Tarjetas</p>
+      <h4 id="stat-cupones-retenciones" class="text-xl font-bold text-amber-600 mt-1">$ 0.00</h4>
+      <p class="text-[11px] text-slate-500 mt-0.5">IVA + Ganancias + Sircreb</p>
+    </div>
+  </div>
+
+  <!-- Tabla de Cupones Pendientes de Liquidación -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <h3 class="text-sm font-bold text-slate-700">Cupones Pendientes de Acreditación</h3>
+        <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">Activo Exigible</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <select id="filtro-tarjeta-marca" onchange="renderizarTablaCupones()" class="text-xs border border-slate-300 rounded-lg p-1.5 outline-none bg-white font-medium">
+          <option value="TODAS">Todas las Marcas</option>
+          <option value="Visa">Visa</option>
+          <option value="Mastercard">Mastercard</option>
+          <option value="AMEX">American Express</option>
+          <option value="Cabal">Cabal</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border-collapse">
+        <thead>
+          <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+            <th class="p-3 w-10 text-center"><input type="checkbox" id="chk-todos-cupones" onchange="tildarTodosCupones(this.checked)" /></th>
+            <th class="p-3">Fecha / Origen</th>
+            <th class="p-3">Tarjeta / Tipo</th>
+            <th class="p-3">Lote / Terminal</th>
+            <th class="p-3 font-mono">N° Cupón</th>
+            <th class="p-3 text-center">Cuotas</th>
+            <th class="p-3 text-right font-bold text-slate-900">Monto Bruto ($)</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-cupones-pendientes" class="divide-y divide-slate-100 text-slate-700">
+          <tr>
+            <td colspan="7" class="p-6 text-center text-slate-400">Consultando cupones pendientes...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL: LIQUIDACIÓN DE CUPONES Y DESGLOSE FINANCIERO -->
+<div id="modal-liquidacion-tarjetas" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden">
+    <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
+      <h3 class="text-sm font-bold flex items-center gap-2">
+        <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Liquidación Bancaria de Lote de Tarjetas
+      </h3>
+      <button type="button" onclick="cerrarModalLiquidacionTarjetas()" class="text-slate-400 hover:text-white p-1 text-base">✕</button>
+    </div>
+
+    <form id="form-liquidacion-tarjetas" onsubmit="confirmarLiquidacionTarjetas(event)" class="p-6 space-y-4 text-xs">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Fecha de Acreditación Bancaria *</label>
+          <input type="date" id="liq-fecha" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Adquirente / Procesador *</label>
+          <select id="liq-adquirente" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="Payway / Prisma">Payway (Prisma)</option>
+            <option value="Posnet / Fiserv">Posnet (Fiserv)</option>
+            <option value="Mercado Pago">Mercado Pago</option>
+            <option value="Getnet">Getnet (Santander)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">N° Liquidación / Resumen</label>
+          <input type="text" id="liq-numero" placeholder="Ej: LIQ-2026-9042" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Total Bruto de Cupones ($)</label>
+          <input type="number" step="0.01" id="liq-bruto" readonly class="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-lg font-mono font-bold text-slate-700" />
+        </div>
+      </div>
+
+      <!-- Descuentos y Retenciones Aplicadas en la Liquidación -->
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+        <h4 class="font-bold text-slate-700 pb-1 border-b border-slate-200 flex items-center justify-between">
+          <span>Descuentos y Retenciones Impositivas</span>
+          <span class="text-[10px] text-slate-400">A deducir del bruto</span>
+        </h4>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Comisión / Arancel ($)</label>
+            <input type="number" step="0.01" min="0" id="liq-arancel" oninput="recalcularNetoLiquidacion()" value="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">IVA sobre Comisiones ($)</label>
+            <input type="number" step="0.01" min="0" id="liq-iva-comision" oninput="recalcularNetoLiquidacion()" value="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-600 mb-1">Ret. Ganancias ($)</label>
+            <input type="number" step="0.01" min="0" id="liq-ret-ganancias" oninput="recalcularNetoLiquidacion()" value="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-600 mb-1">Ret. IVA ($)</label>
+            <input type="number" step="0.01" min="0" id="liq-ret-iva" oninput="recalcularNetoLiquidacion()" value="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-slate-600 mb-1">Ret. IIBB / Sircreb ($)</label>
+            <input type="number" step="0.01" min="0" id="liq-ret-iibb" oninput="recalcularNetoLiquidacion()" value="0.00" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
+          <span class="font-bold text-slate-800">Neto a Acreditar en Banco:</span>
+          <span id="liq-lbl-neto" class="font-bold text-emerald-700 text-sm font-mono">$ 0.00</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="cerrarModalLiquidacionTarjetas()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+          <i data-lucide="check" class="w-4 h-4"></i> Confirmar y Asentar Acreditación
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
     </main>
   </div>
 
