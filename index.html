@@ -1807,6 +1807,105 @@
         <i data-lucide="file-check" class="w-4 h-4"></i> Liquidar Cupones Seleccionados
       </button>
     </div>
+    <!-- Subpanel: Resumen de Tarjetas Corporativas (Pagos a Proveedores) -->
+<div class="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+  <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div>
+      <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+        <i data-lucide="credit-card" class="w-4 h-4 text-purple-600"></i> Resúmenes de Tarjeta Corporativa (Gastos y Proveedores)
+      </h3>
+      <p class="text-xs text-slate-500">Cancelación de resúmenes mensuales y conciliación del pasivo contra el extracto bancario.</p>
+    </div>
+    <button type="button" onclick="abrirModalCierreTarjetaCorp()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
+      <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Cargar Resumen a Pagar
+    </button>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs border-collapse">
+      <thead>
+        <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+          <th class="p-3">Tarjeta / Emisor</th>
+          <th class="p-3">Fecha Cierre</th>
+          <th class="p-3">Fecha Vencimiento</th>
+          <th class="p-3 text-right">Consumos ($)</th>
+          <th class="p-3 text-right">Gastos / Sellos ($)</th>
+          <th class="p-3 text-right font-bold text-slate-900">Total a Pagar ($)</th>
+          <th class="p-3 text-center">Estado</th>
+          <th class="p-3 text-center">Acción</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-resumenes-corp" class="divide-y divide-slate-100 text-slate-700">
+        <tr>
+          <td colspan="8" class="p-6 text-center text-slate-400">Cargando resúmenes...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL: Cargar Resumen de Tarjeta Corporativa -->
+<div id="modal-cierre-tarjeta-corp" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+    <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
+      <h3 class="text-sm font-bold flex items-center gap-2">
+        <i data-lucide="file-text" class="w-4 h-4 text-purple-400"></i> Registrar Resumen de Tarjeta Corporativa
+      </h3>
+      <button type="button" onclick="cerrarModalCierreTarjetaCorp()" class="text-slate-400 hover:text-white p-1 text-base">✕</button>
+    </div>
+
+    <form id="form-resumen-corp" onsubmit="guardarResumenTarjetaCorp(event)" class="p-6 space-y-3.5 text-xs">
+      <div>
+        <label class="block font-semibold text-slate-600 mb-1">Tarjeta Emisora *</label>
+        <select id="rcorp-tarjeta" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+          <option value="Visa Business Banco Galicia">Visa Business Banco Galicia</option>
+          <option value="Mastercard Corporate Santander">Mastercard Corporate Santander</option>
+          <option value="AMEX Corporate">American Express Corporate</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Fecha Cierre *</label>
+          <input type="date" id="rcorp-fecha-cierre" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Fecha Vencimiento *</label>
+          <input type="date" id="rcorp-fecha-vto" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Consumos ($) *</label>
+          <input type="number" step="0.01" min="0" id="rcorp-consumos" oninput="calcularTotalResumenCorp()" placeholder="0.00" required class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Sellos / Tasas ($)</label>
+          <input type="number" step="0.01" min="0" id="rcorp-sellos" oninput="calcularTotalResumenCorp()" value="0.00" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Intereses ($)</label>
+          <input type="number" step="0.01" min="0" id="rcorp-intereses" oninput="calcularTotalResumenCorp()" value="0.00" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+      </div>
+
+      <div class="p-3 bg-purple-50 rounded-lg border border-purple-100 flex justify-between items-center text-xs">
+        <span class="font-bold text-purple-900">Total a Cancelar del Resumen:</span>
+        <span id="rcorp-lbl-total" class="font-bold text-purple-900 text-sm font-mono">$ 0.00</span>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="cerrarModalCierreTarjetaCorp()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100">
+          Cancelar
+        </button>
+        <button type="submit" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+          <i data-lucide="check" class="w-4 h-4"></i> Guardar Resumen
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
   </div>
 
   <!-- Métricas Rápidas de Cupones -->
