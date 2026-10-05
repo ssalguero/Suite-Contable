@@ -1141,7 +1141,12 @@ async function guardarReciboCobro() {
 
     // Renglones de Asiento
     const renglones = [];
-    const cuentaDisponibilidad = medioCobro === 'EF' ? 'Caja Central' : 'Banco Cuentas Corrientes';
+    let cuentaDisponibilidad = 'Banco Cuentas Corrientes';
+    if (medioCobro === 'EF') {
+      cuentaDisponibilidad = 'Caja Central';
+    } else if (medioCobro.startsWith('TJ')) {
+      cuentaDisponibilidad = 'Cupones a Acreditar (Tarjetas)';
+    }
     
     if (netoPercibido > 0) {
       renglones.push({
