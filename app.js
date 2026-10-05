@@ -2522,7 +2522,6 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.readAsDataURL(file);
     });
   }
-});
 const selMedioOP = document.getElementById('op-medio-pago');
   if (selMedioOP) {
     selMedioOP.addEventListener('change', (e) => {
