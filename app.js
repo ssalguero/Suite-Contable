@@ -161,6 +161,10 @@ function switchTab(tabId) {
   if (tabId === 'mayor-balance') cargarMayorYBalance();
   if (tabId === 'plan-cuentas') cargarPlanCuentas();
   if (tabId === 'talonarios') cargarTalonarios();
+  if (tabId === 'tarjetas') {
+  cargarCuponesTarjetas();
+  cargarResumenesTarjetaCorp();
+}
 }
 
 // ==========================================
