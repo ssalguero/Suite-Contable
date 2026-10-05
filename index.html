@@ -187,6 +187,10 @@
           <i data-lucide="list-tree" class="w-4 h-4"></i>
           <span>Plan de Cuentas Maestro</span>
         </button>
+        <button id="nav-talonarios" onclick="switchTab('talonarios')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="layers" class="w-4 h-4"></i>
+          <span>Talonarios y CAI</span>
+        </button>
       </nav>
     </div>
 
@@ -1637,7 +1641,111 @@
     </div>
   </div>
 </section>
+<!-- VISTA 13: GESTIÓN DE TALONARIOS FÍSICOS Y CAI -->
+<section id="tab-talonarios" class="hidden space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+        <i data-lucide="layers" class="w-5 h-5 text-indigo-600"></i> Administración de Talonarios y CAI
+      </h2>
+      <p class="text-xs text-slate-500">Control de rangos impresos, vencimientos de Código de Autorización de Impresión y correlatividad física.</p>
+    </div>
+  </div>
 
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Formulario Alta / Edición de Talonario -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
+      <h3 id="talonario-form-titulo" class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
+        <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Nuevo Talonario Físico
+      </h3>
+
+      <form id="form-talonario" onsubmit="guardarTalonario(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="talonario-id-edicion" value="" />
+
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">Tipo de Comprobante *</label>
+          <select id="talonario-tipo" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="Factura A">Factura A (Manual / Contingencia)</option>
+            <option value="Factura B">Factura B (Manual / Contingencia)</option>
+            <option value="Recibo Oficial">Recibo Oficial de Cobro</option>
+            <option value="Remito R">Remito R (Traslado de Mercadería)</option>
+            <option value="Comprobante Interno X">Comprobante Interno X</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Pto. de Venta *</label>
+            <input type="number" id="talonario-pto-venta" min="1" max="99999" placeholder="1" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Vencimiento CAI *</label>
+            <input type="date" id="talonario-vto-cai" required class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-600 mb-1">N° de CAI (14 dígitos) *</label>
+          <input type="text" id="talonario-cai" maxlength="20" placeholder="Ej: 44123890123456" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Desde *</label>
+            <input type="number" id="talonario-desde" min="1" placeholder="1" required class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Hasta *</label>
+            <input type="number" id="talonario-hasta" min="1" placeholder="500" required class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-600 mb-1">Últ. Usado</label>
+            <input type="number" id="talonario-ultimo" min="0" placeholder="0" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono bg-slate-50" />
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" id="btn-cancelar-talonario" onclick="limpiarFormularioTalonario()" class="hidden w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg transition text-xs">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-submit-talonario" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i> Guardar Talonario
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Grilla de Talonarios Registrados -->
+    <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+      <div>
+        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-700">Talonarios Habilitados</h3>
+          <span id="badge-total-talonarios" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">0 activos</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                <th class="p-2.5">Tipo / Pto. Venta</th>
+                <th class="p-2.5 font-mono">CAI</th>
+                <th class="p-2.5">Vencimiento</th>
+                <th class="p-2.5 text-center">Rango Autorizado</th>
+                <th class="p-2.5 text-center">Disponibles</th>
+                <th class="p-2.5 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-talonarios" class="divide-y divide-slate-100 text-slate-700">
+              <tr>
+                <td colspan="6" class="p-6 text-center text-slate-400">Cargando talonarios...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
     </main>
   </div>
 
