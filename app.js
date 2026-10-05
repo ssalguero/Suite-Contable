@@ -131,7 +131,7 @@ async function logout() {
 function switchTab(tabId) {
   const tabs = [
     'dashboard', 'facturacion', 'recibos-cobro', 'conciliador', 'cta-corriente', 
-    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'mayor-balance', 'libro-diario', 'plan-cuentas', 'talonarios'
+    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'mayor-balance', 'libro-diario', 'plan-cuentas', 'talonarios', 'tarjetas'
   ];
   
   tabs.forEach(t => {
@@ -3977,5 +3977,210 @@ async function eliminarTalonario(id) {
     await cargarTalonarios();
   } catch (err) {
     showToast(`Error al eliminar: ${err.message}`, 'error');
+  }
+}
+// ==========================================
+// MOTOR 14: GESTIÓN DE CUPONES Y LIQUIDACIONES DE TARJETAS
+// ==========================================
+let listaCuponesGlobal = [];
+let cuponesSeleccionadosParaLiquidar = [];
+
+async function cargarCuponesTarjetas() {
+  const tbody = document.getElementById('tbody-cupones-pendientes');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Consultando cupones...</td></tr>';
+
+  try {
+    const { data, error } = await db
+      .from('cupones_tarjeta')
+      .select('*')
+      .order('fecha', { ascending: false });
+
+    if (error) throw error;
+    listaCuponesGlobal = data || [];
+
+    renderizarTablaCupones();
+    actualizarMetricasCupones();
+  } catch (err) {
+    console.error('Error cargando cupones:', err);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-rose-500">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderizarTablaCupones() {
+  const tbody = document.getElementById('tbody-cupones-pendientes');
+  if (!tbody) return;
+
+  const filtroMarca = document.getElementById('filtro-tarjeta-marca')?.value || 'TODAS';
+  const pendientes = listaCuponesGlobal.filter(c => c.estado === 'PENDIENTE' && (filtroMarca === 'TODAS' || c.tarjeta === filtroMarca));
+
+  if (pendientes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">No hay cupones pendientes de liquidación.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = pendientes.map(c => `
+    <tr class="hover:bg-slate-50 transition-colors">
+      <td class="p-3 text-center">
+        <input type="checkbox" value="${c.id}" onchange="toggleSeleccionCupon('${c.id}', this.checked)" class="chk-cupon rounded border-slate-300" />
+      </td>
+      <td class="p-3 font-mono text-slate-600">${c.fecha}<div class="text-[11px] font-sans text-slate-400">${c.cliente || 'Consumidor'}</div></td>
+      <td class="p-3 font-semibold text-slate-800">${c.tarjeta} <span class="text-[10px] px-1.5 py-0.2 rounded font-bold ${c.tipo === 'DEBITO' ? 'bg-sky-100 text-sky-800' : 'bg-purple-100 text-purple-800'}">${c.tipo}</span></td>
+      <td class="p-3 font-mono text-slate-500">Lote ${c.lote || '-'} | Term ${c.terminal || '-'}</td>
+      <td class="p-3 font-mono font-bold text-slate-700">${c.numero_cupon}</td>
+      <td class="p-3 text-center font-bold text-slate-700">${c.cuotas} cta${c.cuotas > 1 ? 's' : ''}</td>
+      <td class="p-3 text-right font-mono font-bold text-indigo-700">$ ${parseFloat(c.monto_bruto).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+    </tr>
+  `).join('');
+}
+
+function toggleSeleccionCupon(id, checked) {
+  const cup = listaCuponesGlobal.find(c => String(c.id) === String(id));
+  if (!cup) return;
+
+  if (checked) {
+    if (!cuponesSeleccionadosParaLiquidar.includes(cup)) cuponesSeleccionadosParaLiquidar.push(cup);
+  } else {
+    cuponesSeleccionadosParaLiquidar = cuponesSeleccionadosParaLiquidar.filter(c => String(c.id) !== String(id));
+  }
+}
+
+function tildarTodosCupones(checked) {
+  document.querySelectorAll('.chk-cupon').forEach(chk => {
+    chk.checked = checked;
+    toggleSeleccionCupon(chk.value, checked);
+  });
+}
+
+function actualizarMetricasCupones() {
+  const pendientes = listaCuponesGlobal.filter(c => c.estado === 'PENDIENTE');
+  const liquidados = listaCuponesGlobal.filter(c => c.estado === 'LIQUIDADO');
+
+  const totPend = pendientes.reduce((acc, c) => acc + parseFloat(c.monto_bruto || 0), 0);
+  const totLiq = liquidados.reduce((acc, c) => acc + parseFloat(c.monto_bruto || 0), 0);
+
+  const elMonto = document.getElementById('stat-cupones-monto');
+  const elCant = document.getElementById('stat-cupones-cant');
+  const elLiq = document.getElementById('stat-cupones-liquidados-monto');
+
+  if (elMonto) elMonto.textContent = `$ ${totPend.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+  if (elCant) elCant.textContent = `${pendientes.length} cupones pendientes`;
+  if (elLiq) elLiq.textContent = `$ ${totLiq.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+}
+
+function abrirModalLiquidacionTarjetas() {
+  if (cuponesSeleccionadosParaLiquidar.length === 0) {
+    return alert('Seleccione al menos un cupón de la tabla para liquidar.');
+  }
+
+  const modal = document.getElementById('modal-liquidacion-tarjetas');
+  const totalBruto = cuponesSeleccionadosParaLiquidar.reduce((acc, c) => acc + parseFloat(c.monto_bruto || 0), 0);
+
+  document.getElementById('liq-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('liq-bruto').value = totalBruto.toFixed(2);
+  recalcularNetoLiquidacion();
+
+  if (modal) modal.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function cerrarModalLiquidacionTarjetas() {
+  const modal = document.getElementById('modal-liquidacion-tarjetas');
+  if (modal) modal.classList.add('hidden');
+}
+
+function recalcularNetoLiquidacion() {
+  const bruto = parseFloat(document.getElementById('liq-bruto')?.value) || 0;
+  const arancel = parseFloat(document.getElementById('liq-arancel')?.value) || 0;
+  const ivaCom = parseFloat(document.getElementById('liq-iva-comision')?.value) || 0;
+  const retGan = parseFloat(document.getElementById('liq-ret-ganancias')?.value) || 0;
+  const retIva = parseFloat(document.getElementById('liq-ret-iva')?.value) || 0;
+  const retIibb = parseFloat(document.getElementById('liq-ret-iibb')?.value) || 0;
+
+  const totalDeducciones = arancel + ivaCom + retGan + retIva + retIibb;
+  const neto = Math.max(0, bruto - totalDeducciones);
+
+  const lblNeto = document.getElementById('liq-lbl-neto');
+  if (lblNeto) lblNeto.textContent = `$ ${neto.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+  return neto;
+}
+
+async function confirmarLiquidacionTarjetas(e) {
+  if (e) e.preventDefault();
+
+  const fecha = document.getElementById('liq-fecha').value;
+  const adquirente = document.getElementById('liq-adquirente').value;
+  const numLiq = document.getElementById('liq-numero').value.trim() || `LQ-${Date.now().toString().slice(-6)}`;
+  const totalBruto = parseFloat(document.getElementById('liq-bruto').value) || 0;
+  const arancel = parseFloat(document.getElementById('liq-arancel').value) || 0;
+  const ivaCom = parseFloat(document.getElementById('liq-iva-comision').value) || 0;
+  const retGan = parseFloat(document.getElementById('liq-ret-ganancias').value) || 0;
+  const retIva = parseFloat(document.getElementById('liq-ret-iva').value) || 0;
+  const retIibb = parseFloat(document.getElementById('liq-ret-iibb').value) || 0;
+  const neto = recalcularNetoLiquidacion();
+
+  try {
+    const { data: { user } } = await db.auth.getUser();
+
+    // 1. Asiento Contable Automático de Liquidación de Cupones
+    const glosa = `Liquidación Tarjetas ${adquirente} - ${numLiq}`;
+    const { data: asientoData, error: errAsiento } = await db
+      .from('asientos')
+      .insert([{ fecha, concepto: glosa, user_id: user?.id || null }])
+      .select()
+      .single();
+
+    if (errAsiento) throw errAsiento;
+
+    const lineas = [
+      { asiento_id: asientoData.id, cuenta_nombre: 'Banco Cuentas Corrientes', debe: neto, haber: 0, detalle: `Acreditación neta ${adquirente}` },
+      { asiento_id: asientoData.id, cuenta_nombre: 'Cupones a Acreditar (Tarjetas)', debe: 0, haber: totalBruto, detalle: 'Cancelación cupones liquidados' }
+    ];
+
+    if (arancel > 0) lineas.push({ asiento_id: asientoData.id, cuenta_nombre: 'Comisiones y Gastos Bancarios', debe: arancel, haber: 0, detalle: 'Arancel operador' });
+    if (ivaCom > 0) lineas.push({ asiento_id: asientoData.id, cuenta_nombre: 'IVA Crédito Fiscal', debe: ivaCom, haber: 0, detalle: 'IVA comisiones tarjeta' });
+    if (retGan > 0) lineas.push({ asiento_id: asientoData.id, cuenta_nombre: 'Retenciones Sufridas Ganancias', debe: retGan, haber: 0, detalle: 'Ret. Ganancias s/ liquidación' });
+    if (retIva > 0) lineas.push({ asiento_id: asientoData.id, cuenta_nombre: 'Retenciones Sufridas IVA', debe: retIva, haber: 0, detalle: 'Ret. IVA s/ liquidación' });
+    if (retIibb > 0) lineas.push({ asiento_id: asientoData.id, cuenta_nombre: 'Retenciones Sufridas IIBB', debe: retIibb, haber: 0, detalle: 'Sircreb / IIBB tarjeta' });
+
+    await db.from('asiento_detalles').insert(lineas);
+
+    // 2. Guardar Liquidación
+    const { data: liqData, error: errLiq } = await db
+      .from('liquidaciones_tarjeta')
+      .insert([{
+        fecha,
+        adquirente,
+        numero_liquidacion: numLiq,
+        total_bruto: totalBruto,
+        comision_arancel: arancel,
+        iva_comisiones: ivaCom,
+        retencion_iva: retIva,
+        retencion_ganancias: retGan,
+        retencion_iibb: retIibb,
+        neto_acreditado: neto,
+        asiento_id: asientoData.id
+      }])
+      .select()
+      .single();
+
+    if (errLiq) throw errLiq;
+
+    // 3. Actualizar estado de cupones a LIQUIDADO
+    const idsCupones = cuponesSeleccionadosParaLiquidar.map(c => c.id);
+    await db
+      .from('cupones_tarjeta')
+      .update({ estado: 'LIQUIDADO', fecha_liquidacion: fecha, liquidacion_id: liqData.id })
+      .in('id', idsCupones);
+
+    showToast(`Liquidación ${numLiq} confirmada y asentada en el banco.`);
+    cerrarModalLiquidacionTarjetas();
+    cuponesSeleccionadosParaLiquidar = [];
+    await cargarCuponesTarjetas();
+    if (typeof renderLibroDiario === 'function') await renderLibroDiario();
+    if (typeof cargarMayorYBalance === 'function') await cargarMayorYBalance();
+
+  } catch (err) {
+    console.error('Error liquidando tarjetas:', err);
+    alert(`Error: ${err.message}`);
   }
 }
