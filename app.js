@@ -131,7 +131,7 @@ async function logout() {
 function switchTab(tabId) {
   const tabs = [
     'dashboard', 'facturacion', 'recibos-cobro', 'conciliador', 'cta-corriente', 
-    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'mayor-balance', 'libro-diario', 'plan-cuentas'
+    'cruzador-iva', 'calc-retenciones', 'fondo-fijo', 'ordenes-pago', 'mayor-balance', 'libro-diario', 'plan-cuentas', 'talonarios'
   ];
   
   tabs.forEach(t => {
@@ -159,6 +159,7 @@ function switchTab(tabId) {
 }
   if (tabId === 'mayor-balance') cargarMayorYBalance();
   if (tabId === 'plan-cuentas') cargarPlanCuentas();
+  if (tabId === 'talonarios') cargarTalonarios();
 }
 
 // ==========================================
@@ -3822,4 +3823,159 @@ function exportarPlanCuentasCSV() {
     csv += `"${c.codigo}","${c.nombre}","${c.tipo}","${c.saldo_habitual}",${c.es_imputable ? 'SI' : 'NO'}\n`;
   });
   descargarArchivoCSV(csv, `Plan_Cuentas_Maestro_${new Date().toISOString().slice(0, 10)}.csv`);
+}
+// ==========================================
+// MOTOR 13: GESTIÓN DE TALONARIOS Y AUDITORÍA DE CAI
+// ==========================================
+let listaTalonarios = [];
+
+async function cargarTalonarios() {
+  const tbody = document.getElementById('tbody-talonarios');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Consultando talonarios...</td></tr>';
+
+  try {
+    const { data, error } = await db
+      .from('talonarios')
+      .select('*')
+      .order('punto_venta', { ascending: true });
+
+    if (error) throw error;
+    listaTalonarios = data || [];
+    renderizarTablaTalonarios();
+  } catch (err) {
+    console.error('Error cargando talonarios:', err);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-500">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderizarTablaTalonarios() {
+  const tbody = document.getElementById('tbody-talonarios');
+  const badgeTotal = document.getElementById('badge-total-talonarios');
+  if (!tbody) return;
+
+  if (badgeTotal) badgeTotal.textContent = `${listaTalonarios.length} activos`;
+
+  if (listaTalonarios.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">No hay talonarios físicos configurados.</td></tr>';
+    return;
+  }
+
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  tbody.innerHTML = listaTalonarios.map(t => {
+    const vencido = t.fecha_vto_cai < hoy;
+    const restantes = t.numero_hasta - (t.ultimo_numero || t.numero_desde - 1);
+    const ptoVentaFormateado = String(t.punto_venta).padStart(4, '0');
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="p-2.5">
+          <span class="font-bold text-slate-800">${t.tipo_comprobante}</span>
+          <div class="text-[11px] text-slate-400 font-mono">Pto. Venta: ${ptoVentaFormateado}</div>
+        </td>
+        <td class="p-2.5 font-mono text-slate-700">${t.cai}</td>
+        <td class="p-2.5">
+          <span class="font-mono ${vencido ? 'text-rose-600 font-bold' : 'text-slate-600'}">${t.fecha_vto_cai}</span>
+          ${vencido ? '<span class="ml-1 text-[10px] px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 font-bold">VENCIDO</span>' : ''}
+        </td>
+        <td class="p-2.5 text-center font-mono text-slate-600">
+          ${String(t.numero_desde).padStart(8, '0')} - ${String(t.numero_hasta).padStart(8, '0')}
+        </td>
+        <td class="p-2.5 text-center">
+          <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${restantes <= 20 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+            ${restantes} restantes
+          </span>
+        </td>
+        <td class="p-2.5 text-center whitespace-nowrap">
+          <button onclick="prepararEdicionTalonario('${t.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1 cursor-pointer" title="Editar">✏️</button>
+          <button onclick="eliminarTalonario('${t.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function guardarTalonario(e) {
+  if (e) e.preventDefault();
+
+  const idEdicion = document.getElementById('talonario-id-edicion').value;
+  const tipo_comprobante = document.getElementById('talonario-tipo').value;
+  const punto_venta = parseInt(document.getElementById('talonario-pto-venta').value, 10);
+  const cai = document.getElementById('talonario-cai').value.trim();
+  const fecha_vto_cai = document.getElementById('talonario-vto-cai').value;
+  const numero_desde = parseInt(document.getElementById('talonario-desde').value, 10);
+  const numero_hasta = parseInt(document.getElementById('talonario-hasta').value, 10);
+  const ultimo_numero = parseInt(document.getElementById('talonario-ultimo').value || '0', 10);
+
+  if (numero_hasta <= numero_desde) {
+    return alert('El número hasta debe ser mayor al número desde.');
+  }
+
+  const payload = {
+    tipo_comprobante,
+    punto_venta,
+    cai,
+    fecha_vto_cai,
+    numero_desde,
+    numero_hasta,
+    ultimo_numero
+  };
+
+  try {
+    if (idEdicion) {
+      const { error } = await db.from('talonarios').update(payload).eq('id', idEdicion);
+      if (error) throw error;
+      showToast('Talonario actualizado.');
+    } else {
+      const { error } = await db.from('talonarios').insert([payload]);
+      if (error) throw error;
+      showToast('Nuevo talonario registrado.');
+    }
+
+    limpiarFormularioTalonario();
+    await cargarTalonarios();
+  } catch (err) {
+    console.error('Error guardando talonario:', err);
+    showToast(`Error: ${err.message}`, 'error');
+  }
+}
+
+function prepararEdicionTalonario(id) {
+  const t = listaTalonarios.find(item => String(item.id) === String(id));
+  if (!t) return;
+
+  document.getElementById('talonario-id-edicion').value = t.id;
+  document.getElementById('talonario-tipo').value = t.tipo_comprobante;
+  document.getElementById('talonario-pto-venta').value = t.punto_venta;
+  document.getElementById('talonario-cai').value = t.cai;
+  document.getElementById('talonario-vto-cai').value = t.fecha_vto_cai;
+  document.getElementById('talonario-desde').value = t.numero_desde;
+  document.getElementById('talonario-hasta').value = t.numero_hasta;
+  document.getElementById('talonario-ultimo').value = t.ultimo_numero || 0;
+
+  document.getElementById('talonario-form-titulo').innerHTML = `<i data-lucide="edit" class="w-4 h-4 text-amber-600"></i> Editar Talonario Pto. ${t.punto_venta}`;
+  document.getElementById('btn-submit-talonario').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Actualizar`;
+  document.getElementById('btn-cancelar-talonario').classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function limpiarFormularioTalonario() {
+  document.getElementById('form-talonario').reset();
+  document.getElementById('talonario-id-edicion').value = '';
+  document.getElementById('talonario-form-titulo').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Nuevo Talonario Físico`;
+  document.getElementById('btn-submit-talonario').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Guardar Talonario`;
+  document.getElementById('btn-cancelar-talonario').classList.add('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+async function eliminarTalonario(id) {
+  if (!confirm('¿Deseas dar de baja este talonario?')) return;
+  try {
+    const { error } = await db.from('talonarios').delete().eq('id', id);
+    if (error) throw error;
+    showToast('Talonario eliminado.');
+    await cargarTalonarios();
+  } catch (err) {
+    showToast(`Error al eliminar: ${err.message}`, 'error');
+  }
 }
