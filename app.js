@@ -2522,6 +2522,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+const selMedioOP = document.getElementById('op-medio-pago');
+  if (selMedioOP) {
+    selMedioOP.addEventListener('change', (e) => {
+      const pnl = document.getElementById('op-panel-tarjeta-corp');
+      if (pnl) {
+        if (e.target.value === 'Tarjeta Corporativa') pnl.classList.remove('hidden');
+        else pnl.classList.add('hidden');
+      }
+    });
+  }
+});
 
 async function cargarFacturasImpagasParaOP() {
   const selectProv = document.getElementById('op-selector-proveedor');
@@ -2792,10 +2803,12 @@ async function generarOP() {
         });
       }
 
-      const cuentaSalida = medio.includes('Efectivo') 
-        ? 'Caja / Efectivo' 
-        : 'Banco Cuentas Corrientes';
-
+      let cuentaSalida = 'Banco Cuentas Corrientes';
+      if (medio.includes('Efectivo')) {
+        cuentaSalida = 'Caja Central';
+      } else if (medio === 'Tarjeta Corporativa') {
+        cuentaSalida = 'Tarjeta Corporativa a Pagar';
+      }
       lineasAsiento.push({
         asiento_id: nuevoAsiento.id,
         debe: 0,
@@ -4181,6 +4194,184 @@ async function confirmarLiquidacionTarjetas(e) {
 
   } catch (err) {
     console.error('Error liquidando tarjetas:', err);
+    alert(`Error: ${err.message}`);
+  }
+}
+// ==========================================
+// MOTOR 15: RESÚMENES DE TARJETA CORPORATIVA
+// ==========================================
+let listaResumenesCorp = [];
+
+async function cargarResumenesTarjetaCorp() {
+  const tbody = document.getElementById('tbody-resumenes-corp');
+  if (!tbody) return;
+
+  try {
+    const { data, error } = await db
+      .from('resumenes_tarjeta_corp')
+      .select('*')
+      .order('fecha_vto', { ascending: false });
+
+    if (error) throw error;
+    listaResumenesCorp = data || [];
+    renderizarTablaResumenesCorp();
+  } catch (err) {
+    console.error('Error cargando resúmenes corporativos:', err);
+    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-rose-500">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderizarTablaResumenesCorp() {
+  const tbody = document.getElementById('tbody-resumenes-corp');
+  if (!tbody) return;
+
+  if (listaResumenesCorp.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">No hay resúmenes de tarjeta registrados.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = listaResumenesCorp.map(r => {
+    const pagado = r.estado === 'PAGADO';
+    return `
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="p-3 font-semibold text-slate-800">${r.tarjeta}</td>
+        <td class="p-3 font-mono text-slate-600">${r.fecha_cierre}</td>
+        <td class="p-3 font-mono text-slate-600">${r.fecha_vto}</td>
+        <td class="p-3 text-right font-mono text-slate-700">$ ${parseFloat(r.total_consumos).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono text-slate-500">$ ${(parseFloat(r.impuestos_sellos || 0) + parseFloat(r.intereses_gastos || 0)).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-right font-mono font-bold text-slate-900">$ ${parseFloat(r.total_a_pagar).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-center">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${pagado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+            ${r.estado}
+          </span>
+        </td>
+        <td class="p-3 text-center">
+          ${pagado 
+            ? '<span class="text-xs text-slate-400">Cancelado</span>' 
+            : `<button onclick="pagarResumenTarjetaCorp('${r.id}')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded border border-emerald-200 cursor-pointer">Pagar desde Banco</button>`}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function abrirModalCierreTarjetaCorp() {
+  const modal = document.getElementById('modal-cierre-tarjeta-corp');
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('rcorp-fecha-cierre').value = hoy;
+  document.getElementById('rcorp-fecha-vto').value = hoy;
+  document.getElementById('rcorp-consumos').value = '';
+  document.getElementById('rcorp-sellos').value = '0.00';
+  document.getElementById('rcorp-intereses').value = '0.00';
+  calcularTotalResumenCorp();
+
+  if (modal) modal.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function cerrarModalCierreTarjetaCorp() {
+  const modal = document.getElementById('modal-cierre-tarjeta-corp');
+  if (modal) modal.classList.add('hidden');
+}
+
+function calcularTotalResumenCorp() {
+  const c = parseFloat(document.getElementById('rcorp-consumos')?.value) || 0;
+  const s = parseFloat(document.getElementById('rcorp-sellos')?.value) || 0;
+  const i = parseFloat(document.getElementById('rcorp-intereses')?.value) || 0;
+  const tot = c + s + i;
+
+  const lbl = document.getElementById('rcorp-lbl-total');
+  if (lbl) lbl.textContent = `$ ${tot.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+  return tot;
+}
+
+async function guardarResumenTarjetaCorp(e) {
+  if (e) e.preventDefault();
+
+  const tarjeta = document.getElementById('rcorp-tarjeta').value;
+  const fecha_cierre = document.getElementById('rcorp-fecha-cierre').value;
+  const fecha_vto = document.getElementById('rcorp-fecha-vto').value;
+  const total_consumos = parseFloat(document.getElementById('rcorp-consumos').value) || 0;
+  const impuestos_sellos = parseFloat(document.getElementById('rcorp-sellos').value) || 0;
+  const intereses_gastos = parseFloat(document.getElementById('rcorp-intereses').value) || 0;
+  const total_a_pagar = total_consumos + impuestos_sellos + intereses_gastos;
+
+  if (total_consumos <= 0) return alert('Ingrese el importe de consumos del resumen.');
+
+  try {
+    const { error } = await db.from('resumenes_tarjeta_corp').insert([{
+      tarjeta,
+      fecha_cierre,
+      fecha_vto,
+      total_consumos,
+      impuestos_sellos,
+      intereses_gastos,
+      total_a_pagar,
+      estado: 'PENDIENTE'
+    }]);
+
+    if (error) throw error;
+
+    showToast('Resumen corporativo registrado.');
+    cerrarModalCierreTarjetaCorp();
+    await cargarResumenesTarjetaCorp();
+
+  } catch (err) {
+    console.error('Error guardando resumen:', err);
+    alert(`Error: ${err.message}`);
+  }
+}
+
+async function pagarResumenTarjetaCorp(id) {
+  const resumen = listaResumenesCorp.find(r => String(r.id) === String(id));
+  if (!resumen) return;
+
+  if (!confirm(`¿Confirmás el débito bancario y cancelación del resumen de ${resumen.tarjeta} por $ ${parseFloat(resumen.total_a_pagar).toLocaleString('es-AR', {minimumFractionDigits: 2})}?`)) {
+    return;
+  }
+
+  const hoy = new Date().toISOString().split('T')[0];
+
+  try {
+    const { data: { user } } = await db.auth.getUser();
+
+    // 1. Asiento de Pago del Resumen
+    // Debe: Tarjeta Corporativa a Pagar (Consumos)
+    // Debe: Gastos Bancarios / Sellos (si hubo recargos en el resumen)
+    // Haber: Banco Cuentas Corrientes (Salida neta de fondos)
+    const glosa = `Pago Resumen ${resumen.tarjeta} - Vto ${resumen.fecha_vto}`;
+    const { data: asiento, error: errA } = await db
+      .from('asientos')
+      .insert([{ fecha: hoy, concepto: glosa, user_id: user?.id || null }])
+      .select()
+      .single();
+
+    if (errA) throw errA;
+
+    const lineas = [
+      { asiento_id: asiento.id, cuenta_nombre: 'Tarjeta Corporativa a Pagar', debe: resumen.total_consumos, haber: 0, detalle: 'Cancelación pasivo consumos' },
+      { asiento_id: asiento.id, cuenta_nombre: 'Banco Cuentas Corrientes', debe: 0, haber: resumen.total_a_pagar, detalle: 'Débito automático resumen' }
+    ];
+
+    const gastosExtras = parseFloat(resumen.impuestos_sellos || 0) + parseFloat(resumen.intereses_gastos || 0);
+    if (gastosExtras > 0) {
+      lineas.push({ asiento_id: asiento.id, cuenta_nombre: 'Comisiones y Gastos Bancarios', debe: gastosExtras, haber: 0, detalle: 'Sellos e intereses resumen' });
+    }
+
+    await db.from('asiento_detalles').insert(lineas);
+
+    // 2. Marcar como pagado
+    await db.from('resumenes_tarjeta_corp')
+      .update({ estado: 'PAGADO', fecha_pago: hoy, asiento_pago_id: asiento.id })
+      .eq('id', id);
+
+    showToast('Resumen cancelado en banco y asiento registrado.');
+    await cargarResumenesTarjetaCorp();
+    if (typeof renderLibroDiario === 'function') await renderLibroDiario();
+    if (typeof cargarMayorYBalance === 'function') await cargarMayorYBalance();
+
+  } catch (err) {
+    console.error('Error pagando resumen:', err);
     alert(`Error: ${err.message}`);
   }
 }
