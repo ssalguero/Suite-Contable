@@ -664,49 +664,50 @@
               <input type="date" id="rc-fecha" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
-              <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                <option value="TR">Transferencia Bancaria</option>
-                <option value="EF">Efectivo (Caja Central)</option>
-                <option value="CH">Cheque Físico</option>
-                <option value="ECHQ">E-Cheq</option>
-                <option value="TJ_CRED">Tarjeta de Crédito</option>
-                <option value="TJ_DEB">Tarjeta de Débito</option>
-                  <div id="rc-panel-cupon" class="hidden mt-3 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2">
-                    <div class="font-bold text-[11px] text-indigo-900 flex items-center gap-1.5">
-                      <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Datos del Cupón de Tarjeta
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
-                      <div>
-                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Marca</label>
-                        <select id="rc-cupon-marca" class="w-full p-1.5 border border-slate-300 rounded bg-white">
-                          <option value="Visa">Visa</option>
-                          <option value="Mastercard">Mastercard</option>
-                          <option value="AMEX">American Express</option>
-                          <option value="Cabal">Cabal</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">N° Cupón *</label>
-                        <input type="text" id="rc-cupon-numero" placeholder="Ej: 4892" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Terminal</label>
-                        <input type="text" id="rc-cupon-terminal" placeholder="Ej: 001" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Lote</label>
-                        <input type="text" id="rc-cupon-lote" placeholder="Ej: 14" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
-                      </div>
-                      <div>
-                        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Cuotas</label>
-                        <input type="number" id="rc-cupon-cuotas" min="1" max="48" value="1" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
-                      </div>
-                    </div>
-                  </div>
-              </select>
-            </div>
-          </div>
+  <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
+  <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500">
+    <option value="TR">Transferencia Bancaria</option>
+    <option value="EF">Efectivo (Caja Central)</option>
+    <option value="CH">Cheque Físico</option>
+    <option value="ECHQ">E-Cheq</option>
+    <option value="TJ_CRED">Tarjeta de Crédito</option>
+    <option value="TJ_DEB">Tarjeta de Débito</option>
+  </select>
+
+  <!-- El panel va afuera del select -->
+  <div id="rc-panel-cupon" class="hidden mt-3 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2">
+    <div class="font-bold text-[11px] text-indigo-900 flex items-center gap-1.5">
+      <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Datos del Cupón de Tarjeta
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+      <div>
+        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Marca</label>
+        <select id="rc-cupon-marca" class="w-full p-1.5 border border-slate-300 rounded bg-white">
+          <option value="Visa">Visa</option>
+          <option value="Mastercard">Mastercard</option>
+          <option value="AMEX">American Express</option>
+          <option value="Cabal">Cabal</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">N° Cupón *</label>
+        <input type="text" id="rc-cupon-numero" placeholder="Ej: 4892" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+      </div>
+      <div>
+        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Terminal</label>
+        <input type="text" id="rc-cupon-terminal" placeholder="Ej: 001" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+      </div>
+      <div>
+        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Lote</label>
+        <input type="text" id="rc-cupon-lote" placeholder="Ej: 14" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+      </div>
+      <div>
+        <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Cuotas</label>
+        <input type="number" id="rc-cupon-cuotas" min="1" max="48" value="1" class="w-full p-1.5 border border-slate-300 rounded font-mono" />
+      </div>
+    </div>
+  </div>
+</div>
 
           <div class="mb-6">
             <h3 class="text-sm font-bold text-slate-700 uppercase mb-2 flex items-center gap-2">
@@ -1251,17 +1252,18 @@
                     <option value="Echeq">Echeq</option>
                     <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
                     <option value="Tarjeta Corporativa">Tarjeta Corporativa</option>
-                      <div id="op-panel-tarjeta-corp" class="hidden">
-                        <label class="block font-semibold text-slate-600 mb-1">Tarjeta Corporativa Emisora</label>
-                        <select id="op-tarjeta-corp-select" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs bg-white">
-                          <option value="Visa Business">Visa Business</option>
-                          <option value="Mastercard Corporate">Mastercard Corporate</option>
-                          <option value="AMEX Corporate">American Express Corporate</option>
-                        </select>
-                      </div>
                   </select>
+                  
+                  <!-- El panel va abajo del select -->
+                  <div id="op-panel-tarjeta-corp" class="hidden mt-2">
+                    <label class="block font-semibold text-slate-600 mb-1">Tarjeta Corporativa Emisora</label>
+                    <select id="op-tarjeta-corp-select" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs bg-white">
+                      <option value="Visa Business">Visa Business</option>
+                      <option value="Mastercard Corporate">Mastercard Corporate</option>
+                      <option value="AMEX Corporate">American Express Corporate</option>
+                    </select>
+                  </div>
                 </div>
-
                 <div>
                   <label class="block font-semibold text-slate-600 mb-1">N° Comprobante / Transacción</label>
                   <input id="op-num-comprobante" type="text" placeholder="Ej: TR-659368" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
