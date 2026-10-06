@@ -36,6 +36,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inputFechaAsiento = document.getElementById('asiento-fecha');
   if (inputFechaAsiento && !inputFechaAsiento.value) inputFechaAsiento.value = new Date().toISOString().split('T')[0];
 
+  // Listener para subpanel de cupones en Recibos de Cobro
+  const selMedioRC = document.getElementById('rc-medio-cobro');
+  if (selMedioRC) {
+    selMedioRC.addEventListener('change', (e) => {
+      const pnl = document.getElementById('rc-panel-cupon');
+      if (pnl) {
+        if (e.target.value.startsWith('TJ')) pnl.classList.remove('hidden');
+        else pnl.classList.add('hidden');
+      }
+    });
+  }
+
+  // Listener para subpanel de tarjeta corporativa en Órdenes de Pago
+  const selMedioOP = document.getElementById('op-medio-pago');
+  if (selMedioOP) {
+    selMedioOP.addEventListener('change', (e) => {
+      const pnl = document.getElementById('op-panel-tarjeta-corp');
+      if (pnl) {
+        if (e.target.value === 'Tarjeta Corporativa') pnl.classList.remove('hidden');
+        else pnl.classList.add('hidden');
+      }
+    });
+  }
+
+  // Listener para adjunto en Órdenes de Pago
+  const inputAdjunto = document.getElementById('op-adjunto');
+  if (inputAdjunto) {
+    inputAdjunto.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return (adjuntoBase64Temp = null);
+      const reader = new FileReader();
+      reader.onload = ev => (adjuntoBase64Temp = ev.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Listener en tiempo real para cambios de sesión
   db.auth.onAuthStateChange((event, session) => {
     const authModal = document.getElementById('auth-modal');
@@ -155,16 +191,16 @@ function switchTab(tabId) {
 
   if (tabId === 'dashboard') actualizarDashboardMetrics();
   if (tabId === 'recibos-cobro') {
-  initRecibos();
-  renderHistorialRC();
-}
+    initRecibos();
+    renderHistorialRC();
+  }
   if (tabId === 'mayor-balance') cargarMayorYBalance();
   if (tabId === 'plan-cuentas') cargarPlanCuentas();
   if (tabId === 'talonarios') cargarTalonarios();
   if (tabId === 'tarjetas') {
-  cargarCuponesTarjetas();
-  cargarResumenesTarjetaCorp();
-}
+    cargarCuponesTarjetas();
+    cargarResumenesTarjetaCorp();
+  }
 }
 
 // ==========================================
@@ -173,7 +209,6 @@ function switchTab(tabId) {
 let datosEmpresaActual = null;
 let logoBase64Temp = null;
 
-// Cargar datos al iniciar
 document.addEventListener('DOMContentLoaded', () => {
   cargarDatosEmpresa();
 });
@@ -198,7 +233,6 @@ async function cargarDatosEmpresa() {
 }
 
 function actualizarEncabezadoEmpresa(emp) {
-  // Actualizar el nombre que figura en el header superior
   const headerEmpresa = document.querySelector('header strong.text-slate-700');
   if (headerEmpresa && emp.razon_social) {
     headerEmpresa.textContent = emp.nombre_fantasia || emp.razon_social;
@@ -236,7 +270,6 @@ function procesarArchivoLogo(input) {
   const file = input.files[0];
   if (!file) return;
 
-  // Limitar a máximo 2MB para rendimiento
   if (file.size > 2 * 1024 * 1024) {
     alert('El archivo no debe superar los 2MB.');
     input.value = '';
@@ -324,11 +357,10 @@ async function guardarDatosEmpresa(e) {
 // ==========================================
 // MOTOR 1: FACTURACIÓN CON PADRÓN Y MULTICOMPROBANTES
 // ==========================================
-let circuitoFacturacionActual = 'VENTAS'; // Inicial por defecto: VENTAS
+let circuitoFacturacionActual = 'VENTAS';
 let listaFacturasActuales = [];
 let padronContactos = [];
 
-// Control del Modal de Contactos
 function abrirModalContacto() {
   const modal = document.getElementById('modal-nuevo-contacto');
   const selTipo = document.getElementById('contacto-tipo');
@@ -369,7 +401,6 @@ async function guardarContactoRapido(e) {
     cerrarModalContacto();
     await cargarPadronContactos();
 
-    // Autoseleccionar en el formulario activo
     const inputEntidad = document.getElementById('fc-entidad');
     if (inputEntidad) {
       inputEntidad.value = razon_social;
@@ -422,7 +453,6 @@ function seleccionarContactoPadron(nombre) {
 function adaptarFormularioPorTipoDoc(tipoDoc) {
   const selectIVA = document.getElementById('fc-alicuota-iva');
   if (tipoDoc.includes('Factura C') || tipoDoc.includes('Nota de Crédito C') || tipoDoc.includes('Recibo C') || tipoDoc.includes('X')) {
-    // Monotributo o Comprobante no fiscal X: IVA no computado (0%)
     if (selectIVA) {
       selectIVA.value = '0';
       selectIVA.disabled = true;
@@ -522,7 +552,6 @@ async function guardarFactura(e) {
     const { data: { user } } = await db.auth.getUser();
     const tabla = circuitoFacturacionActual === 'COMPRAS' ? 'comprobantes_compra' : 'comprobantes_venta';
 
-    // 1. Guardar o actualizar contacto en padrón
     if (cuit && cuit !== 'S/D') {
       await db.from('clientes_proveedores').upsert([{
         tipo: circuitoFacturacionActual === 'COMPRAS' ? 'PROVEEDOR' : 'CLIENTE',
@@ -533,7 +562,6 @@ async function guardarFactura(e) {
       await cargarPadronContactos();
     }
 
-    // 2. Insertar comprobante con detalle impositivo
     const payload = {
       fecha,
       tipo_doc,
@@ -564,7 +592,6 @@ async function guardarFactura(e) {
     const { error: errFactura } = await db.from(tabla).insert([payload]);
     if (errFactura) throw errFactura;
 
-    // 3. Devengamiento contable automático con imputación analítica
     if (!esNoFiscal) {
       const glosa = `${tipo_doc} ${numero_doc} - ${entidad}`;
       const { data: asiento, error: errAsiento } = await db
@@ -631,6 +658,7 @@ async function guardarFactura(e) {
     showToast('Error al registrar el comprobante en Supabase.', 'error');
   }
 }
+
 async function cargarFacturasDesdeSupabase() {
   const tbody = document.getElementById('tbody-facturas');
   if (!tbody) return;
@@ -883,8 +911,9 @@ function descargarPDFFactura(id) {
 
   doc.save(`${f.tipo_doc}_${f.numero_doc}.pdf`);
 }
+
 // ==========================================
-// MOTOR 2: RECIBOS DE COBRO (CORREGIDO CON db)
+// MOTOR 2: RECIBOS DE COBRO
 // ==========================================
 let comprobantesPendientesRC = [];
 let retencionesSufridasRC = [];
@@ -955,7 +984,6 @@ async function cargarFacturasPendientesCliente(clienteId) {
   tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Consultando comprobantes...</td></tr>';
 
   try {
-    // Buscar la razón social del cliente para matchear en comprobantes_venta
     const clienteObj = padronContactos.find(c => String(c.id) === String(clienteId));
     let query = db.from('comprobantes_venta').select('*');
 
@@ -967,7 +995,6 @@ async function cargarFacturasPendientesCliente(clienteId) {
 
     if (error) throw error;
 
-    // Filtrar con saldo > 0 e impagos
     comprobantesPendientesRC = (data || []).filter(c => (parseFloat(c.saldo) || parseFloat(c.total)) > 0 && c.estado_cobro !== 'Cobrado');
 
     if (comprobantesPendientesRC.length === 0) {
@@ -1220,6 +1247,30 @@ async function guardarReciboCobro() {
       await db.from('comprobantes_venta').update(updateData).eq('id', c.id);
     }
 
+    // Si cobró con tarjeta, insertar el cupón para su posterior liquidación bancaria
+    if (medioCobro.startsWith('TJ')) {
+      const tarjetaMarca = document.getElementById('rc-cupon-marca')?.value || 'Visa';
+      const numCupon = document.getElementById('rc-cupon-numero')?.value.trim() || String(Date.now()).slice(-4);
+      const terminal = document.getElementById('rc-cupon-terminal')?.value.trim() || '001';
+      const lote = document.getElementById('rc-cupon-lote')?.value.trim() || '01';
+      const cuotas = parseInt(document.getElementById('rc-cupon-cuotas')?.value || '1', 10);
+      const tipoTarjeta = medioCobro === 'TJ_DEB' ? 'DEBITO' : 'CREDITO';
+
+      await db.from('cupones_tarjeta').insert([{
+        fecha: fecha,
+        recibo_cobro_id: reciboData.id,
+        cliente: nombreCliente,
+        tarjeta: tarjetaMarca,
+        tipo: tipoTarjeta,
+        terminal: terminal,
+        lote: lote,
+        numero_cupon: numCupon,
+        cuotas: cuotas,
+        monto_bruto: netoPercibido,
+        estado: 'PENDIENTE'
+      }]);
+    }
+
     showToast(`¡Recibo ${numero} emitido con éxito! Asiento generado.`);
     limpiarFormularioRecibo();
     renderHistorialRC();
@@ -1242,15 +1293,19 @@ function limpiarFormularioRecibo() {
   if (tbRet) tbRet.innerHTML = '';
   const tbFac = document.getElementById('rc-facturas-tbody');
   if (tbFac) tbFac.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">Seleccione un cliente para consultar deudas pendientes.</td></tr>';
+  
+  const pnlCupon = document.getElementById('rc-panel-cupon');
+  if (pnlCupon) pnlCupon.classList.add('hidden');
+
   comprobantesPendientesRC = [];
   calcularTotalesRC();
   generarProximoNumeroRC();
 }
+
 async function descargarPDFRecibo(reciboId) {
   if (!window.jspdf) return alert('Librería jsPDF no disponible.');
 
   try {
-    // Consultar recibo con sus detalles
     const { data: rc, error } = await db
       .from('recibos_cobro')
       .select('*, clientes_proveedores(razon_social, cuit, condicion_iva)')
@@ -1263,10 +1318,8 @@ async function descargarPDFRecibo(reciboId) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // Dibujar membrete
     dibujarMembretePDF(doc, 'RECIBO DE COBRO', rc.numero, rc.fecha);
 
-    // Datos del Cliente
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('DATOS DEL CLIENTE', 14, 45);
@@ -1276,7 +1329,6 @@ async function descargarPDFRecibo(reciboId) {
     doc.text(`Condición IVA: ${cliente.condicion_iva || 'Consumidor Final'}`, 120, 50);
     doc.text(`Medio de Cobro: ${rc.medio_cobro}`, 120, 55);
 
-    // Retenciones Sufridas si hubo
     const retenciones = rc.retenciones_sufridas || [];
     let cuerpoTabla = [
       ['Total Facturas Canceladas', `$ ${parseFloat(rc.total_cobrado).toLocaleString('es-AR', {minimumFractionDigits: 2})}`]
@@ -1303,7 +1355,6 @@ async function descargarPDFRecibo(reciboId) {
       columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }
     });
 
-    // Observaciones y Leyenda al pie
     const finalY = doc.lastAutoTable.finalY + 10;
     if (rc.observaciones) {
       doc.setFontSize(8);
@@ -1322,6 +1373,7 @@ async function descargarPDFRecibo(reciboId) {
     alert('Error al generar el PDF del recibo.');
   }
 }
+
 let listaHistorialRC = [];
 
 async function renderHistorialRC() {
@@ -1367,6 +1419,7 @@ async function renderHistorialRC() {
     console.error('Error cargando historial de recibos:', err);
   }
 }
+
 // ==========================================
 // MOTOR 3: CONCILIADOR BANCARIO (Fuzzy Engine)
 // ==========================================
@@ -1518,7 +1571,7 @@ function renderResultadosConciliacion() {
     });
   }
 
-  html += `<div class="p-3 bg-amber-50/50 font-semibold text-amber-800 flex items-center gap-2"><span>⚠️️ Solo en Extracto Bancario</span> <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px]">${pendientesBanco.length}</span></div>`;
+  html += `<div class="p-3 bg-amber-50/50 font-semibold text-amber-800 flex items-center gap-2"><span>⚠ Solo en Extracto Bancario</span> <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px]">${pendientesBanco.length}</span></div>`;
   if (pendientesBanco.length === 0) {
     html += `<div class="p-3 text-slate-400 italic">No hay movimientos pendientes en el banco.</div>`;
   } else {
@@ -2015,7 +2068,6 @@ function downloadCSV(neto, ganancias, iibb, netoPagar) {
 // ==========================================
 // MOTOR 7: MÓDULO FONDO FIJO / CAJA CHICA - SUITE CONTABLE
 // ==========================================
-
 const estadoFondoFijo = {
     registros: [],
     filtros: {
@@ -2075,7 +2127,6 @@ async function registrarComprobanteFondoFijo(e) {
     try {
         const { data: { user } } = await db.auth.getUser();
 
-        // Si estamos editando un comprobante existente
         if (estadoFondoFijo.registroEnEdicion) {
             const { error } = await db
                 .from('fondo_fijo')
@@ -2096,7 +2147,6 @@ async function registrarComprobanteFondoFijo(e) {
             if (btnSubmit) btnSubmit.textContent = '+ Registrar en Rinde';
 
         } else {
-            // Alta de nuevo comprobante
             const nuevoRegistro = {
                 fecha,
                 concepto,
@@ -2125,6 +2175,7 @@ async function registrarComprobanteFondoFijo(e) {
         showToast('Error al registrar el comprobante en Supabase.', 'error');
     }
 }
+
 function descargarPlantillaCSV() {
     const encabezados = ['fecha', 'concepto', 'monto', 'tipo_doc', 'centro_costo'];
     const ejemplo = [
@@ -2194,14 +2245,12 @@ async function importarCSVFondoFijo(file) {
 
             showToast(`Se importaron ${registrosInsertar.length} comprobantes al rinde activo.`);
             
-            // Limpiar input file para permitir volver a subir
             if (inputEl) inputEl.value = '';
             if (statusEl) {
                 statusEl.textContent = `✓ Última importación: ${registrosInsertar.length} comprobantes.`;
                 statusEl.className = 'block text-[11px] text-emerald-600 font-semibold';
             }
 
-            // Cambiar vista al rinde activo para ver lo importado
             cambiarFiltroEstadoFF('ACTIVO');
             const selectFiltro = document.getElementById('ff-filtro-estado');
             if (selectFiltro) selectFiltro.value = 'ACTIVO';
@@ -2213,6 +2262,7 @@ async function importarCSVFondoFijo(file) {
     };
     reader.readAsText(file);
 }
+
 async function cargarRegistrosFondoFijo() {
     try {
         let query = db
@@ -2220,15 +2270,12 @@ async function cargarRegistrosFondoFijo() {
             .select('*')
             .order('fecha', { ascending: false });
 
-        // 1. Filtrado estricto por Estado de Rendición
         if (estadoFondoFijo.filtros.estadoRinde === 'ACTIVO') {
             query = query.or('estado_rinde.eq.ACTIVO,estado_rinde.is.null');
         } else if (estadoFondoFijo.filtros.estadoRinde === 'RENDIDO') {
             query = query.eq('estado_rinde', 'RENDIDO');
         }
-        // Si es 'TODOS', no aplicamos ningún filtro sobre estado_rinde
 
-        // 2. Filtros secundarios
         if (estadoFondoFijo.filtros.centroCosto && estadoFondoFijo.filtros.centroCosto !== 'TODOS') {
             query = query.eq('centro_costo', estadoFondoFijo.filtros.centroCosto);
         }
@@ -2244,7 +2291,6 @@ async function cargarRegistrosFondoFijo() {
 
         estadoFondoFijo.registros = data || [];
         
-        // Reset a pág 1 si la página actual excede el nuevo total de páginas
         const totalPaginas = Math.ceil(estadoFondoFijo.registros.length / estadoFondoFijo.paginacion.registrosPorPagina) || 1;
         if (estadoFondoFijo.paginacion.paginaActual > totalPaginas) {
             estadoFondoFijo.paginacion.paginaActual = 1;
@@ -2259,7 +2305,6 @@ async function cargarRegistrosFondoFijo() {
     }
 }
 
-// CONMUTADOR DE FILTRO: ACTIVOS / RENDIDOS
 function cambiarFiltroEstadoFF(nuevoEstado) {
     estadoFondoFijo.filtros.estadoRinde = nuevoEstado;
     estadoFondoFijo.paginacion.paginaActual = 1;
@@ -2305,7 +2350,6 @@ function renderizarTablaFondoFijo() {
         const tr = document.createElement('tr');
         tr.className = `border-b border-slate-200 hover:bg-slate-50 transition-colors text-xs ${esRendido ? 'bg-slate-50/50' : ''}`;
         
-        // Acciones: si está rendido muestra candado de auditoría; si está activo permite editar/eliminar
         const botonesAccion = esRendido
             ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-200 text-slate-600" title="Comprobante rendido en Libro Diario">🔒 Asentado</span>`
             : `
@@ -2356,11 +2400,9 @@ function cambiarPaginaFF(nuevaPagina) {
 }
 
 function prepararEdicionFondoFijo(id) {
-    // Buscar convirtiendo ambos a string para evitar descalce de tipos
     const reg = estadoFondoFijo.registros.find(r => String(r.id) === String(id));
     if (!reg) return;
 
-    // Guardar el ID como número entero
     estadoFondoFijo.registroEnEdicion = Number(reg.id);
 
     document.getElementById('ff-fecha').value = reg.fecha;
@@ -2393,8 +2435,6 @@ async function eliminarRegistroFondoFijo(id) {
     }
 }
 
-
-// CIERRE, RENDICIÓN Y ASIENTO POR CENTRO DE COSTO
 async function cerrarYRendirFondoFijo() {
     if (estadoFondoFijo.registros.length === 0) {
         showToast('No hay comprobantes activos para rendir.', 'error');
@@ -2413,7 +2453,6 @@ async function cerrarYRendirFondoFijo() {
         const hoy = new Date().toISOString().split('T')[0];
         const textoConcepto = `Rendición Fondo Fijo - ${hoy}`;
 
-        // 1. Agrupar gastos por Centro de Costo para el Debe
         const agrupadoPorCentro = {};
         estadoFondoFijo.registros.forEach(r => {
             const centro = r.centro_costo || 'Gastos Generales';
@@ -2421,7 +2460,6 @@ async function cerrarYRendirFondoFijo() {
             agrupadoPorCentro[centro] = (agrupadoPorCentro[centro] || 0) + monto;
         });
 
-        // 2. Insertar Cabecera de Asiento en Supabase
         const { data: asientoCreado, error: errAsiento } = await db
             .from('asientos')
             .insert([{
@@ -2436,10 +2474,8 @@ async function cerrarYRendirFondoFijo() {
             console.error('Error insertando en asientos:', errAsiento);
             showToast('Aviso: no se pudo guardar el asiento en Supabase: ' + errAsiento.message, 'error');
         } else if (asientoCreado) {
-            // 3. Crear renglones para asiento_detalles
             const renglonesBD = [];
 
-            // A. Renglones en el DEBE (uno por cada Centro de Costo con gastos)
             Object.keys(agrupadoPorCentro).forEach(centro => {
                 renglonesBD.push({
                     asiento_id: asientoCreado.id,
@@ -2450,7 +2486,6 @@ async function cerrarYRendirFondoFijo() {
                 });
             });
 
-            // B. Renglón en el HABER (Contrapartida total contra la Caja Chica)
             renglonesBD.push({
                 asiento_id: asientoCreado.id,
                 debe: 0,
@@ -2463,7 +2498,6 @@ async function cerrarYRendirFondoFijo() {
             if (errDetalles) console.error('Error insertando detalles del asiento:', errDetalles);
         }
 
-        // 4. Pasar comprobantes a RENDIDO en fondo_fijo
         const { error: errUpdate } = await db
             .from('fondo_fijo')
             .update({ estado_rinde: 'RENDIDO' })
@@ -2473,7 +2507,6 @@ async function cerrarYRendirFondoFijo() {
 
         showToast('Fondo Fijo rendido y Asiento Contable generado por centros de costo.');
         
-        // 5. Refrescar datos en vivo
         await cargarRegistrosFondoFijo();
         if (typeof renderLibroDiario === 'function') await renderLibroDiario();
         if (typeof actualizarDashboardMetrics === 'function') await actualizarDashboardMetrics();
@@ -2483,6 +2516,7 @@ async function cerrarYRendirFondoFijo() {
         showToast('Ocurrió un error al procesar el cierre.', 'error');
     }
 }
+
 function exportarRindeCSV() {
     if (estadoFondoFijo.registros.length === 0) return showToast('No hay datos para exportar.', 'error');
     const columnas = ['Fecha', 'Concepto', 'Tipo Doc', 'Centro Costo', 'Monto'];
@@ -2501,7 +2535,6 @@ function exportarRindeCSV() {
     showToast('Exportación a CSV generada.');
 }
 
-// Función auxiliar para métricas de rinde activo en dashboard
 function actualizarMetricasFondoFijoDashboard() {
     const registrosActivos = estadoFondoFijo.registros.filter(r => r.estado_rinde === 'ACTIVO' || !r.estado_rinde);
     const totalActivo = registrosActivos.reduce((acc, r) => acc + (parseFloat(r.monto) || 0), 0);
@@ -2512,6 +2545,7 @@ function actualizarMetricasFondoFijoDashboard() {
     if (elTotal) elTotal.textContent = `$ ${totalActivo.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
     if (elSub) elSub.textContent = `${registrosActivos.length} comprobantes activos`;
 }
+
 // ==========================================
 // MOTOR 8 : ÓRDENES DE PAGO (OP) - MULTIFACTURA
 // ==========================================
@@ -2519,29 +2553,6 @@ let historialOP = [];
 let facturasComprasDisponibles = [];
 let facturasSeleccionadasOP = [];
 let adjuntoBase64Temp = null;
-
-document.addEventListener('DOMContentLoaded', () => {
-  const inputAdjunto = document.getElementById('op-adjunto');
-  if (inputAdjunto) {
-    inputAdjunto.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return (adjuntoBase64Temp = null);
-      const reader = new FileReader();
-      reader.onload = ev => (adjuntoBase64Temp = ev.target.result);
-      reader.readAsDataURL(file);
-    });
-  }
-const selMedioOP = document.getElementById('op-medio-pago');
-  if (selMedioOP) {
-    selMedioOP.addEventListener('change', (e) => {
-      const pnl = document.getElementById('op-panel-tarjeta-corp');
-      if (pnl) {
-        if (e.target.value === 'Tarjeta Corporativa') pnl.classList.remove('hidden');
-        else pnl.classList.add('hidden');
-      }
-    });
-  }
-});
 
 async function cargarFacturasImpagasParaOP() {
   const selectProv = document.getElementById('op-selector-proveedor');
@@ -2747,11 +2758,9 @@ async function generarOP() {
   try {
     const { data: { user } } = await db.auth.getUser();
 
-    // 1. Obtener correlativo de OP
     const { count } = await db.from('ordenes_pago').select('*', { count: 'exact', head: true });
     const codigoOP = 'OP-' + String((count || 0) + 1).padStart(4, '0');
 
-    // 2. Guardar OP
     const payload = {
       codigo_op: codigoOP,
       fecha,
@@ -2771,7 +2780,6 @@ async function generarOP() {
     const { error: errOP } = await db.from('ordenes_pago').insert([payload]);
     if (errOP) throw errOP;
 
-    // 3. Pasar a "Pagado" todas las facturas tildadas
     if (facturasSeleccionadasOP.length > 0) {
       const idsFacturas = facturasSeleccionadasOP.map(f => f.id);
       await db.from('comprobantes_compra')
@@ -2779,7 +2787,6 @@ async function generarOP() {
         .in('id', idsFacturas);
     }
 
-    // 4. Asiento Contable Automático en Supabase
     const glosaAsiento = `Pago a Proveedor ${proveedor} según ${codigoOP}`;
     const { data: nuevoAsiento, error: errAsiento } = await db
       .from('asientos')
@@ -2818,6 +2825,7 @@ async function generarOP() {
       } else if (medio === 'Tarjeta Corporativa') {
         cuentaSalida = 'Tarjeta Corporativa a Pagar';
       }
+
       lineasAsiento.push({
         asiento_id: nuevoAsiento.id,
         debe: 0,
@@ -2980,7 +2988,6 @@ function descargarPDFOP(id) {
   doc.setTextColor(100);
   doc.text(`Concepto: ${op.concepto}`, 14, finalY);
 
-  // Espacio de Firma y Conformidad
   doc.setDrawColor(200);
   doc.line(130, finalY + 35, 185, finalY + 35);
   doc.text('Firma y Aclaración Recibido', 135, finalY + 40);
@@ -3051,7 +3058,6 @@ async function cargarMayorYBalance() {
     if (errR) throw errR;
     datosDetallesGlobal = renglones || [];
 
-    // Consolidación por Cuenta Contable
     const mapaCuentas = {};
 
     datosDetallesGlobal.forEach(r => {
@@ -3194,7 +3200,6 @@ function renderizarMayorAnalitico() {
 
   if (titEl) titEl.textContent = `Mayor: ${cuentaSeleccionada}`;
 
-  // Filtrar renglones de esa cuenta vinculados a sus asientos
   const renglonesCuenta = [];
   datosDetallesGlobal.forEach(r => {
     const nombre = r.cuenta_nombre || r.cuenta || r.detalle || 'Cuentas Generales';
@@ -3399,7 +3404,6 @@ async function renderLibroDiario() {
   const filtro = (document.getElementById('asiento-buscar-historial')?.value || '').toLowerCase();
 
   try {
-    // 1. Consultar asientos en Supabase ordenados por fecha descendente
     const { data: listaAsientos, error: errAsientos } = await db
       .from('asientos')
       .select('*')
@@ -3412,7 +3416,6 @@ async function renderLibroDiario() {
       return;
     }
 
-    // 2. Traer todos los detalles asociados
     const asientoIds = listaAsientos.map(a => a.id);
     const { data: listaDetalles, error: errDetalles } = await db
       .from('asiento_detalles')
@@ -3423,7 +3426,6 @@ async function renderLibroDiario() {
 
     contenedor.innerHTML = '';
 
-    // 3. Filtrar según la búsqueda
     const filtrados = listaAsientos.filter(a => {
       const concepto = (a.concepto || a.leyenda || '').toLowerCase();
       const id = String(a.id).toLowerCase();
@@ -3435,7 +3437,6 @@ async function renderLibroDiario() {
       return;
     }
 
-    // 4. Renderizar cada tarjeta de asiento
     filtrados.forEach((asiento, idx) => {
       const renglones = (listaDetalles || []).filter(d => d.asiento_id === asiento.id);
       const totalDebe = renglones.reduce((acc, r) => acc + (parseFloat(r.debe) || 0), 0);
@@ -3490,14 +3491,12 @@ async function renderLibroDiario() {
     contenedor.innerHTML = `<div class="p-6 text-center text-rose-500 text-xs">Error al consultar el Libro Diario en el servidor.</div>`;
   }
 }
+
 async function eliminarAsiento(asientoId) {
   if (!confirm('¿Seguro que deseas anular y eliminar este asiento contable?')) return;
 
   try {
-    // 1. Borrar renglones dependientes
     await db.from('asiento_detalles').delete().eq('asiento_id', asientoId);
-
-    // 2. Borrar cabecera del asiento
     const { error } = await db.from('asientos').delete().eq('id', asientoId);
     if (error) throw error;
 
@@ -3536,7 +3535,6 @@ function navegarA(tabId) {
 
 async function actualizarDashboardMetrics() {
   try {
-    // 1. Asientos reales consultados en Supabase
     const { count: cantAsientos } = await db
       .from('asientos')
       .select('*', { count: 'exact', head: true });
@@ -3550,7 +3548,6 @@ async function actualizarDashboardMetrics() {
         : 'Sin registros aún';
     }
 
-    // 2. Fondo Fijo Activo real
     const totalFondo = estadoFondoFijo.registros.reduce((acc, item) => acc + (parseFloat(item.monto) || 0), 0);
     const kpiFondoMonto = document.getElementById('kpi-fondo-monto');
     const kpiFondoSub = document.getElementById('kpi-fondo-sub');
@@ -3560,6 +3557,7 @@ async function actualizarDashboardMetrics() {
     console.warn('Error actualizando KPIs:', err);
   }
 }
+
 // ==========================================
 // MOTOR 12: PLAN DE CUENTAS MAESTRO (CRUD & IMPORT/REPLACE)
 // ==========================================
@@ -3642,7 +3640,7 @@ function renderizarTablaPlanCuentas() {
         <span class="text-xs">${c.es_imputable ? '✅' : '🔒'}</span>
       </td>
       <td class="p-2.5 text-center whitespace-nowrap">
-        <button onclick="prepararEdicionPlanCuenta('${c.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1 cursor-pointer" title="Editar">✏️️</button>
+        <button onclick="prepararEdicionPlanCuenta('${c.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1 cursor-pointer" title="Editar">✏</button>
         <button onclick="eliminarCuentaContable('${c.id}', '${c.nombre}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️</button>
       </td>
     </tr>
@@ -3846,6 +3844,7 @@ function exportarPlanCuentasCSV() {
   });
   descargarArchivoCSV(csv, `Plan_Cuentas_Maestro_${new Date().toISOString().slice(0, 10)}.csv`);
 }
+
 // ==========================================
 // MOTOR 13: GESTIÓN DE TALONARIOS Y AUDITORÍA DE CAI
 // ==========================================
@@ -3909,7 +3908,7 @@ function renderizarTablaTalonarios() {
           </span>
         </td>
         <td class="p-2.5 text-center whitespace-nowrap">
-          <button onclick="prepararEdicionTalonario('${t.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1 cursor-pointer" title="Editar">✏️</button>
+          <button onclick="prepararEdicionTalonario('${t.id}')" class="text-indigo-600 hover:text-indigo-800 p-1 mr-1 cursor-pointer" title="Editar">✏️️</button>
           <button onclick="eliminarTalonario('${t.id}')" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer" title="Eliminar">🗑️</button>
         </td>
       </tr>
@@ -4001,6 +4000,7 @@ async function eliminarTalonario(id) {
     showToast(`Error al eliminar: ${err.message}`, 'error');
   }
 }
+
 // ==========================================
 // MOTOR 14: GESTIÓN DE CUPONES Y LIQUIDACIONES DE TARJETAS
 // ==========================================
@@ -4143,7 +4143,6 @@ async function confirmarLiquidacionTarjetas(e) {
   try {
     const { data: { user } } = await db.auth.getUser();
 
-    // 1. Asiento Contable Automático de Liquidación de Cupones
     const glosa = `Liquidación Tarjetas ${adquirente} - ${numLiq}`;
     const { data: asientoData, error: errAsiento } = await db
       .from('asientos')
@@ -4166,7 +4165,6 @@ async function confirmarLiquidacionTarjetas(e) {
 
     await db.from('asiento_detalles').insert(lineas);
 
-    // 2. Guardar Liquidación
     const { data: liqData, error: errLiq } = await db
       .from('liquidaciones_tarjeta')
       .insert([{
@@ -4187,7 +4185,6 @@ async function confirmarLiquidacionTarjetas(e) {
 
     if (errLiq) throw errLiq;
 
-    // 3. Actualizar estado de cupones a LIQUIDADO
     const idsCupones = cuponesSeleccionadosParaLiquidar.map(c => c.id);
     await db
       .from('cupones_tarjeta')
@@ -4206,6 +4203,7 @@ async function confirmarLiquidacionTarjetas(e) {
     alert(`Error: ${err.message}`);
   }
 }
+
 // ==========================================
 // MOTOR 15: RESÚMENES DE TARJETA CORPORATIVA
 // ==========================================
@@ -4344,10 +4342,6 @@ async function pagarResumenTarjetaCorp(id) {
   try {
     const { data: { user } } = await db.auth.getUser();
 
-    // 1. Asiento de Pago del Resumen
-    // Debe: Tarjeta Corporativa a Pagar (Consumos)
-    // Debe: Gastos Bancarios / Sellos (si hubo recargos en el resumen)
-    // Haber: Banco Cuentas Corrientes (Salida neta de fondos)
     const glosa = `Pago Resumen ${resumen.tarjeta} - Vto ${resumen.fecha_vto}`;
     const { data: asiento, error: errA } = await db
       .from('asientos')
@@ -4369,7 +4363,6 @@ async function pagarResumenTarjetaCorp(id) {
 
     await db.from('asiento_detalles').insert(lineas);
 
-    // 2. Marcar como pagado
     await db.from('resumenes_tarjeta_corp')
       .update({ estado: 'PAGADO', fecha_pago: hoy, asiento_pago_id: asiento.id })
       .eq('id', id);
