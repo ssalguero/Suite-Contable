@@ -39,14 +39,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Subpanel cupón de tarjeta en Recibos de Cobro
   const selMedioRC = document.getElementById('rc-medio-cobro');
   if (selMedioRC) {
-    selMedioRC.addEventListener('change', (e) => {
-      const pnl = document.getElementById('rc-panel-cupon');
-      if (pnl) {
-        if (e.target.value.startsWith('TJ')) pnl.classList.remove('hidden');
-        else pnl.classList.add('hidden');
-      }
-    });
-  }
+  selMedioRC.addEventListener('change', (e) => {
+    const pnlCupon = document.getElementById('rc-panel-cupon');
+    const pnlChq = document.getElementById('rc-panel-cheque');
+    if (pnlCupon) pnlCupon.classList.toggle('hidden', !e.target.value.startsWith('TJ'));
+    if (pnlChq) pnlChq.classList.toggle('hidden', !(e.target.value === 'CH' || e.target.value === 'ECHQ'));
+  });
+}
 
   // Subpanel tarjeta corporativa en Órdenes de Pago
   const selMedioOP = document.getElementById('op-medio-pago');
@@ -230,7 +229,7 @@ function switchSubTab(modulo, subTab) {
   }
 
   if (modulo === 'tesoreria') {
-    const tabsTes = ['rc', 'op', 'tarjetas', 'ff'];
+    const tabsTes = ['rc', 'op', 'tarjetas', 'ff', 'cheques'];
     tabsTes.forEach(t => {
       const p = document.getElementById(`panel-subtab-tesoreria-${t}`);
       const b = document.getElementById(`btn-subtab-tes-${t}`);
@@ -247,6 +246,7 @@ function switchSubTab(modulo, subTab) {
     if (subTab === 'op') { cargarFacturasImpagasParaOP(); renderHistorialOP(); }
     if (subTab === 'tarjetas') { cargarCuponesTarjetas(); cargarResumenesTarjetaCorp(); }
     if (subTab === 'ff') { cargarRegistrosFondoFijo(); }
+    if (subTab === 'cheques') {cargarCarteraCheques(); }
   }
 
   if (modulo === 'conciliaciones') {
