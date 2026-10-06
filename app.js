@@ -4060,12 +4060,13 @@ function toggleSeleccionCupon(id, checked) {
   if (!cup) return;
 
   if (checked) {
-    if (!cuponesSeleccionadosParaLiquidar.includes(cup)) cuponesSeleccionadosParaLiquidar.push(cup);
+    if (!cuponesSeleccionadosParaLiquidar.some(c => String(c.id) === String(id))) {
+      cuponesSeleccionadosParaLiquidar.push(cup);
+    }
   } else {
     cuponesSeleccionadosParaLiquidar = cuponesSeleccionadosParaLiquidar.filter(c => String(c.id) !== String(id));
   }
 }
-
 function tildarTodosCupones(checked) {
   document.querySelectorAll('.chk-cupon').forEach(chk => {
     chk.checked = checked;
@@ -4090,6 +4091,10 @@ function actualizarMetricasCupones() {
 }
 
 function abrirModalLiquidacionTarjetas() {
+  const checks = document.querySelectorAll('.chk-cupon:checked');
+  const ids = Array.from(checks).map(ch => ch.value);
+  cuponesSeleccionadosParaLiquidar = listaCuponesGlobal.filter(c => ids.includes(String(c.id)));
+
   if (cuponesSeleccionadosParaLiquidar.length === 0) {
     return alert('Seleccione al menos un cupón de la tabla para liquidar.');
   }
