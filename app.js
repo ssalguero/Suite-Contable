@@ -1252,6 +1252,8 @@ async function guardarReciboCobro() {
       cuentaDisponibilidad = 'Caja Central';
     } else if (medioCobro.startsWith('TJ')) {
       cuentaDisponibilidad = 'Cupones a Acreditar (Tarjetas)';
+    } else if (medioCobro === 'CH' || medioCobro === 'ECHQ') {
+      cuentaDisponibilidad = 'Valores a Depositar (Cheques)';
     }
     
     if (netoPercibido > 0) {
@@ -1347,6 +1349,26 @@ async function guardarReciboCobro() {
         estado: 'PENDIENTE'
       }]);
     }
+    if (medioCobro === 'CH' || medioCobro === 'ECHQ') {
+    const numChq = document.getElementById('rc-chq-numero')?.value.trim() || `CH-${Date.now().toString().slice(-6)}`;
+    const bancoChq = document.getElementById('rc-chq-banco')?.value.trim() || 'Banco Galicia';
+    const fPagoChq = document.getElementById('rc-chq-fecha-pago')?.value || fecha;
+    const cuitLibrador = document.getElementById('rc-chq-cuit')?.value.trim() || clienteObj?.cuit || 'S/D';
+  
+    await db.from('cartera_cheques').insert([{
+      numero: numChq,
+      banco: bancoChq,
+      cuit_librador: cuitLibrador,
+      librador: nombreCliente,
+      fecha_emision: fecha,
+      fecha_pago: fPagoChq,
+      importe: netoPercibido,
+      tipo: medioCobro === 'ECHQ' ? 'ECHEQ' : 'FISICO',
+      origen: 'TERCERO',
+      estado: 'EN_CARTERA',
+      recibo_cobro_id: reciboData.id
+    }]);
+  }
 
     showToast(`¡Recibo ${numero} emitido con éxito! Asiento generado.`);
     limpiarFormularioRecibo();
@@ -4355,6 +4377,178 @@ async function pagarResumenTarjetaCorp(id) {
     if (typeof cargarMayorYBalance === 'function') await cargarMayorYBalance();
   } catch (err) {
     console.error('Error pagando resumen:', err);
+    alert(`Error: ${err.message}`);
+  }
+}
+// ==========================================
+// MOTOR 15: CARTERA DE CHEQUES Y VALORES
+// ==========================================
+let listaChequesGlobal = [];
+
+async function cargarCarteraCheques() {
+  const tbody = document.getElementById('tbody-cartera-cheques');
+  if (!tbody) return;
+
+  try {
+    const { data, error } = await db
+      .from('cartera_cheques')
+      .select('*')
+      .order('fecha_pago', { ascending: true });
+
+    if (error) throw error;
+    listaChequesGlobal = data || [];
+    renderizarTablaCheques();
+    actualizarMetricasCheques();
+  } catch (err) {
+    console.error('Error cargando cheques:', err);
+    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-rose-500">Error: ${err.message}</td></tr>`;
+  }
+}
+
+function renderizarTablaCheques() {
+  const tbody = document.getElementById('tbody-cartera-cheques');
+  if (!tbody) return;
+
+  const filtroEstado = document.getElementById('filtro-cheques-estado')?.value || 'EN_CARTERA';
+  const filtrados = listaChequesGlobal.filter(c => filtroEstado === 'TODOS' || c.estado === filtroEstado);
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">No hay cheques registrados para este filtro.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtrados.map(c => {
+    const enCartera = c.estado === 'EN_CARTERA';
+    const badgeEstado = c.estado === 'EN_CARTERA' 
+      ? 'bg-amber-100 text-amber-800' 
+      : c.estado === 'DEPOSITADO' ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-purple-800';
+
+    const btnAccion = enCartera 
+      ? `<button onclick="depositarChequeEnBanco('${c.id}')" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold px-2 py-1 rounded border border-emerald-200 cursor-pointer">Depositar en Banco</button>` 
+      : `<span class="text-xs text-slate-400">${c.estado}</span>`;
+
+    return `
+      <tr class="hover:bg-slate-50 transition-colors">
+        <td class="p-3 font-mono font-bold text-slate-800">${c.numero}</td>
+        <td class="p-3 font-semibold text-slate-700">${c.banco}</td>
+        <td class="p-3 text-slate-800">${c.librador || '-'}<div class="text-[10px] text-slate-400 font-mono">CUIT: ${c.cuit_librador || 'S/D'}</div></td>
+        <td class="p-3 font-mono text-slate-600">${c.fecha_pago}</td>
+        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200 bg-slate-100 text-slate-700">${c.tipo}</span></td>
+        <td class="p-3 text-right font-mono font-bold text-slate-900">$ ${parseFloat(c.importe).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>
+        <td class="p-3 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeEstado}">${c.estado}</span></td>
+        <td class="p-3 text-center whitespace-nowrap">${btnAccion}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function actualizarMetricasCheques() {
+  const enCartera = listaChequesGlobal.filter(c => c.estado === 'EN_CARTERA');
+  const depositados = listaChequesGlobal.filter(c => c.estado === 'DEPOSITADO');
+  const endosados = listaChequesGlobal.filter(c => c.estado === 'ENDOSADO');
+
+  const totCart = enCartera.reduce((acc, c) => acc + parseFloat(c.importe || 0), 0);
+  const totDep = depositados.reduce((acc, c) => acc + parseFloat(c.importe || 0), 0);
+  const totEnd = endosados.reduce((acc, c) => acc + parseFloat(c.importe || 0), 0);
+
+  const elCart = document.getElementById('stat-cheques-cartera');
+  const elCant = document.getElementById('stat-cheques-cant');
+  const elDep = document.getElementById('stat-cheques-depositados');
+  const elEnd = document.getElementById('stat-cheques-endosados');
+
+  if (elCart) elCart.textContent = `$ ${totCart.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+  if (elCant) elCant.textContent = `${enCartera.length} cheques en mano`;
+  if (elDep) elDep.textContent = `$ ${totDep.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+  if (elEnd) elEnd.textContent = `$ ${totEnd.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+}
+
+async function depositarChequeEnBanco(id) {
+  const chq = listaChequesGlobal.find(c => String(c.id) === String(id));
+  if (!chq) return;
+
+  if (!confirm(`¿Confirmás el depósito del cheque N° ${chq.numero} de ${chq.banco} por $ ${parseFloat(chq.importe).toLocaleString('es-AR', {minimumFractionDigits: 2})} en Banco Cuentas Corrientes?`)) {
+    return;
+  }
+
+  const hoy = new Date().toISOString().split('T')[0];
+
+  try {
+    const { data: { user } } = await db.auth.getUser();
+
+    // Asiento: Debe: Banco Cuentas Corrientes | Haber: Valores a Depositar
+    const glosa = `Depósito Cheque N° ${chq.numero} (${chq.banco}) - Librador: ${chq.librador}`;
+    const { data: asiento, error: errA } = await db
+      .from('asientos')
+      .insert([{ fecha: hoy, concepto: glosa, user_id: user?.id || null }])
+      .select()
+      .single();
+
+    if (errA) throw errA;
+
+    await db.from('asiento_detalles').insert([
+      { asiento_id: asiento.id, cuenta_nombre: 'Banco Cuentas Corrientes', debe: chq.importe, haber: 0, detalle: `Acreditación Cheque ${chq.numero}` },
+      { asiento_id: asiento.id, cuenta_nombre: 'Valores a Depositar (Cheques)', debe: 0, haber: chq.importe, detalle: `Salida de cartera depósito` }
+    ]);
+
+    await db.from('cartera_cheques')
+      .update({ estado: 'DEPOSITADO', fecha_acreditacion: hoy, asiento_deposito_id: asiento.id })
+      .eq('id', id);
+
+    showToast('Cheque depositado y asentado en cuenta bancaria.');
+    await cargarCarteraCheques();
+    if (typeof renderLibroDiario === 'function') await renderLibroDiario();
+    if (typeof cargarMayorYBalance === 'function') await cargarMayorYBalance();
+  } catch (err) {
+    console.error('Error depositando cheque:', err);
+    alert(`Error: ${err.message}`);
+  }
+}
+// ==========================================
+// MOTOR 16: EXPORTADOR LIBRO IVA DIGITAL ARCA (TXT OFICIAL)
+// ==========================================
+async function exportarLibroIvaDigitalARCA(tipo) {
+  const tabla = tipo === 'VENTAS' ? 'comprobantes_venta' : 'comprobantes_compra';
+
+  try {
+    const { data: comprobantes, error } = await db
+      .from(tabla)
+      .select('*')
+      .order('fecha', { ascending: true });
+
+    if (error) throw error;
+    if (!comprobantes || comprobantes.length === 0) {
+      return alert(`No hay comprobantes de ${tipo.toLowerCase()} para exportar.`);
+    }
+
+    let lineasTxt = '';
+
+    comprobantes.forEach(c => {
+      // Formato RG 4597: Fecha (8) + Tipo Comprobante (3) + Pto Venta (5) + Nro (20) + CUIT (11) + Importes con centavos sin coma
+      const fechaFmt = (c.fecha || '').replace(/-/g, '');
+      const tipoCbte = c.tipo_doc.includes('Factura A') ? '001' : c.tipo_doc.includes('Factura B') ? '006' : '011';
+      
+      const partesNro = (c.numero_doc || '00001-00000001').split('-');
+      const ptoVta = String(parseInt(partesNro[0] || '1', 10)).padStart(5, '0');
+      const nroCbte = String(parseInt(partesNro[1] || '1', 10)).padStart(20, '0');
+      
+      const cuitLimpio = (c.cuit || '00000000000').replace(/[^0-9]/g, '').padStart(11, '0').slice(0, 11);
+      const nombreEntidad = (c.cliente || c.proveedor || 'CONSUMIDOR FINAL').padEnd(30, ' ').slice(0, 30);
+      
+      const totEntero = String(Math.round(parseFloat(c.total || 0) * 100)).padStart(15, '0');
+      const netoEntero = String(Math.round(parseFloat(c.neto_gravado || 0) * 100)).padStart(15, '0');
+      const ivaEntero = String(Math.round(parseFloat(c.iva || 0) * 100)).padStart(15, '0');
+
+      lineasTxt += `${fechaFmt}${tipoCbte}${ptoVta}${nroCbte}${nroCbte}80${cuitLimpio}${nombreEntidad}${totEntero}000000000000000000000000000000${netoEntero}${ivaEntero}000000000000000\r\n`;
+    });
+
+    const blob = new Blob([lineasTxt], { type: 'text/plain;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `LIBRO_IVA_DIGITAL_${tipo}_${new Date().toISOString().slice(0, 7).replace('-', '')}.txt`;
+    a.click();
+    showToast(`Libro IVA Digital ${tipo} generado con éxito.`);
+  } catch (err) {
+    console.error('Error exportando Libro IVA ARCA:', err);
     alert(`Error: ${err.message}`);
   }
 }
