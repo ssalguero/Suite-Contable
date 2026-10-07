@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (typeof cargarPlanCuentas === 'function') cargarPlanCuentas();
   if (typeof actualizarDashboardMetrics === 'function') actualizarDashboardMetrics();
   if (typeof cargarResumenesTarjetaCorp === 'function') cargarResumenesTarjetaCorp();
+  if (typeof cargarCuentasTesoreria === 'function') cargarCuentasTesoreria();
 });
 
 // -------------------------------------------------------------
@@ -4462,44 +4463,122 @@ function actualizarMetricasCheques() {
   if (elEnd) elEnd.textContent = `$ ${totEnd.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
 }
 
-async function depositarChequeEnBanco(id) {
+
+// ==========================================
+// CARGA DINÁMICA DE CUENTAS BANCARIAS Y BILLETERAS
+// ==========================================
+let listaCuentasTesoreriaGlobal = [];
+let chequeIdADepositarTemp = null;
+
+async function cargarCuentasTesoreria() {
+  try {
+    const { data, error } = await db
+      .from('cuentas_bancarias_tesoreria')
+      .select('*')
+      .eq('activa', true)
+      .order('nombre_cuenta', { ascending: true });
+
+    if (error) throw error;
+    listaCuentasTesoreriaGlobal = data || [];
+
+    poblarSelectoresCuentasTesoreria();
+  } catch (err) {
+    console.warn('Aviso cargando cuentas de tesorería:', err);
+  }
+}
+
+function poblarSelectoresCuentasTesoreria() {
+  const selectRC = document.getElementById('rc-cuenta-tesoreria-select');
+  const selectOP = document.getElementById('op-cuenta-tesoreria-select');
+  const selectDepChq = document.getElementById('deposito-chq-cuenta-select');
+
+  const opcionesHTML = listaCuentasTesoreriaGlobal.map(cta => {
+    const badgeMoneda = cta.moneda === 'USD' ? '[USD]' : '[ARS]';
+    return `<option value="${cta.id}">${badgeMoneda} ${cta.nombre_cuenta} (${cta.entidad})</option>`;
+  }).join('');
+
+  if (selectRC) {
+    selectRC.innerHTML = '<option value="">-- Cuenta / Billetera de Destino --</option>' + opcionesHTML;
+  }
+  if (selectOP) {
+    selectOP.innerHTML = '<option value="">-- Cuenta / Billetera de Origen --</option>' + opcionesHTML;
+  }
+  if (selectDepChq) {
+    selectDepChq.innerHTML = opcionesHTML;
+  }
+}
+
+// ==========================================
+// MODAL DE DEPÓSITO ASISTIDO DE CHEQUES
+// ==========================================
+function depositarChequeEnBanco(id) {
   const chq = listaChequesGlobal.find(c => String(c.id) === String(id));
   if (!chq) return;
 
-  if (!confirm(`¿Confirmás el depósito del cheque N° ${chq.numero} de ${chq.banco} por $ ${parseFloat(chq.importe).toLocaleString('es-AR', {minimumFractionDigits: 2})} en Banco Cuentas Corrientes?`)) {
-    return;
+  chequeIdADepositarTemp = chq.id;
+  const modal = document.getElementById('modal-deposito-cheque');
+  const infoEl = document.getElementById('info-cheque-deposito');
+  const inputFecha = document.getElementById('deposito-chq-fecha');
+
+  if (infoEl) {
+    infoEl.innerHTML = `
+      <div class="text-slate-800 font-bold">Cheque N° ${chq.numero} (${chq.tipo})</div>
+      <div class="text-slate-500">Banco: ${chq.banco} | Librador: ${chq.librador}</div>
+      <div class="text-emerald-700 font-bold text-sm mt-1">Monto: $ ${parseFloat(chq.importe).toLocaleString('es-AR', {minimumFractionDigits: 2})}</div>
+    `;
   }
 
-  const hoy = new Date().toISOString().split('T')[0];
+  if (inputFecha) inputFecha.value = new Date().toISOString().split('T')[0];
+  if (modal) modal.classList.remove('hidden');
+  if (window.lucide) lucide.createIcons();
+}
+
+function cerrarModalDepositoCheque() {
+  chequeIdADepositarTemp = null;
+  const modal = document.getElementById('modal-deposito-cheque');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function confirmarDepositoChequeModal() {
+  if (!chequeIdADepositarTemp) return;
+  const chq = listaChequesGlobal.find(c => String(c.id) === String(chequeIdADepositarTemp));
+  if (!chq) return;
+
+  const cuentaId = document.getElementById('deposito-chq-cuenta-select').value;
+  const fecha = document.getElementById('deposito-chq-fecha').value || new Date().toISOString().split('T')[0];
+
+  const ctaSeleccionada = listaCuentasTesoreriaGlobal.find(c => String(c.id) === String(cuentaId));
+  const nombreCuentaContable = ctaSeleccionada?.cuenta_contable_nombre || 'Banco Cuentas Corrientes';
 
   try {
     const { data: { user } } = await db.auth.getUser();
 
-    // Asiento: Debe: Banco Cuentas Corrientes | Haber: Valores a Depositar
-    const glosa = `Depósito Cheque N° ${chq.numero} (${chq.banco}) - Librador: ${chq.librador}`;
+    // Asiento: Debe: Cuenta Contable Específica | Haber: Valores a Depositar
+    const glosa = `Depósito Cheque N° ${chq.numero} (${chq.banco}) en ${ctaSeleccionada?.nombre_cuenta || 'Banco'}`;
     const { data: asiento, error: errA } = await db
       .from('asientos')
-      .insert([{ fecha: hoy, concepto: glosa, user_id: user?.id || null }])
+      .insert([{ fecha, concepto: glosa, user_id: user?.id || null }])
       .select()
       .single();
 
     if (errA) throw errA;
 
     await db.from('asiento_detalles').insert([
-      { asiento_id: asiento.id, cuenta_nombre: 'Banco Cuentas Corrientes', debe: chq.importe, haber: 0, detalle: `Acreditación Cheque ${chq.numero}` },
-      { asiento_id: asiento.id, cuenta_nombre: 'Valores a Depositar (Cheques)', debe: 0, haber: chq.importe, detalle: `Salida de cartera depósito` }
+      { asiento_id: asiento.id, cuenta_nombre: nombreCuentaContable, debe: chq.importe, haber: 0, detalle: `Acreditación Cheque ${chq.numero}` },
+      { asiento_id: asiento.id, cuenta_nombre: 'Valores a Depositar (Cheques)', debe: 0, haber: chq.importe, detalle: 'Salida de cartera depósito' }
     ]);
 
     await db.from('cartera_cheques')
-      .update({ estado: 'DEPOSITADO', fecha_acreditacion: hoy, asiento_deposito_id: asiento.id })
-      .eq('id', id);
+      .update({ estado: 'DEPOSITADO', fecha_acreditacion: fecha, asiento_deposito_id: asiento.id })
+      .eq('id', chq.id);
 
-    showToast('Cheque depositado y asentado en cuenta bancaria.');
+    showToast('Cheque depositado y acreditado en la cuenta seleccionada.');
+    cerrarModalDepositoCheque();
     await cargarCarteraCheques();
     if (typeof renderLibroDiario === 'function') await renderLibroDiario();
     if (typeof cargarMayorYBalance === 'function') await cargarMayorYBalance();
   } catch (err) {
-    console.error('Error depositando cheque:', err);
+    console.error('Error al depositar cheque:', err);
     alert(`Error: ${err.message}`);
   }
 }
