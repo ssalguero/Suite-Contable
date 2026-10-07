@@ -775,27 +775,37 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cliente *</label>
-                <select id="rc-cliente-select" onchange="cargarFacturasPendientesCliente(this.value)" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-                  <option value="">-- Seleccionar Cliente --</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión *</label>
-                <input type="date" id="rc-fecha" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none" />
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
-                <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-                  <option value="TR">Transferencia Bancaria</option>
-                  <option value="EF">Efectivo (Caja Central)</option>
-                  <option value="CH">Cheque Físico</option>
-                  <option value="ECHQ">E-Cheq</option>
-                  <option value="TJ_CRED">Tarjeta de Crédito</option>
-                  <option value="TJ_DEB">Tarjeta de Débito</option>
-                </select>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cliente *</label>
+          <select id="rc-cliente-select" onchange="cargarFacturasPendientesCliente(this.value)" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="">-- Seleccionar Cliente --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión *</label>
+          <input type="date" id="rc-fecha" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
+          <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="TR">Transferencia Bancaria</option>
+            <option value="PSP_CVU">Billetera Virtual (Mercado Pago / CVU)</option>
+            <option value="QR">Cobro QR / Billeteras</option>
+            <option value="EF">Efectivo (Caja Central)</option>
+            <option value="CH">Cheque Físico</option>
+            <option value="ECHQ">E-Cheq</option>
+            <option value="TJ_CRED">Tarjeta de Crédito</option>
+            <option value="TJ_DEB">Tarjeta de Débito</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cuenta Destino / Tesorería *</label>
+          <select id="rc-cuenta-tesoreria-select" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 font-semibold text-slate-800">
+            <option value="">-- Seleccionar Cuenta / Billetera --</option>
+          </select>
+        </div>
+      </div>
 
                 <!-- Subpanel cupón de tarjeta -->
                 <div id="rc-panel-cupon" class="hidden mt-2 p-2.5 bg-indigo-50/70 rounded-lg border border-indigo-100 space-y-1.5">
@@ -844,7 +854,20 @@
                 </div>
                 <div>
                   <label class="block text-[9px] text-slate-500 font-semibold">Banco Emisor *</label>
-                  <input type="text" id="rc-chq-banco" placeholder="Galicia, Santander..." class="w-full p-1 border border-slate-300 rounded text-[11px]" />
+                  <input type="text" id="rc-chq-banco" list="lista-bancos-oficiales" placeholder="Seleccionar o escribir banco..." class="w-full p-1 border border-slate-300 rounded text-[11px]" />
+                  <datalist id="lista-bancos-oficiales">
+                    <option value="007 - Banco Galicia"></option>
+                    <option value="011 - Banco de la Nación Argentina"></option>
+                    <option value="014 - Banco de la Provincia de Buenos Aires"></option>
+                    <option value="072 - Banco Santander"></option>
+                    <option value="017 - BBVA"></option>
+                    <option value="029 - Banco Ciudad de Buenos Aires"></option>
+                    <option value="150 - Banco Industrial (BIND)"></option>
+                    <option value="259 - Mercado Pago (MercadoLibre)"></option>
+                    <option value="384 - Ualá (Wala / Wilobank)"></option>
+                    <option value="044 - Banco Hipotecario"></option>
+                    <option value="027 - Banco Supervielle"></option>
+                  </datalist>
                 </div>
                 <div>
                   <label class="block text-[9px] text-slate-500 font-semibold">Fecha de Cobro *</label>
@@ -1031,16 +1054,18 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
+                  <!-- Columna 1: Medio de Pago + Subpanel Tarjeta Corp -->
                   <div>
                     <label class="block font-semibold text-slate-600 mb-1">Medio de Pago</label>
                     <select id="op-medio-pago" onchange="cambiarMedioPagoSugerido(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
                       <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                      <option value="Billetera Virtual / CVU">Billetera Virtual / CVU (Mercado Pago)</option>
                       <option value="Cheque Propio">Cheque Propio</option>
                       <option value="Echeq">Echeq</option>
                       <option value="Efectivo / Caja Chica">Efectivo / Caja Chica</option>
                       <option value="Tarjeta Corporativa">Tarjeta Corporativa</option>
                     </select>
-
+                
                     <div id="op-panel-tarjeta-corp" class="hidden mt-2">
                       <label class="block font-semibold text-slate-600 mb-1">Tarjeta Corporativa Emisora</label>
                       <select id="op-tarjeta-corp-select" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs bg-white">
@@ -1050,11 +1075,20 @@
                       </select>
                     </div>
                   </div>
-
+                
+                  <!-- Columna 2: Cuenta / Origen de Fondos -->
                   <div>
-                    <label class="block font-semibold text-slate-600 mb-1">N° Comprobante / Transacción</label>
-                    <input id="op-num-comprobante" type="text" placeholder="Ej: TR-659368" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+                    <label class="block font-semibold text-slate-600 mb-1">Cuenta / Origen de Fondos</label>
+                    <select id="op-cuenta-tesoreria-select" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-semibold text-slate-800 bg-slate-50">
+                      <option value="">-- Cuenta Bancaria / Billetera --</option>
+                    </select>
                   </div>
+                </div>
+                
+                <!-- Fila siguiente para N° de Comprobante / Transacción -->
+                <div>
+                  <label class="block font-semibold text-slate-600 mb-1">N° Comprobante / Transacción</label>
+                  <input id="op-num-comprobante" type="text" placeholder="Ej: TR-659368" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
                 </div>
 
                 <div>
@@ -2122,6 +2156,32 @@
       </form>
     </div>
   </div>
+  <!-- Modal Selección de Cuenta al Depositar Cheque -->
+<div id="modal-deposito-cheque" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+    <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
+      <h3 class="text-sm font-bold flex items-center gap-2">
+        <i data-lucide="landmark" class="w-4 h-4 text-emerald-400"></i> Depositar Cheque en Cuenta
+      </h3>
+      <button type="button" onclick="cerrarModalDepositoCheque()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
+    </div>
+    <div class="p-5 space-y-4 text-xs">
+      <div id="info-cheque-deposito" class="p-3 bg-slate-50 rounded-lg border border-slate-200 font-mono"></div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Cuenta Bancaria de Acreditación *</label>
+        <select id="deposito-chq-cuenta-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-semibold text-slate-800"></select>
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Fecha de Depósito / Acreditación</label>
+        <input type="date" id="deposito-chq-fecha" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="cerrarModalDepositoCheque()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 cursor-pointer">Cancelar</button>
+        <button type="button" onclick="confirmarDepositoChequeModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm cursor-pointer">Confirmar Depósito</button>
+      </div>
+    </div>
+  </div>
+</div>
 
   <!-- Carga de librerías externas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
