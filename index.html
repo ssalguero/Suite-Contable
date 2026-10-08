@@ -741,7 +741,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-3">
           <div>
             <h2 class="text-xl font-bold text-slate-800">Tesorería & Valores</h2>
-            <p class="text-xs text-slate-500">Cobranzas (RC), pagos a proveedores (OP), liquidaciones de tarjetas y caja chica.</p>
+            <p class="text-xs text-slate-500">Cobranzas (RC), pagos a proveedores (OP), liquidaciones de tarjetas, cheques y caja chica.</p>
           </div>
           <div class="inline-flex bg-slate-200/80 p-1 rounded-xl border border-slate-300">
             <button type="button" id="btn-subtab-tes-rc" onclick="switchSubTab('tesoreria', 'rc')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
@@ -753,11 +753,11 @@
             <button type="button" id="btn-subtab-tes-tarjetas" onclick="switchSubTab('tesoreria', 'tarjetas')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
               💳 Tarjetas & Cupones
             </button>
-            <button type="button" id="btn-subtab-tes-ff" onclick="switchSubTab('tesoreria', 'ff')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              🪙 Fondo Fijo
-            </button>
             <button type="button" id="btn-subtab-tes-cheques" onclick="switchSubTab('tesoreria', 'cheques')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
               Cartera de Cheques
+            </button>
+            <button type="button" id="btn-subtab-tes-ff" onclick="switchSubTab('tesoreria', 'ff')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
+              🪙 Fondo Fijo
             </button>
           </div>
         </div>
@@ -776,73 +776,72 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cliente *</label>
-          <select id="rc-cliente-select" onchange="cargarFacturasPendientesCliente(this.value)" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-            <option value="">-- Seleccionar Cliente --</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión *</label>
-          <input type="date" id="rc-fecha" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none" />
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
-          <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
-            <option value="TR">Transferencia Bancaria</option>
-            <option value="PSP_CVU">Billetera Virtual (Mercado Pago / CVU)</option>
-            <option value="QR">Cobro QR / Billeteras</option>
-            <option value="EF">Efectivo (Caja Central)</option>
-            <option value="CH">Cheque Físico</option>
-            <option value="ECHQ">E-Cheq</option>
-            <option value="TJ_CRED">Tarjeta de Crédito</option>
-            <option value="TJ_DEB">Tarjeta de Débito</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cuenta Destino / Tesorería *</label>
-          <select id="rc-cuenta-tesoreria-select" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 font-semibold text-slate-800">
-            <option value="">-- Seleccionar Cuenta / Billetera --</option>
-          </select>
-        </div>
-      </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cliente *</label>
+                <select id="rc-cliente-select" onchange="cargarFacturasPendientesCliente(this.value)" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="">-- Seleccionar Cliente --</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión *</label>
+                <input type="date" id="rc-fecha" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
+                <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="TR">Transferencia Bancaria</option>
+                  <option value="PSP_CVU">Billetera Virtual (Mercado Pago / CVU)</option>
+                  <option value="QR">Cobro QR / Billeteras</option>
+                  <option value="EF">Efectivo (Caja Central)</option>
+                  <option value="CH">Cheque Físico</option>
+                  <option value="ECHQ">E-Cheq</option>
+                  <option value="TJ_CRED">Tarjeta de Crédito</option>
+                  <option value="TJ_DEB">Tarjeta de Débito</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cuenta Destino / Tesorería *</label>
+                <select id="rc-cuenta-tesoreria-select" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 font-semibold text-slate-800">
+                  <option value="">-- Seleccionar Cuenta / Billetera --</option>
+                </select>
+              </div>
+            </div>
 
-                <!-- Subpanel cupón de tarjeta -->
-                <div id="rc-panel-cupon" class="hidden mt-2 p-2.5 bg-indigo-50/70 rounded-lg border border-indigo-100 space-y-1.5">
-                  <div class="font-bold text-[10px] text-indigo-900 flex items-center gap-1">
-                    <i data-lucide="credit-card" class="w-3 h-3"></i> Datos del Cupón de Tarjeta
-                  </div>
-                  <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs">
-                    <div>
-                      <label class="block text-[9px] text-slate-500 font-semibold">Marca</label>
-                      <select id="rc-cupon-marca" class="w-full p-1 border border-slate-300 rounded bg-white text-[11px]">
-                        <option value="Visa">Visa</option>
-                        <option value="Mastercard">Mastercard</option>
-                        <option value="AMEX">AMEX</option>
-                        <option value="Cabal">Cabal</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-[9px] text-slate-500 font-semibold">N° Cupón *</label>
-                      <input type="text" id="rc-cupon-numero" placeholder="Ej: 4892" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
-                    </div>
-                    <div>
-                      <label class="block text-[9px] text-slate-500 font-semibold">Terminal</label>
-                      <input type="text" id="rc-cupon-terminal" placeholder="001" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
-                    </div>
-                    <div>
-                      <label class="block text-[9px] text-slate-500 font-semibold">Lote</label>
-                      <input type="text" id="rc-cupon-lote" placeholder="14" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
-                    </div>
-                    <div>
-                      <label class="block text-[9px] text-slate-500 font-semibold">Cuotas</label>
-                      <input type="number" id="rc-cupon-cuotas" min="1" max="48" value="1" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
-                    </div>
-                  </div>
+            <!-- Subpanel cupón de tarjeta -->
+            <div id="rc-panel-cupon" class="hidden mt-2 p-2.5 bg-indigo-50/70 rounded-lg border border-indigo-100 space-y-1.5">
+              <div class="font-bold text-[10px] text-indigo-900 flex items-center gap-1">
+                <i data-lucide="credit-card" class="w-3 h-3"></i> Datos del Cupón de Tarjeta
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs">
+                <div>
+                  <label class="block text-[9px] text-slate-500 font-semibold">Marca</label>
+                  <select id="rc-cupon-marca" class="w-full p-1 border border-slate-300 rounded bg-white text-[11px]">
+                    <option value="Visa">Visa</option>
+                    <option value="Mastercard">Mastercard</option>
+                    <option value="AMEX">AMEX</option>
+                    <option value="Cabal">Cabal</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 font-semibold">N° Cupón *</label>
+                  <input type="text" id="rc-cupon-numero" placeholder="Ej: 4892" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 font-semibold">Terminal</label>
+                  <input type="text" id="rc-cupon-terminal" placeholder="001" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 font-semibold">Lote</label>
+                  <input type="text" id="rc-cupon-lote" placeholder="14" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 font-semibold">Cuotas</label>
+                  <input type="number" id="rc-cupon-cuotas" min="1" max="48" value="1" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
                 </div>
               </div>
             </div>
-              <!-- Subpanel cheques -->
+
+            <!-- Subpanel cheques -->
             <div id="rc-panel-cheque" class="hidden mt-2 p-2.5 bg-indigo-50/70 rounded-lg border border-indigo-100 space-y-1.5">
               <div class="font-bold text-[10px] text-indigo-900 flex items-center gap-1">
                 <i data-lucide="check-square" class="w-3 h-3"></i> Datos del Cheque Recibido
@@ -1246,7 +1245,69 @@
           </div>
         </div>
 
-        <!-- 3.4: FONDO FIJO -->
+        <!-- 3.4: CARTERA DE CHEQUES (TERCEROS Y PROPIOS) -->
+        <div id="panel-subtab-tesoreria-cheques" class="hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">Cartera de Valores y Cheques</h3>
+              <p class="text-xs text-slate-500">Administración de cheques en mano, E-Cheqs recibidos, depósitos bancarios y endosos a proveedores.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <select id="filtro-cheques-estado" onchange="renderizarTablaCheques()" class="text-xs border border-slate-300 rounded-lg p-2 outline-none bg-white font-medium">
+                <option value="EN_CARTERA">En Cartera (En Mano)</option>
+                <option value="DEPOSITADO">Depositados / Acreditados</option>
+                <option value="ENDOSADO">Endosados a Proveedores</option>
+                <option value="TODOS">Todos los Estados</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-xs font-semibold text-slate-400">Total en Cartera</p>
+              <h4 id="stat-cheques-cartera" class="text-xl font-bold text-indigo-600 mt-1">$ 0.00</h4>
+              <p id="stat-cheques-cant" class="text-[11px] text-slate-500 mt-0.5">0 cheques activos</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-xs font-semibold text-slate-400">Depositados en el Mes</p>
+              <h4 id="stat-cheques-depositados" class="text-xl font-bold text-emerald-600 mt-1">$ 0.00</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">Acreditados en cuenta bancaria</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <p class="text-xs font-semibold text-slate-400">Endosados a Proveedores</p>
+              <h4 id="stat-cheques-endosados" class="text-xl font-bold text-amber-600 mt-1">$ 0.00</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">Aplicados en Órdenes de Pago</p>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <h3 class="text-sm font-bold text-slate-700">Valores Disponibles</h3>
+              <span class="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">Activo Exigible</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                    <th class="p-3">N° Cheque</th>
+                    <th class="p-3">Banco Emisor</th>
+                    <th class="p-3">Librador / CUIT</th>
+                    <th class="p-3">Fecha Cobro / Vto</th>
+                    <th class="p-3">Tipo</th>
+                    <th class="p-3 text-right font-bold text-slate-900">Importe ($)</th>
+                    <th class="p-3 text-center">Estado</th>
+                    <th class="p-3 text-center">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-cartera-cheques" class="divide-y divide-slate-100 text-slate-700">
+                  <tr><td colspan="8" class="p-6 text-center text-slate-400">Consultando cartera de cheques...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3.5: FONDO FIJO -->
         <div id="panel-subtab-tesoreria-ff" class="hidden space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -1347,67 +1408,6 @@
             </div>
           </div>
         </div>
-        <!-- 3.5: CARTERA DE CHEQUES (TERCEROS Y PROPIOS) -->
-<div id="panel-subtab-tesoreria-cheques" class="hidden space-y-6">
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-      <h3 class="text-sm font-bold text-slate-800">Cartera de Valores y Cheques</h3>
-      <p class="text-xs text-slate-500">Administración de cheques en mano, E-Cheqs recibidos, depósitos bancarios y endosos a proveedores.</p>
-    </div>
-    <div class="flex items-center gap-2">
-      <select id="filtro-cheques-estado" onchange="renderizarTablaCheques()" class="text-xs border border-slate-300 rounded-lg p-2 outline-none bg-white font-medium">
-        <option value="EN_CARTERA">En Cartera (En Mano)</option>
-        <option value="DEPOSITADO">Depositados / Acreditados</option>
-        <option value="ENDOSADO">Endosados a Proveedores</option>
-        <option value="TODOS">Todos los Estados</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-      <p class="text-xs font-semibold text-slate-400">Total en Cartera</p>
-      <h4 id="stat-cheques-cartera" class="text-xl font-bold text-indigo-600 mt-1">$ 0.00</h4>
-      <p id="stat-cheques-cant" class="text-[11px] text-slate-500 mt-0.5">0 cheques activos</p>
-    </div>
-    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-      <p class="text-xs font-semibold text-slate-400">Depositados en el Mes</p>
-      <h4 id="stat-cheques-depositados" class="text-xl font-bold text-emerald-600 mt-1">$ 0.00</h4>
-      <p class="text-[11px] text-slate-500 mt-0.5">Acreditados en cuenta bancaria</p>
-    </div>
-    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-      <p class="text-xs font-semibold text-slate-400">Endosados a Proveedores</p>
-      <h4 id="stat-cheques-endosados" class="text-xl font-bold text-amber-600 mt-1">$ 0.00</h4>
-      <p class="text-[11px] text-slate-500 mt-0.5">Aplicados en Órdenes de Pago</p>
-    </div>
-  </div>
-
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-      <h3 class="text-sm font-bold text-slate-700">Valores Disponibles</h3>
-      <span class="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">Activo Exigible</span>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs border-collapse">
-        <thead>
-          <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
-            <th class="p-3">N° Cheque</th>
-            <th class="p-3">Banco Emisor</th>
-            <th class="p-3">Librador / CUIT</th>
-            <th class="p-3">Fecha Cobro / Vto</th>
-            <th class="p-3">Tipo</th>
-            <th class="p-3 text-right font-bold text-slate-900">Importe ($)</th>
-            <th class="p-3 text-center">Estado</th>
-            <th class="p-3 text-center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="tbody-cartera-cheques" class="divide-y divide-slate-100 text-slate-700">
-          <tr><td colspan="8" class="p-6 text-center text-slate-400">Consultando cartera de cheques...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
       </section>
 
       <!-- ========================================== -->
@@ -2156,32 +2156,33 @@
       </form>
     </div>
   </div>
+
   <!-- Modal Selección de Cuenta al Depositar Cheque -->
-<div id="modal-deposito-cheque" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
-    <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
-      <h3 class="text-sm font-bold flex items-center gap-2">
-        <i data-lucide="landmark" class="w-4 h-4 text-emerald-400"></i> Depositar Cheque en Cuenta
-      </h3>
-      <button type="button" onclick="cerrarModalDepositoCheque()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
-    </div>
-    <div class="p-5 space-y-4 text-xs">
-      <div id="info-cheque-deposito" class="p-3 bg-slate-50 rounded-lg border border-slate-200 font-mono"></div>
-      <div>
-        <label class="block font-bold text-slate-700 mb-1">Cuenta Bancaria de Acreditación *</label>
-        <select id="deposito-chq-cuenta-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-semibold text-slate-800"></select>
+  <div id="modal-deposito-cheque" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
+        <h3 class="text-sm font-bold flex items-center gap-2">
+          <i data-lucide="landmark" class="w-4 h-4 text-emerald-400"></i> Depositar Cheque en Cuenta
+        </h3>
+        <button type="button" onclick="cerrarModalDepositoCheque()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
       </div>
-      <div>
-        <label class="block font-bold text-slate-700 mb-1">Fecha de Depósito / Acreditación</label>
-        <input type="date" id="deposito-chq-fecha" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-      </div>
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <button type="button" onclick="cerrarModalDepositoCheque()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 cursor-pointer">Cancelar</button>
-        <button type="button" onclick="confirmarDepositoChequeModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm cursor-pointer">Confirmar Depósito</button>
+      <div class="p-5 space-y-4 text-xs">
+        <div id="info-cheque-deposito" class="p-3 bg-slate-50 rounded-lg border border-slate-200 font-mono"></div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Cuenta Bancaria de Acreditación *</label>
+          <select id="deposito-chq-cuenta-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-semibold text-slate-800"></select>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Fecha de Depósito / Acreditación</label>
+          <input type="date" id="deposito-chq-fecha" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="cerrarModalDepositoCheque()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 cursor-pointer">Cancelar</button>
+          <button type="button" onclick="confirmarDepositoChequeModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm cursor-pointer">Confirmar Depósito</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
   <!-- Carga de librerías externas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
