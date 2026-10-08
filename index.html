@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-100">
+<html lang="es" class="h-full bg-slate-50">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Suite Contable Auxiliar</title>
+  <title>Suite Contable ERP</title>
   
-  <!-- Configuración PWA -->
   <link rel="manifest" href="manifest.json">
   <script>
     if ('serviceWorker' in navigator) {
@@ -13,25 +12,30 @@
     }
   </script>
 
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
 </head>
-<body class="h-full font-sans antialiased text-slate-900 flex overflow-hidden">
+<body class="h-full font-sans antialiased text-slate-900 flex overflow-hidden bg-slate-50">
 
-  <!-- ========================================== -->
-  <!-- MODAL DE LOGIN / AUTENTICACIÓN -->
-  <!-- ========================================== -->
-  <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+  <!-- MODAL DE LOGIN -->
+  <div id="auth-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200/80 w-full max-w-md overflow-hidden">
       <div class="bg-slate-900 p-6 text-white text-center border-b border-slate-800">
-        <div class="inline-flex bg-indigo-600/20 p-3 rounded-2xl text-indigo-400 border border-indigo-500/30 mb-3">
-          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        <div class="inline-flex bg-indigo-500/10 p-3 rounded-2xl text-indigo-400 border border-indigo-500/20 mb-3">
+          <i data-lucide="shield-check" class="w-6 h-6 stroke-[1.75]"></i>
         </div>
-        <h2 class="text-xl font-bold">Suite Contable Auxiliar</h2>
-        <p class="text-xs text-slate-400 mt-1">Ingresá a tu panel operativo local</p>
+        <h2 class="text-xl font-bold tracking-tight">Suite Contable ERP</h2>
+        <p class="text-xs text-slate-400 mt-1">Plataforma de gestión financiera y fiscal</p>
       </div>
 
       <form id="auth-form" onsubmit="handleAuth(event)" class="p-6 space-y-4">
@@ -39,16 +43,16 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Correo Electrónico</label>
-          <input id="auth-email" type="email" required placeholder="auxiliar@empresa.com" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <input id="auth-email" type="email" required placeholder="admin@empresa.com" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none transition">
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Contraseña</label>
-          <input id="auth-password" type="password" required placeholder="••••••••" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none">
+          <input id="auth-password" type="password" required placeholder="••••••••" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none transition">
         </div>
 
         <div class="flex gap-2 pt-2">
-          <button type="submit" id="btn-login" onclick="setAuthMode('login')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-sm cursor-pointer">
+          <button type="submit" id="btn-login" onclick="setAuthMode('login')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-lg transition shadow-xs cursor-pointer">
             Iniciar Sesión
           </button>
           <button type="submit" id="btn-signup" onclick="setAuthMode('signup')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm py-2.5 rounded-lg transition border border-slate-300 cursor-pointer">
@@ -59,14 +63,12 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MODAL: NUEVO CONTACTO COMERCIAL (PADRÓN) -->
-  <!-- ========================================== -->
+  <!-- MODAL: NUEVO CONTACTO -->
   <div id="modal-nuevo-contacto" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
       <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
         <h3 class="text-sm font-bold flex items-center gap-2">
-          <i data-lucide="user-plus" class="w-4 h-4 text-indigo-400"></i> Nuevo Contacto Comercial
+          <i data-lucide="user-plus" class="w-4 h-4 text-indigo-400 stroke-[1.75]"></i> Nuevo Contacto Comercial
         </h3>
         <button type="button" onclick="cerrarModalContacto()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
       </div>
@@ -114,37 +116,35 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-sm cursor-pointer mt-2">
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs cursor-pointer mt-2">
           Guardar en Padrón
         </button>
       </form>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MODAL: CONFIGURACIÓN DE EMPRESA Y LOGO -->
-  <!-- ========================================== -->
+  <!-- MODAL: CONFIGURACIÓN EMPRESA -->
   <div id="modal-config-empresa" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
       <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800 shrink-0">
         <h3 class="text-sm font-bold flex items-center gap-2">
-          <i data-lucide="building" class="w-4 h-4 text-indigo-400"></i> Datos Fiscales e Identidad Corporativa
+          <i data-lucide="building" class="w-4 h-4 text-indigo-400 stroke-[1.75]"></i> Datos Fiscales e Identidad Corporativa
         </h3>
         <button type="button" onclick="cerrarModalEmpresa()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
       </div>
 
       <form id="form-config-empresa" onsubmit="guardarDatosEmpresa(event)" class="p-6 space-y-4 text-xs overflow-y-auto">
         <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center gap-4">
-          <div class="w-28 h-28 bg-white rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0 relative group">
+          <div class="w-28 h-28 bg-white rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0 relative group">
             <img id="empresa-logo-preview" src="" alt="Logo" class="hidden w-full h-full object-contain p-1" />
             <div id="empresa-logo-placeholder" class="text-center text-slate-400 p-2">
-              <i data-lucide="image" class="w-6 h-6 mx-auto mb-1"></i>
+              <i data-lucide="image" class="w-6 h-6 mx-auto mb-1 stroke-[1.5]"></i>
               <span class="text-[10px]">Sin Logo</span>
             </div>
           </div>
           <div class="space-y-1.5 flex-1">
             <label class="block font-bold text-slate-700">Logo Corporativo para Comprobantes</label>
-            <p class="text-slate-500 text-[11px]">Formatos admitidos: PNG, JPG o WebP. Se integrará automáticamente en los encabezados de facturas, recibos de cobro y órdenes de pago.</p>
+            <p class="text-slate-500 text-[11px]">Formatos: PNG, JPG o WebP. Se integrará automáticamente en los comprobantes.</p>
             <div class="flex gap-2 pt-1">
               <input type="file" id="empresa-logo-input" accept="image/*" onchange="procesarArchivoLogo(this)" class="block text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
               <button type="button" onclick="removerLogoEmpresa()" id="btn-remover-logo" class="hidden text-rose-600 hover:text-rose-800 text-[11px] font-semibold underline cursor-pointer">Quitar</button>
@@ -195,283 +195,267 @@
 
         <div>
           <label class="block font-semibold text-slate-700 mb-1">Leyenda al Pie de Comprobantes</label>
-          <input type="text" id="empresa-leyenda" placeholder="Ej: Documento no válido como factura fiscal / comprobante interno" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <input type="text" id="empresa-leyenda" placeholder="Ej: Comprobante interno emitido por Suite Contable" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
 
         <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
           <button type="button" onclick="cerrarModalEmpresa()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 transition cursor-pointer">
             Cancelar
           </button>
-          <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition shadow-sm flex items-center gap-1.5 cursor-pointer">
-            <i data-lucide="check" class="w-4 h-4"></i> Guardar Cambios
+          <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition shadow-xs flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="check" class="w-4 h-4 stroke-[1.75]"></i> Guardar Cambios
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- SIDEBAR: ARQUITECTURA LIMPIA DE 6 NÚCLEOS -->
-  <!-- ========================================== -->
+  <!-- SIDEBAR -->
   <aside class="bg-slate-900 text-slate-300 w-64 h-screen flex flex-col justify-between border-r border-slate-800 shrink-0">
     <div>
-      <div class="h-16 flex items-center px-4 border-b border-slate-800 shrink-0">
+      <div class="h-16 flex items-center px-4 border-b border-slate-800/80 shrink-0">
         <div class="flex items-center gap-3">
-          <div class="bg-indigo-600/20 p-2 rounded-xl text-indigo-400 border border-indigo-500/30">
-            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          <div class="bg-indigo-500/10 p-2.5 rounded-xl text-indigo-400 border border-indigo-500/20">
+            <i data-lucide="layers" class="w-5 h-5 stroke-[1.75]"></i>
           </div>
           <div>
-            <h1 class="font-bold text-white text-sm tracking-wide">Suite Contable</h1>
-            <p class="text-[10px] text-slate-400 font-medium">Panel Auxiliar Operativo</p>
+            <h1 class="font-bold text-white text-sm tracking-tight">Suite Contable</h1>
+            <p class="text-[10px] text-slate-400 font-medium">Panel Operativo ERP</p>
           </div>
         </div>
       </div>
 
-      <nav class="p-3 space-y-1.5" id="main-nav">
-        <!-- 1. Dashboard -->
-        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white shadow-sm cursor-pointer">
-          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+      <nav class="p-3 space-y-1" id="main-nav">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow-xs cursor-pointer">
+          <i data-lucide="layout-grid" class="w-4 h-4 stroke-[1.75]"></i>
           <span>Dashboard</span>
         </button>
 
-        <!-- 2. Facturación & Comprobantes -->
-        <button onclick="switchTab('facturacion')" id="nav-facturacion" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
-          <i data-lucide="receipt-text" class="w-4 h-4"></i>
+        <button onclick="switchTab('facturacion')" id="nav-facturacion" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="file-text" class="w-4 h-4 stroke-[1.75]"></i>
           <span>Facturación & CAI</span>
         </button>
 
-        <!-- 3. Tesorería & Fondos -->
-        <button onclick="switchTab('tesoreria')" id="nav-tesoreria" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
-          <i data-lucide="wallet" class="w-4 h-4"></i>
+        <button onclick="switchTab('tesoreria')" id="nav-tesoreria" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="wallet-cards" class="w-4 h-4 stroke-[1.75]"></i>
           <span>Tesorería & Valores</span>
         </button>
 
-        <!-- 4. Conciliaciones & Cartera -->
-        <button onclick="switchTab('conciliaciones')" id="nav-conciliaciones" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
-          <i data-lucide="scale" class="w-4 h-4"></i>
+        <button onclick="switchTab('conciliaciones')" id="nav-conciliaciones" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="scale" class="w-4 h-4 stroke-[1.75]"></i>
           <span>Conciliación & Cta Cte</span>
         </button>
 
-        <!-- 5. Auditoría Fiscal -->
-        <button onclick="switchTab('auditoria-fiscal')" id="nav-auditoria-fiscal" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
-          <i data-lucide="file-check-2" class="w-4 h-4"></i>
+        <button onclick="switchTab('auditoria-fiscal')" id="nav-auditoria-fiscal" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="shield-alert" class="w-4 h-4 stroke-[1.75]"></i>
           <span>Auditoría Fiscal ARCA</span>
         </button>
 
-        <!-- 6. Contabilidad General -->
-        <button onclick="switchTab('contabilidad')" id="nav-contabilidad" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
-          <i data-lucide="book-open" class="w-4 h-4"></i>
+        <button onclick="switchTab('contabilidad')" id="nav-contabilidad" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 cursor-pointer">
+          <i data-lucide="book-open" class="w-4 h-4 stroke-[1.75]"></i>
           <span>Contabilidad General</span>
         </button>
       </nav>
     </div>
 
-    <!-- FootSidebar con Configuración de Empresa -->
-    <div class="p-3 border-t border-slate-800 space-y-2">
-      <button onclick="abrirModalEmpresa()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition cursor-pointer">
-        <i data-lucide="settings" class="w-4 h-4 text-indigo-400"></i>
+    <div class="p-3 border-t border-slate-800/80 space-y-2">
+      <button onclick="abrirModalEmpresa()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition cursor-pointer">
+        <i data-lucide="settings" class="w-4 h-4 text-slate-400 stroke-[1.75]"></i>
         <span>Configuración de Empresa</span>
       </button>
-      <div class="p-2.5 bg-slate-800/40 rounded-lg border border-slate-800 text-[11px] text-slate-400">
+      <div class="p-2.5 bg-slate-800/40 rounded-lg border border-slate-800/80 text-[11px] text-slate-400">
         <p class="font-semibold text-slate-300">Modo Local (100% Privado)</p>
         <p class="mt-0.5 text-slate-500">Suite Contable Comercial</p>
       </div>
     </div>
   </aside>
 
-  <!-- ========================================== -->
-  <!-- AREA PRINCIPAL DE CONTENIDO -->
-  <!-- ========================================== -->
+  <!-- CONTENEDOR PRINCIPAL -->
   <div class="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-    <!-- Header Superior -->
-    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10 shadow-xs">
-      <div class="flex items-center gap-2">
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          Estado: Operativo Local
+    <header class="bg-white border-b border-slate-200/80 h-16 flex items-center justify-between px-6 shrink-0 sticky top-0 z-10 shadow-2xs">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Operativo Local
         </span>
-        <span class="text-xs text-slate-400">|</span>
+        <span class="text-xs text-slate-300">|</span>
         <span class="text-xs font-medium text-slate-500">
-          Empresa: <strong class="text-slate-700">Demostración SA</strong>
+          Empresa: <strong class="text-slate-800">Demostración SA</strong>
         </span>
       </div>
 
       <div class="flex items-center gap-4">
         <div class="text-xs text-slate-500 font-mono hidden md:block">
-          Costo Servidor: <strong class="text-emerald-600">$0,00 ARS</strong>
+          Costo Servidor: <strong class="text-emerald-600 font-bold">$0,00 ARS</strong>
         </div>
         <div class="h-4 w-px bg-slate-200 hidden md:block"></div>
         <div class="flex items-center gap-2">
-          <span id="user-display-email" class="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+          <span id="user-display-email" class="text-xs font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-lg border border-slate-200/80">
             Cargando usuario...
           </span>
-          <button onclick="logout()" title="Cerrar Sesión" class="text-xs bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 hover:border-rose-200 px-2.5 py-1 rounded-md transition font-medium flex items-center gap-1 cursor-pointer">
-            <span>Salir</span>
+          <button onclick="logout()" title="Cerrar Sesión" class="text-xs bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 border border-slate-200 hover:border-rose-200 px-2.5 py-1 rounded-lg transition font-medium cursor-pointer">
+            Salir
           </button>
         </div>
       </div>
     </header>
 
-    <!-- Contenido de Vistas -->
-    <main class="flex-1 p-6 space-y-6">
+    <main class="flex-1 p-6 space-y-6 max-w-7xl w-full mx-auto pb-16">
 
-      <!-- ========================================== -->
-      <!-- VISTA 1: DASHBOARD -->
-      <!-- ========================================== -->
+      <!-- 1: DASHBOARD -->
       <section id="tab-dashboard" class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 class="text-2xl font-bold text-slate-800">Centro de Control Operativo</h2>
-            <p class="text-sm text-slate-500">Resumen ejecutivo y estado contable en tiempo real de la empresa activa.</p>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900">Centro de Control Operativo</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Resumen ejecutivo y estado contable en tiempo real de la empresa activa.</p>
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs font-semibold text-slate-600">Ejercicio/Mes:</label>
-            <input type="month" id="dashboard-periodo" onchange="actualizarDashboardMetrics()" class="border border-slate-300 rounded-lg text-xs p-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm">
+            <input type="month" id="dashboard-periodo" onchange="actualizarDashboardMetrics()" class="border border-slate-300 rounded-lg text-xs p-2 text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-2xs">
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
             <div>
-              <p class="text-xs font-semibold text-slate-400">Conciliación Bancaria</p>
-              <h4 id="kpi-conciliacion-estado" class="text-lg font-bold text-slate-800 mt-1">Pendiente</h4>
-              <p id="kpi-conciliacion-sub" class="text-[11px] text-slate-500 mt-0.5">Sin cruces realizados</p>
+              <p class="text-xs font-medium text-slate-500">Conciliación Bancaria</p>
+              <h4 id="kpi-conciliacion-estado" class="text-lg font-bold text-slate-900 mt-1">Pendiente</h4>
+              <p id="kpi-conciliacion-sub" class="text-[11px] text-slate-400 mt-0.5">Sin cruces realizados</p>
             </div>
             <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-              <i data-lucide="scale" class="w-6 h-6"></i>
+              <i data-lucide="scale" class="w-5 h-5 stroke-[1.75]"></i>
             </div>
           </div>
 
-          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
             <div>
-              <p class="text-xs font-semibold text-slate-400">Saldo Pendiente Cta Cte</p>
-              <h4 id="kpi-ctacte-saldo" class="text-lg font-bold text-slate-800 mt-1">$ 0.00</h4>
-              <p id="kpi-ctacte-sub" class="text-[11px] text-slate-500 mt-0.5">0 comprobantes activos</p>
+              <p class="text-xs font-medium text-slate-500">Saldo Pendiente Cta Cte</p>
+              <h4 id="kpi-ctacte-saldo" class="text-lg font-bold text-slate-900 mt-1">$ 0.00</h4>
+              <p id="kpi-ctacte-sub" class="text-[11px] text-slate-400 mt-0.5">0 comprobantes activos</p>
             </div>
             <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-              <i data-lucide="users" class="w-6 h-6"></i>
+              <i data-lucide="users" class="w-5 h-5 stroke-[1.75]"></i>
             </div>
           </div>
 
-          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
             <div>
-              <p class="text-xs font-semibold text-slate-400">Fondo Fijo Activo</p>
-              <h4 id="kpi-fondo-monto" class="text-lg font-bold text-slate-800 mt-1">$ 0.00</h4>
-              <p id="kpi-fondo-sub" class="text-[11px] text-slate-500 mt-0.5">Sin rinde abierto</p>
+              <p class="text-xs font-medium text-slate-500">Fondo Fijo Activo</p>
+              <h4 id="kpi-fondo-monto" class="text-lg font-bold text-slate-900 mt-1">$ 0.00</h4>
+              <p id="kpi-fondo-sub" class="text-[11px] text-slate-400 mt-0.5">Sin rinde abierto</p>
             </div>
             <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
-              <i data-lucide="wallet" class="w-6 h-6"></i>
+              <i data-lucide="wallet" class="w-5 h-5 stroke-[1.75]"></i>
             </div>
           </div>
 
-          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs flex items-center justify-between">
             <div>
-              <p class="text-xs font-semibold text-slate-400">Asientos Registrados</p>
-              <h4 id="kpi-asientos-cant" class="text-lg font-bold text-slate-800 mt-1">0</h4>
-              <p id="kpi-asientos-sub" class="text-[11px] text-slate-500 mt-0.5">Partida doble verificada</p>
+              <p class="text-xs font-medium text-slate-500">Asientos Registrados</p>
+              <h4 id="kpi-asientos-cant" class="text-lg font-bold text-slate-900 mt-1">0</h4>
+              <p id="kpi-asientos-sub" class="text-[11px] text-slate-400 mt-0.5">Partida doble verificada</p>
             </div>
             <div class="p-3 bg-purple-50 text-purple-600 rounded-xl">
-              <i data-lucide="book-open" class="w-6 h-6"></i>
+              <i data-lucide="book-open" class="w-5 h-5 stroke-[1.75]"></i>
             </div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2 space-y-4">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-              <h3 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">Acciones Rápidas de Trabajo</h3>
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
+              <h3 class="text-xs uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100 pb-2">Acciones Rápidas de Trabajo</h3>
               
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button onclick="switchTab('contabilidad'); switchSubTab('contabilidad', 'diario')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+                <button onclick="switchTab('contabilidad'); switchSubTab('contabilidad', 'diario')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/40 rounded-xl text-left transition group flex items-start gap-3 cursor-pointer">
                   <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    <i data-lucide="plus-circle" class="w-4 h-4 stroke-[1.75]"></i>
                   </div>
                   <div>
                     <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Nuevo Asiento Manual</p>
-                    <p class="text-[11px] text-slate-500">Registrar movimiento contable rápido con validación.</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Registrar movimiento contable con validación.</p>
                   </div>
                 </button>
 
-                <button onclick="switchTab('tesoreria'); switchSubTab('tesoreria', 'op')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+                <button onclick="switchTab('tesoreria'); switchSubTab('tesoreria', 'op')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/40 rounded-xl text-left transition group flex items-start gap-3 cursor-pointer">
                   <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
-                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    <i data-lucide="file-text" class="w-4 h-4 stroke-[1.75]"></i>
                   </div>
                   <div>
                     <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Emitir Orden de Pago</p>
-                    <p class="text-[11px] text-slate-500">Generar comprobante OP a proveedor con retención.</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Generar comprobante OP a proveedor con retención.</p>
                   </div>
                 </button>
 
-                <button onclick="switchTab('auditoria-fiscal'); switchSubTab('auditoria', 'cruzador')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+                <button onclick="switchTab('auditoria-fiscal'); switchSubTab('auditoria', 'cruzador')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/40 rounded-xl text-left transition group flex items-start gap-3 cursor-pointer">
                   <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
-                    <i data-lucide="check-check" class="w-5 h-5"></i>
+                    <i data-lucide="check-check" class="w-4 h-4 stroke-[1.75]"></i>
                   </div>
                   <div>
                     <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Auditar IVA (ARCA vs. Interno)</p>
-                    <p class="text-[11px] text-slate-500">Cruzar libro IVA contra Mis Comprobantes.</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Cruzar libro IVA contra Mis Comprobantes.</p>
                   </div>
                 </button>
 
-                <button onclick="switchTab('conciliaciones'); switchSubTab('conciliaciones', 'banco')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 rounded-lg text-left transition-all group flex items-start gap-3 cursor-pointer">
+                <button onclick="switchTab('conciliaciones'); switchSubTab('conciliaciones', 'banco')" class="p-3 border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/40 rounded-xl text-left transition group flex items-start gap-3 cursor-pointer">
                   <div class="p-2 bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white rounded-lg text-slate-600 transition-colors">
-                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                    <i data-lucide="refresh-cw" class="w-4 h-4 stroke-[1.75]"></i>
                   </div>
                   <div>
                     <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-900">Conciliar Extracto Bancario</p>
-                    <p class="text-[11px] text-slate-500">Ejecutar motor de coincidencia difusa (Fuzzy).</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Ejecutar motor de coincidencia difusa (Fuzzy).</p>
                   </div>
                 </button>
               </div>
             </div>
           </div>
 
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-            <h3 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center justify-between">
+          <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
+            <h3 class="text-xs uppercase tracking-wider font-bold text-slate-500 border-b border-slate-100 pb-2 flex items-center justify-between">
               <span>Últimos Movimientos</span>
-              <i data-lucide="history" class="w-4 h-4 text-slate-400"></i>
+              <i data-lucide="history" class="w-4 h-4 text-slate-400 stroke-[1.75]"></i>
             </h3>
             <div id="dashboard-activity-log" class="space-y-3 text-xs"></div>
           </div>
         </div>
       </section>
 
-      <!-- ========================================== -->
-      <!-- VISTA 2: FACTURACIÓN & GESTIÓN COMERCIAL -->
-      <!-- ========================================== -->
+      <!-- 2: FACTURACIÓN & CAI -->
       <section id="tab-facturacion" class="hidden space-y-6">
-        <!-- Sub-navegador de Pestañas -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-4">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Facturación & Gestión Comercial</h2>
-            <p class="text-xs text-slate-500">Emisión de comprobantes, compras, ventas y control de talonarios físicos con CAI.</p>
+            <h2 class="text-xl font-bold tracking-tight text-slate-900">Facturación & Gestión Comercial</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Emisión de comprobantes, compras, ventas y control de talonarios físicos con CAI.</p>
           </div>
-          <div class="inline-flex bg-slate-200/80 p-1 rounded-xl border border-slate-300">
-            <button type="button" id="btn-subtab-fact-ventas" onclick="switchSubTab('facturacion', 'ventas')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white text-emerald-700 shadow-xs transition-all cursor-pointer">
-              📤 Ventas (Clientes)
-            </button>
-            <button type="button" id="btn-subtab-fact-compras" onclick="switchSubTab('facturacion', 'compras')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              📥 Compras (Proveedores)
-            </button>
-            <button type="button" id="btn-subtab-fact-talonarios" onclick="switchSubTab('facturacion', 'talonarios')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              📑 Talonarios & CAI
-            </button>
-          </div>
-          <div class="flex items-center gap-2">
-            <button type="button" onclick="exportarLibroIvaDigitalARCA('VENTAS')" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i> Libro IVA Ventas (ARCA TXT)
-            </button>
-            <button type="button" onclick="exportarLibroIvaDigitalARCA('COMPRAS')" class="bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-xs">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i> Libro IVA Compras (ARCA TXT)
-            </button>
+          
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+              <button type="button" id="btn-subtab-fact-ventas" onclick="switchSubTab('facturacion', 'ventas')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 stroke-[2] text-emerald-600"></i> Ventas
+              </button>
+              <button type="button" id="btn-subtab-fact-compras" onclick="switchSubTab('facturacion', 'compras')" class="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="arrow-down-left" class="w-3.5 h-3.5 stroke-[2] text-indigo-600"></i> Compras
+              </button>
+              <button type="button" id="btn-subtab-fact-talonarios" onclick="switchSubTab('facturacion', 'talonarios')" class="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="receipt" class="w-3.5 h-3.5 stroke-[2] text-slate-500"></i> Talonarios & CAI
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="exportarLibroIvaDigitalARCA('VENTAS')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
+                <i data-lucide="download" class="w-3.5 h-3.5 stroke-[1.75]"></i> IVA Ventas (ARCA)
+              </button>
+              <button type="button" onclick="exportarLibroIvaDigitalARCA('COMPRAS')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
+                <i data-lucide="download" class="w-3.5 h-3.5 stroke-[1.75]"></i> IVA Compras (ARCA)
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- Panel Facturación (Ventas / Compras) -->
         <div id="panel-subtab-facturacion-cv" class="space-y-4">
-          <!-- Importador Mis Comprobantes -->
-          <div id="panel-importacion-compras" class="hidden bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+          <div id="panel-importacion-compras" class="hidden bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs space-y-2">
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
               <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs">
-                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                <i data-lucide="upload-cloud" class="w-4 h-4 stroke-[1.75]"></i>
                 <span>Importación Masiva de Comprobantes de Compra (Mis Comprobantes ARCA / CSV)</span>
               </div>
               <button type="button" onclick="descargarPlantillaComprasCSV()" class="text-[11px] text-slate-500 hover:text-indigo-600 underline">Descargar Formato Modelo</button>
@@ -483,14 +467,13 @@
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Formulario Carga -->
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4 h-fit">
               <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                <h3 id="fc-form-titulo" class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  <i data-lucide="file-plus-2" class="w-4 h-4 text-emerald-600"></i> Emitir Factura de Venta
+                <h3 id="fc-form-titulo" class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <i data-lucide="file-plus-2" class="w-4 h-4 text-emerald-600 stroke-[1.75]"></i> Emitir Factura de Venta
                 </h3>
-                <button type="button" onclick="abrirModalContacto()" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 cursor-pointer">
-                  + Nuevo Contacto
+                <button type="button" onclick="abrirModalContacto()" class="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200/80 cursor-pointer">
+                  + Contacto
                 </button>
               </div>
 
@@ -556,7 +539,7 @@
                   <input type="text" id="fc-concepto" placeholder="Ej: Servicios de auditoría profesional" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
 
-                <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2.5">
+                <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2.5">
                   <div class="grid grid-cols-2 gap-2">
                     <div>
                       <label class="block text-[11px] font-semibold text-slate-600 mb-1">Neto Gravado ($)</label>
@@ -599,34 +582,33 @@
                   </div>
                 </div>
 
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
-                  <i data-lucide="check-circle" class="w-4 h-4"></i> Guardar y Asentar en Libro Diario
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs cursor-pointer flex items-center justify-center gap-2">
+                  <i data-lucide="check-circle" class="w-4 h-4 stroke-[1.75]"></i> Guardar y Asentar en Libro Diario
                 </button>
               </form>
             </div>
 
-            <!-- Grilla Comprobantes -->
-            <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+            <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col justify-between">
               <div>
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <h3 id="fc-tabla-titulo" class="text-sm font-bold text-slate-700">Comprobantes de Venta Registrados</h3>
+                  <h3 id="fc-tabla-titulo" class="text-xs uppercase tracking-wider font-bold text-slate-600">Comprobantes Registrados</h3>
                   <div class="relative w-full sm:w-60">
                     <input type="text" id="fc-buscar" oninput="renderizarTablaFacturas()" placeholder="Buscar entidad, CUIT o N°..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                    <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                    <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 stroke-[1.75]"></i>
                   </div>
                 </div>
 
                 <div class="overflow-x-auto">
                   <table class="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
-                        <th class="p-2.5">Fecha</th>
-                        <th class="p-2.5">Comprobante</th>
-                        <th class="p-2.5">Entidad / CUIT</th>
-                        <th class="p-2.5 text-right">Neto</th>
-                        <th class="p-2.5 text-right">Total</th>
-                        <th class="p-2.5 text-center">Estado</th>
-                        <th class="p-2.5 text-center">Acciones</th>
+                      <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                        <th class="p-3">Fecha</th>
+                        <th class="p-3">Comprobante</th>
+                        <th class="p-3">Entidad / CUIT</th>
+                        <th class="p-3 text-right">Neto</th>
+                        <th class="p-3 text-right">Total</th>
+                        <th class="p-3 text-center">Estado</th>
+                        <th class="p-3 text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="tbody-facturas" class="divide-y divide-slate-100 text-slate-700"></tbody>
@@ -637,12 +619,11 @@
           </div>
         </div>
 
-        <!-- Panel Talonarios Físicos & CAI -->
         <div id="panel-subtab-facturacion-talonarios" class="hidden">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
-              <h3 id="talonario-form-titulo" class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Nuevo Talonario Físico
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4 h-fit">
+              <h3 id="talonario-form-titulo" class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600 stroke-[1.75]"></i> Nuevo Talonario Físico
               </h3>
 
               <form id="form-talonario" onsubmit="guardarTalonario(event)" class="space-y-3 text-xs">
@@ -694,30 +675,30 @@
                   <button type="button" id="btn-cancelar-talonario" onclick="limpiarFormularioTalonario()" class="hidden w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg transition text-xs">
                     Cancelar
                   </button>
-                  <button type="submit" id="btn-submit-talonario" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
-                    <i data-lucide="save" class="w-4 h-4"></i> Guardar Talonario
+                  <button type="submit" id="btn-submit-talonario" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs cursor-pointer flex items-center justify-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4 stroke-[1.75]"></i> Guardar Talonario
                   </button>
                 </div>
               </form>
             </div>
 
-            <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+            <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col justify-between">
               <div>
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                  <h3 class="text-sm font-bold text-slate-700">Talonarios Habilitados</h3>
-                  <span id="badge-total-talonarios" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">0 activos</span>
+                  <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Talonarios Habilitados</h3>
+                  <span id="badge-total-talonarios" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/80">0 activos</span>
                 </div>
 
                 <div class="overflow-x-auto">
                   <table class="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
-                        <th class="p-2.5">Tipo / Pto. Venta</th>
-                        <th class="p-2.5 font-mono">CAI</th>
-                        <th class="p-2.5">Vencimiento</th>
-                        <th class="p-2.5 text-center">Rango Autorizado</th>
-                        <th class="p-2.5 text-center">Disponibles</th>
-                        <th class="p-2.5 text-center">Acciones</th>
+                      <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                        <th class="p-3">Tipo / Pto. Venta</th>
+                        <th class="p-3 font-mono">CAI</th>
+                        <th class="p-3">Vencimiento</th>
+                        <th class="p-3 text-center">Rango Autorizado</th>
+                        <th class="p-3 text-center">Disponibles</th>
+                        <th class="p-3 text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody id="tbody-talonarios" class="divide-y divide-slate-100 text-slate-700">
@@ -733,62 +714,60 @@
         </div>
       </section>
 
-      <!-- ========================================== -->
-      <!-- VISTA 3: TESORERÍA & FONDOS (UNIFICADA) -->
-      <!-- ========================================== -->
+      <!-- 3: TESORERÍA & VALORES -->
       <section id="tab-tesoreria" class="hidden space-y-6">
-        <!-- Sub-navegador de Pestañas -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-4">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Tesorería & Valores</h2>
-            <p class="text-xs text-slate-500">Cobranzas (RC), pagos a proveedores (OP), liquidaciones de tarjetas, cheques y caja chica.</p>
+            <h2 class="text-xl font-bold tracking-tight text-slate-900">Tesorería & Valores</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Cobranzas (RC), pagos a proveedores (OP), liquidaciones de tarjetas, cheques y caja chica.</p>
           </div>
-          <div class="inline-flex bg-slate-200/80 p-1 rounded-xl border border-slate-300">
-            <button type="button" id="btn-subtab-tes-rc" onclick="switchSubTab('tesoreria', 'rc')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
-              💰 Recibos (RC)
+          
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+            <button type="button" id="btn-subtab-tes-rc" onclick="switchSubTab('tesoreria', 'rc')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="arrow-down-circle" class="w-3.5 h-3.5 stroke-[2] text-indigo-600"></i> Recibos (RC)
             </button>
-            <button type="button" id="btn-subtab-tes-op" onclick="switchSubTab('tesoreria', 'op')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              📝 Pagos (OP)
+            <button type="button" id="btn-subtab-tes-op" onclick="switchSubTab('tesoreria', 'op')" class="px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="arrow-up-circle" class="w-3.5 h-3.5 stroke-[2] text-emerald-600"></i> Pagos (OP)
             </button>
-            <button type="button" id="btn-subtab-tes-tarjetas" onclick="switchSubTab('tesoreria', 'tarjetas')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              💳 Tarjetas & Cupones
+            <button type="button" id="btn-subtab-tes-tarjetas" onclick="switchSubTab('tesoreria', 'tarjetas')" class="px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="credit-card" class="w-3.5 h-3.5 stroke-[2] text-purple-600"></i> Tarjetas & Cupones
             </button>
-            <button type="button" id="btn-subtab-tes-cheques" onclick="switchSubTab('tesoreria', 'cheques')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              Cartera de Cheques
+            <button type="button" id="btn-subtab-tes-cheques" onclick="switchSubTab('tesoreria', 'cheques')" class="px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="check-square" class="w-3.5 h-3.5 stroke-[2] text-amber-600"></i> Cartera de Cheques
             </button>
-            <button type="button" id="btn-subtab-tes-ff" onclick="switchSubTab('tesoreria', 'ff')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              🪙 Fondo Fijo
+            <button type="button" id="btn-subtab-tes-ff" onclick="switchSubTab('tesoreria', 'ff')" class="px-3.5 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="wallet" class="w-3.5 h-3.5 stroke-[2] text-slate-600"></i> Fondo Fijo
             </button>
           </div>
         </div>
 
-        <!-- 3.1: RECIBOS DE COBRO (RC) -->
+        <!-- 3.1: RECIBOS (RC) -->
         <div id="panel-subtab-tesoreria-rc" class="space-y-6">
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-5">
-            <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+          <div class="bg-white rounded-xl shadow-2xs border border-slate-200/80 p-6 space-y-5">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100">
               <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i data-lucide="receipt" class="text-indigo-600"></i> Emisión de Recibo de Cobranza (RC)
+                <i data-lucide="receipt" class="w-4 h-4 text-indigo-600 stroke-[1.75]"></i> Emisión de Recibo de Cobranza (RC)
               </h3>
               <div class="flex items-center gap-2">
                 <label class="text-[11px] text-slate-500 font-semibold uppercase">N° Recibo:</label>
-                <input type="text" id="rc-numero" class="w-36 text-right font-mono font-bold text-slate-700 border rounded-lg px-2 py-1 text-xs bg-slate-50" readonly />
+                <input type="text" id="rc-numero" class="w-36 text-right font-mono font-bold text-slate-700 border border-slate-300 rounded-lg px-2.5 py-1 text-xs bg-slate-50" readonly />
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cliente *</label>
-                <select id="rc-cliente-select" onchange="cargarFacturasPendientesCliente(this.value)" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                <select id="rc-cliente-select" onchange="cargarFacturasPendientesCliente(this.value)" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
                   <option value="">-- Seleccionar Cliente --</option>
                 </select>
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Fecha Emisión *</label>
-                <input type="date" id="rc-fecha" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input type="date" id="rc-fecha" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Medio de Cobro *</label>
-                <select id="rc-medio-cobro" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                <select id="rc-medio-cobro" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
                   <option value="TR">Transferencia Bancaria</option>
                   <option value="PSP_CVU">Billetera Virtual (Mercado Pago / CVU)</option>
                   <option value="QR">Cobro QR / Billeteras</option>
@@ -801,21 +780,20 @@
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cuenta Destino / Tesorería *</label>
-                <select id="rc-cuenta-tesoreria-select" class="w-full border rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 font-semibold text-slate-800">
+                <select id="rc-cuenta-tesoreria-select" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50 font-semibold text-slate-800">
                   <option value="">-- Seleccionar Cuenta / Billetera --</option>
                 </select>
               </div>
             </div>
 
-            <!-- Subpanel cupón de tarjeta -->
-            <div id="rc-panel-cupon" class="hidden mt-2 p-2.5 bg-indigo-50/70 rounded-lg border border-indigo-100 space-y-1.5">
-              <div class="font-bold text-[10px] text-indigo-900 flex items-center gap-1">
-                <i data-lucide="credit-card" class="w-3 h-3"></i> Datos del Cupón de Tarjeta
+            <div id="rc-panel-cupon" class="hidden mt-2 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-1.5">
+              <div class="font-bold text-[11px] text-indigo-900 flex items-center gap-1.5">
+                <i data-lucide="credit-card" class="w-3.5 h-3.5 stroke-[1.75]"></i> Datos del Cupón de Tarjeta
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-xs">
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">Marca</label>
-                  <select id="rc-cupon-marca" class="w-full p-1 border border-slate-300 rounded bg-white text-[11px]">
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Marca</label>
+                  <select id="rc-cupon-marca" class="w-full p-1.5 border border-slate-300 rounded-lg bg-white text-[11px]">
                     <option value="Visa">Visa</option>
                     <option value="Mastercard">Mastercard</option>
                     <option value="AMEX">AMEX</option>
@@ -823,37 +801,36 @@
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">N° Cupón *</label>
-                  <input type="text" id="rc-cupon-numero" placeholder="Ej: 4892" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">N° Cupón *</label>
+                  <input type="text" id="rc-cupon-numero" placeholder="Ej: 4892" class="w-full p-1.5 border border-slate-300 rounded-lg font-mono text-[11px]" />
                 </div>
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">Terminal</label>
-                  <input type="text" id="rc-cupon-terminal" placeholder="001" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Terminal</label>
+                  <input type="text" id="rc-cupon-terminal" placeholder="001" class="w-full p-1.5 border border-slate-300 rounded-lg font-mono text-[11px]" />
                 </div>
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">Lote</label>
-                  <input type="text" id="rc-cupon-lote" placeholder="14" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Lote</label>
+                  <input type="text" id="rc-cupon-lote" placeholder="14" class="w-full p-1.5 border border-slate-300 rounded-lg font-mono text-[11px]" />
                 </div>
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">Cuotas</label>
-                  <input type="number" id="rc-cupon-cuotas" min="1" max="48" value="1" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Cuotas</label>
+                  <input type="number" id="rc-cupon-cuotas" min="1" max="48" value="1" class="w-full p-1.5 border border-slate-300 rounded-lg font-mono text-[11px]" />
                 </div>
               </div>
             </div>
 
-            <!-- Subpanel cheques -->
-            <div id="rc-panel-cheque" class="hidden mt-2 p-2.5 bg-indigo-50/70 rounded-lg border border-indigo-100 space-y-1.5">
-              <div class="font-bold text-[10px] text-indigo-900 flex items-center gap-1">
-                <i data-lucide="check-square" class="w-3 h-3"></i> Datos del Cheque Recibido
+            <div id="rc-panel-cheque" class="hidden mt-2 p-3 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-1.5">
+              <div class="font-bold text-[11px] text-indigo-900 flex items-center gap-1.5">
+                <i data-lucide="check-square" class="w-3.5 h-3.5 stroke-[1.75]"></i> Datos del Cheque Recibido
               </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">N° Cheque *</label>
-                  <input type="text" id="rc-chq-numero" placeholder="Ej: 84920194" class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">N° Cheque *</label>
+                  <input type="text" id="rc-chq-numero" placeholder="Ej: 84920194" class="w-full p-1.5 border border-slate-300 rounded-lg font-mono text-[11px]" />
                 </div>
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">Banco Emisor *</label>
-                  <input type="text" id="rc-chq-banco" list="lista-bancos-oficiales" placeholder="Seleccionar o escribir banco..." class="w-full p-1 border border-slate-300 rounded text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Banco Emisor *</label>
+                  <input type="text" id="rc-chq-banco" list="lista-bancos-oficiales" placeholder="Seleccionar o escribir..." class="w-full p-1.5 border border-slate-300 rounded-lg text-[11px]" />
                   <datalist id="lista-bancos-oficiales">
                     <option value="007 - Banco Galicia"></option>
                     <option value="011 - Banco de la Nación Argentina"></option>
@@ -869,24 +846,22 @@
                   </datalist>
                 </div>
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">Fecha de Cobro *</label>
-                  <input type="date" id="rc-chq-fecha-pago" class="w-full p-1 border border-slate-300 rounded text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">Fecha de Cobro *</label>
+                  <input type="date" id="rc-chq-fecha-pago" class="w-full p-1.5 border border-slate-300 rounded-lg text-[11px]" />
                 </div>
                 <div>
-                  <label class="block text-[9px] text-slate-500 font-semibold">CUIT Librador</label>
-                  <input type="text" id="rc-chq-cuit" placeholder="30-..." class="w-full p-1 border border-slate-300 rounded font-mono text-[11px]" />
+                  <label class="block text-[10px] text-slate-500 font-semibold mb-0.5">CUIT Librador</label>
+                  <input type="text" id="rc-chq-cuit" placeholder="30-..." class="w-full p-1.5 border border-slate-300 rounded-lg font-mono text-[11px]" />
                 </div>
               </div>
             </div>
 
-            <!-- Grilla en 2 Columnas Maestras (Sin scroll horizontal incómodo) -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
-              <!-- Columna Izquierda: Comprobantes y Retenciones (7 columnas) -->
               <div class="lg:col-span-7 space-y-4">
-                <div class="border rounded-xl overflow-hidden shadow-2xs">
-                  <div class="bg-slate-100/80 px-3 py-2 border-b border-slate-200 font-bold text-xs text-slate-700 flex justify-between">
+                <div class="border border-slate-200/80 rounded-xl overflow-hidden shadow-2xs">
+                  <div class="bg-slate-50 px-3 py-2 border-b border-slate-200/80 font-bold text-xs text-slate-700 flex justify-between items-center">
                     <span>Facturas Pendientes a Cancelar</span>
-                    <span class="text-[10px] text-slate-500">Tildá e imputá el monto</span>
+                    <span class="text-[10px] text-slate-500 font-normal">Tildá e imputá el monto</span>
                   </div>
                   <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
@@ -908,12 +883,11 @@
                   </div>
                 </div>
 
-                <!-- Retenciones Sufridas -->
-                <div class="border rounded-xl overflow-hidden shadow-2xs">
-                  <div class="bg-slate-100/80 px-3 py-2 border-b border-slate-200 font-bold text-xs text-slate-700 flex justify-between items-center">
+                <div class="border border-slate-200/80 rounded-xl overflow-hidden shadow-2xs">
+                  <div class="bg-slate-50 px-3 py-2 border-b border-slate-200/80 font-bold text-xs text-slate-700 flex justify-between items-center">
                     <span>Retenciones Sufridas (Certificados)</span>
-                    <button type="button" onclick="agregarFilaRetencion()" class="text-[11px] bg-white hover:bg-slate-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200 font-semibold flex items-center gap-1 cursor-pointer">
-                      <i data-lucide="plus" class="w-3 h-3"></i> Agregar Certificado
+                    <button type="button" onclick="agregarFilaRetencion()" class="text-[11px] bg-white hover:bg-slate-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-200/80 font-semibold flex items-center gap-1 cursor-pointer">
+                      <i data-lucide="plus" class="w-3 h-3 stroke-[2]"></i> Certificado
                     </button>
                   </div>
                   <div class="overflow-x-auto">
@@ -932,8 +906,7 @@
                 </div>
               </div>
 
-              <!-- Columna Derecha: Observaciones, Totales y Confirmación (5 columnas) -->
-              <div class="lg:col-span-5 flex flex-col justify-between space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div class="lg:col-span-5 flex flex-col justify-between space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
                 <div>
                   <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Observaciones / Leyenda</label>
                   <textarea id="rc-observaciones" rows="3" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 bg-white outline-none" placeholder="Detalles de la transferencia, cheques o depósito..."></textarea>
@@ -958,27 +931,26 @@
                   <button type="button" onclick="limpiarFormularioRecibo()" class="w-1/3 px-3 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold text-xs hover:bg-slate-100 cursor-pointer">
                     Cancelar
                   </button>
-                  <button type="button" onclick="guardarReciboCobro()" class="w-2/3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
-                    <i data-lucide="check-circle" class="w-4 h-4"></i> Confirmar y Generar Asiento
+                  <button type="button" onclick="guardarReciboCobro()" class="w-2/3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
+                    <i data-lucide="check-circle" class="w-4 h-4 stroke-[1.75]"></i> Confirmar y Generar Asiento
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Historial de Recibos Emitidos -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <h3 class="text-sm font-bold text-slate-700">Historial de Recibos de Cobro Emitidos</h3>
+              <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Historial de Recibos de Cobro</h3>
               <div class="relative w-full sm:w-64">
                 <input id="rc-buscar-historial" type="text" oninput="renderHistorialRC()" placeholder="Buscar cliente o N°..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 stroke-[1.75]"></i>
               </div>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                     <th class="p-3">N° Recibo / Fecha</th>
                     <th class="p-3">Cliente</th>
                     <th class="p-3">Medio</th>
@@ -997,20 +969,20 @@
         <!-- 3.2: ÓRDENES DE PAGO (OP) -->
         <div id="panel-subtab-tesoreria-op" class="hidden space-y-6">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-              <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <i data-lucide="file-plus" class="w-4 h-4 text-indigo-600"></i> Datos del Pago a Proveedor
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
+              <h3 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <i data-lucide="file-plus" class="w-4 h-4 text-indigo-600 stroke-[1.75]"></i> Datos del Pago a Proveedor
               </h3>
               
               <form id="form-op" onsubmit="event.preventDefault(); generarOP();" class="space-y-3.5 text-xs">
-                <div class="bg-indigo-50/60 p-3 rounded-lg border border-indigo-100 space-y-2">
+                <div class="bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 space-y-2">
                   <div class="flex items-center justify-between">
-                    <label class="block font-bold text-indigo-900">1. Seleccionar Proveedor con Deuda Pendiente</label>
-                    <span id="op-cant-fc-badge" class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold">0 comprobantes</span>
+                    <label class="block font-bold text-indigo-900">1. Proveedor con Deuda Pendiente</label>
+                    <span id="op-cant-fc-badge" class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-semibold">0 disponibles</span>
                   </div>
                   
                   <select id="op-selector-proveedor" onchange="filtrarFacturasPorProveedorOP(this.value)" class="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-medium text-slate-800">
-                    <option value="">-- Cargar manualmente o elegir proveedor con facturas impagas --</option>
+                    <option value="">-- Cargar manualmente o elegir de la lista --</option>
                   </select>
 
                   <div id="op-contenedor-multicheck" class="hidden mt-2 p-2.5 bg-white rounded-lg border border-slate-200 max-h-40 overflow-y-auto space-y-1.5"></div>
@@ -1034,18 +1006,18 @@
 
                 <div>
                   <label class="block font-semibold text-slate-600 mb-1">Concepto / Detalle del Pago</label>
-                  <input id="op-concepto" type="text" placeholder="Ej: Pago Facturas de pintura y obra" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
+                  <input id="op-concepto" type="text" placeholder="Ej: Pago Facturas de insumos" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" required />
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div>
-                    <label class="block font-semibold text-slate-600 mb-1">Total Facturas Agrupadas ($)</label>
+                    <label class="block font-semibold text-slate-600 mb-1">Total Facturas ($)</label>
                     <input id="op-monto-factura" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono font-bold" required />
                   </div>
 
                   <div>
                     <div class="flex justify-between items-center mb-1">
-                      <label class="block font-semibold text-slate-600">Retención Aplicada ($)</label>
+                      <label class="block font-semibold text-slate-600">Retención ($)</label>
                       <button type="button" onclick="calcularRetencionSugeridaOP()" class="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">Sugerir RG830</button>
                     </div>
                     <input id="op-retencion" type="number" step="0.01" min="0" placeholder="0.00" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-mono" />
@@ -1053,7 +1025,6 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                  <!-- Columna 1: Medio de Pago + Subpanel Tarjeta Corp -->
                   <div>
                     <label class="block font-semibold text-slate-600 mb-1">Medio de Pago</label>
                     <select id="op-medio-pago" onchange="cambiarMedioPagoSugerido(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -1075,7 +1046,6 @@
                     </div>
                   </div>
                 
-                  <!-- Columna 2: Cuenta / Origen de Fondos -->
                   <div>
                     <label class="block font-semibold text-slate-600 mb-1">Cuenta / Origen de Fondos</label>
                     <select id="op-cuenta-tesoreria-select" class="w-full px-2.5 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-semibold text-slate-800 bg-slate-50">
@@ -1084,7 +1054,6 @@
                   </div>
                 </div>
                 
-                <!-- Fila siguiente para N° de Comprobante / Transacción -->
                 <div>
                   <label class="block font-semibold text-slate-600 mb-1">N° Comprobante / Transacción</label>
                   <input id="op-num-comprobante" type="text" placeholder="Ej: TR-659368" oninput="actualizarCalculoOP()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
@@ -1095,39 +1064,37 @@
                   <input id="op-adjunto" type="file" accept=".pdf,image/*" class="block w-full text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1" />
                 </div>
 
-                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer mt-2 flex items-center justify-center gap-2">
-                  <i data-lucide="check-circle" class="w-4 h-4"></i> Emitir Orden de Pago
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs cursor-pointer mt-2 flex items-center justify-center gap-2">
+                  <i data-lucide="check-circle" class="w-4 h-4 stroke-[1.75]"></i> Emitir Orden de Pago
                 </button>
               </form>
             </div>
 
-            <!-- Preview OP -->
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs flex flex-col justify-between">
               <div>
-                <h3 class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
-                  <i data-lucide="eye" class="w-4 h-4 text-indigo-600"></i> Vista Previa del Comprobante
+                <h3 class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                  <i data-lucide="eye" class="w-4 h-4 text-indigo-600 stroke-[1.75]"></i> Vista Previa del Comprobante
                 </h3>
                 <div id="contenedor-preview-op" class="text-center text-slate-400 py-12 flex flex-col items-center justify-center gap-2">
-                  <i data-lucide="receipt" class="w-12 h-12 text-slate-300"></i>
+                  <i data-lucide="receipt" class="w-12 h-12 text-slate-300 stroke-[1.25]"></i>
                   <p class="text-sm">Completa el formulario para previsualizar la Orden de Pago.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Historial de OPs -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <h3 class="text-sm font-bold text-slate-700">Historial de Órdenes Emitidas</h3>
+              <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Historial de Órdenes Emitidas</h3>
               <div class="relative w-full sm:w-64">
                 <input id="op-buscar-historial" type="text" oninput="renderHistorialOP()" placeholder="Buscar proveedor, CUIT o OP..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 stroke-[1.75]"></i>
               </div>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                     <th class="p-3">ID / Fecha</th>
                     <th class="p-3">Proveedor / CUIT</th>
                     <th class="p-3">Concepto</th>
@@ -1146,42 +1113,44 @@
 
         <!-- 3.3: TARJETAS & CUPONES -->
         <div id="panel-subtab-tesoreria-tarjetas" class="hidden space-y-6">
-          <div class="flex justify-between items-center">
-            <h3 class="text-sm font-bold text-slate-800">Cartera de Cupones y Cierre de Tarjetas</h3>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Cartera de Cupones y Cierre de Tarjetas</h3>
+              <p class="text-xs text-slate-500">Conciliación de lotes POS, retenciones y resumen corporativo.</p>
+            </div>
             <div class="flex gap-2">
-              <button onclick="abrirModalLiquidacionTarjetas()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-sm flex items-center gap-1.5 cursor-pointer">
-                <i data-lucide="file-check" class="w-4 h-4"></i> Liquidar Cupones Seleccionados
+              <button onclick="abrirModalLiquidacionTarjetas()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-xs flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="file-check" class="w-4 h-4 stroke-[1.75]"></i> Liquidar Cupones
               </button>
-              <button type="button" onclick="abrirModalCierreTarjetaCorp()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
-                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Cargar Resumen a Pagar
+              <button type="button" onclick="abrirModalCierreTarjetaCorp()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-xs">
+                <i data-lucide="plus" class="w-3.5 h-3.5 stroke-[2]"></i> Cargar Resumen Tarjeta
               </button>
             </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Total Cupones a Acreditar</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Cupones a Acreditar</p>
               <h4 id="stat-cupones-monto" class="text-xl font-bold text-indigo-600 mt-1">$ 0.00</h4>
-              <p id="stat-cupones-cant" class="text-[11px] text-slate-500 mt-0.5">0 cupones pendientes</p>
+              <p id="stat-cupones-cant" class="text-[11px] text-slate-400 mt-0.5">0 cupones pendientes</p>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Liquidado en el Mes</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Liquidado en el Mes</p>
               <h4 id="stat-cupones-liquidados-monto" class="text-xl font-bold text-emerald-600 mt-1">$ 0.00</h4>
-              <p class="text-[11px] text-slate-500 mt-0.5">Acreditado en banco</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Acreditado en banco</p>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Retenciones Sufridas Tarjetas</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Retenciones Sufridas</p>
               <h4 id="stat-cupones-retenciones" class="text-xl font-bold text-amber-600 mt-1">$ 0.00</h4>
-              <p class="text-[11px] text-slate-500 mt-0.5">IVA + Ganancias + Sircreb</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">IVA + Ganancias + Sircreb</p>
             </div>
           </div>
 
-          <!-- Cupones Pendientes -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm font-bold text-slate-700">Cupones Pendientes de Acreditación</h3>
-                <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">Activo Exigible</span>
+                <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Cupones Pendientes de Acreditación</h3>
+                <span class="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-200/80">Activo Exigible</span>
               </div>
               <select id="filtro-tarjeta-marca" onchange="renderizarTablaCupones()" class="text-xs border border-slate-300 rounded-lg p-1.5 outline-none bg-white font-medium">
                 <option value="TODAS">Todas las Marcas</option>
@@ -1195,7 +1164,7 @@
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                     <th class="p-3 w-10 text-center"><input type="checkbox" id="chk-todos-cupones" onchange="tildarTodosCupones(this.checked)" /></th>
                     <th class="p-3">Fecha / Origen</th>
                     <th class="p-3">Tarjeta / Tipo</th>
@@ -1214,17 +1183,16 @@
             </div>
           </div>
 
-          <!-- Resúmenes Corporativos -->
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-              <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                <i data-lucide="credit-card" class="w-4 h-4 text-purple-600"></i> Resúmenes de Tarjeta Corporativa (Gastos y Proveedores)
+              <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600 flex items-center gap-2">
+                <i data-lucide="credit-card" class="w-4 h-4 text-purple-600 stroke-[1.75]"></i> Resúmenes de Tarjeta Corporativa
               </h3>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                     <th class="p-3">Tarjeta / Emisor</th>
                     <th class="p-3">Fecha Cierre</th>
                     <th class="p-3">Fecha Vencimiento</th>
@@ -1245,12 +1213,12 @@
           </div>
         </div>
 
-        <!-- 3.4: CARTERA DE CHEQUES (TERCEROS Y PROPIOS) -->
+        <!-- 3.4: CARTERA DE CHEQUES -->
         <div id="panel-subtab-tesoreria-cheques" class="hidden space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 class="text-sm font-bold text-slate-800">Cartera de Valores y Cheques</h3>
-              <p class="text-xs text-slate-500">Administración de cheques en mano, E-Cheqs recibidos, depósitos bancarios y endosos a proveedores.</p>
+              <h3 class="text-sm font-bold text-slate-900">Cartera de Valores y Cheques</h3>
+              <p class="text-xs text-slate-500">Administración de cheques en mano, E-Cheqs, depósitos y endosos.</p>
             </div>
             <div class="flex items-center gap-2">
               <select id="filtro-cheques-estado" onchange="renderizarTablaCheques()" class="text-xs border border-slate-300 rounded-lg p-2 outline-none bg-white font-medium">
@@ -1263,32 +1231,32 @@
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Total en Cartera</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Total en Cartera</p>
               <h4 id="stat-cheques-cartera" class="text-xl font-bold text-indigo-600 mt-1">$ 0.00</h4>
-              <p id="stat-cheques-cant" class="text-[11px] text-slate-500 mt-0.5">0 cheques activos</p>
+              <p id="stat-cheques-cant" class="text-[11px] text-slate-400 mt-0.5">0 cheques activos</p>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Depositados en el Mes</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Depositados en el Mes</p>
               <h4 id="stat-cheques-depositados" class="text-xl font-bold text-emerald-600 mt-1">$ 0.00</h4>
-              <p class="text-[11px] text-slate-500 mt-0.5">Acreditados en cuenta bancaria</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Acreditados en cuenta bancaria</p>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Endosados a Proveedores</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Endosados a Proveedores</p>
               <h4 id="stat-cheques-endosados" class="text-xl font-bold text-amber-600 mt-1">$ 0.00</h4>
-              <p class="text-[11px] text-slate-500 mt-0.5">Aplicados en Órdenes de Pago</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Aplicados en Órdenes de Pago</p>
             </div>
           </div>
 
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <h3 class="text-sm font-bold text-slate-700">Valores Disponibles</h3>
-              <span class="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full">Activo Exigible</span>
+              <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Valores Disponibles</h3>
+              <span class="text-[10px] bg-indigo-50 text-indigo-800 font-bold px-2 py-0.5 rounded-full border border-indigo-200/80">Activo Exigible</span>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                     <th class="p-3">N° Cheque</th>
                     <th class="p-3">Banco Emisor</th>
                     <th class="p-3">Librador / CUIT</th>
@@ -1311,24 +1279,24 @@
         <div id="panel-subtab-tesoreria-ff" class="hidden space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 class="text-sm font-bold text-slate-800">Fondo Fijo / Caja Chica</h3>
+              <h3 class="text-sm font-bold text-slate-900">Fondo Fijo / Caja Chica</h3>
               <p class="text-xs text-slate-500">Registro rápido de comprobantes menores, vales y rindes por centro de costo.</p>
             </div>
             <div class="flex items-center gap-2">
-              <button onclick="descargarPlantillaCSV()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-semibold transition border border-slate-300">
-                📄 Plantilla CSV
+              <button onclick="descargarPlantillaCSV()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs px-3 py-2 rounded-lg font-semibold transition border border-slate-300">
+                Plantilla CSV
               </button>
-              <button onclick="exportarRindeCSV()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs px-3 py-2 rounded-lg font-semibold transition border border-emerald-200">
-                📊 Exportar CSV
+              <button onclick="exportarRindeCSV()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-lg font-semibold transition border border-slate-300">
+                Exportar CSV
               </button>
-              <button onclick="cerrarYRendirFondoFijo()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-lg font-semibold transition shadow flex items-center gap-1.5 cursor-pointer">
-                <span>🔒</span> Cerrar y Rendir Rinde
+              <button onclick="cerrarYRendirFondoFijo()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-lg font-semibold transition shadow-xs flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="lock" class="w-3.5 h-3.5 stroke-[2]"></i> Cerrar y Rendir
               </button>
             </div>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm h-fit">
+            <div class="bg-white border border-slate-200/80 p-5 rounded-xl space-y-4 shadow-2xs h-fit">
               <h4 class="text-sm font-semibold text-slate-800 border-b border-slate-100 pb-2">Nuevo Comprobante Manual</h4>
               <form id="form-fondo-fijo" onsubmit="registrarComprobanteFondoFijo(event)" class="space-y-3">
                 <div>
@@ -1367,13 +1335,13 @@
                     <option value="General">General</option>
                   </select>
                 </div>
-                <button type="submit" id="btn-registrar-ff" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2.5 rounded-lg transition-all shadow cursor-pointer mt-2">
+                <button type="submit" id="btn-registrar-ff" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2.5 rounded-lg transition shadow-xs cursor-pointer mt-2">
                   + Registrar en Rinde
                 </button>
               </form>
             </div>
 
-            <div class="lg:col-span-2 bg-white border border-slate-200 p-5 rounded-xl shadow-sm space-y-4">
+            <div class="lg:col-span-2 bg-white border border-slate-200/80 p-5 rounded-xl shadow-2xs space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div class="flex items-center gap-2">
                   <h4 id="ff-titulo-grilla" class="text-sm font-semibold text-slate-800">Resumen del Rinde Activo</h4>
@@ -1385,7 +1353,7 @@
                     <option value="RENDIDO">Ver: Historial Rendidos</option>
                     <option value="TODOS">Ver: Todos los Comprobantes</option>
                   </select>
-                  <input type="text" id="ff-filtro-busqueda" placeholder="🔍 Buscar..." class="border border-slate-300 text-slate-800 text-xs rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none w-full sm:w-36">
+                  <input type="text" id="ff-filtro-busqueda" placeholder="Buscar..." class="border border-slate-300 text-slate-800 text-xs rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none w-full sm:w-36">
                 </div>
               </div>
 
@@ -1410,64 +1378,61 @@
         </div>
       </section>
 
-      <!-- ========================================== -->
-      <!-- VISTA 4: CONCILIACIONES & CARTERA -->
-      <!-- ========================================== -->
+      <!-- 4: CONCILIACIONES & CTA CTE -->
       <section id="tab-conciliaciones" class="hidden space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-4">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Conciliaciones & Cuentas Corrientes</h2>
-            <p class="text-xs text-slate-500">Cruce difuso de extractos bancarios y análisis de antigüedad de cartera (FIFO / Aging).</p>
+            <h2 class="text-xl font-bold tracking-tight text-slate-900">Conciliaciones & Cuentas Corrientes</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Cruce difuso de extractos bancarios y análisis de antigüedad de cartera (FIFO / Aging).</p>
           </div>
-          <div class="inline-flex bg-slate-200/80 p-1 rounded-xl border border-slate-300">
-            <button type="button" id="btn-subtab-conc-banco" onclick="switchSubTab('conciliaciones', 'banco')" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
-              🏦 Conciliador Bancario
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+            <button type="button" id="btn-subtab-conc-banco" onclick="switchSubTab('conciliaciones', 'banco')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="landmark" class="w-3.5 h-3.5 stroke-[2] text-indigo-600"></i> Extracto Bancario
             </button>
-            <button type="button" id="btn-subtab-conc-ctacte" onclick="switchSubTab('conciliaciones', 'ctacte')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              👥 Cuentas Corrientes (Aging)
+            <button type="button" id="btn-subtab-conc-ctacte" onclick="switchSubTab('conciliaciones', 'ctacte')" class="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="users" class="w-3.5 h-3.5 stroke-[2] text-emerald-600"></i> Cuentas Corrientes (Aging)
             </button>
           </div>
         </div>
 
-        <!-- 4.1: Conciliador Bancario -->
         <div id="panel-subtab-conciliaciones-banco" class="space-y-6">
-          <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+          <div class="bg-white border border-slate-200/80 p-5 rounded-xl space-y-4 shadow-2xs">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 class="text-sm font-semibold text-slate-800">Configuración e Importación de Planillas</h3>
-              <button id="btn-exportar-conciliacion" onclick="exportarInformeConciliacionCSV()" disabled class="bg-slate-200 text-slate-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-not-allowed">
-                <i data-lucide="download" class="w-4 h-4"></i> Exportar Papel de Trabajo (CSV)
+              <button id="btn-exportar-conciliacion" onclick="exportarInformeConciliacionCSV()" disabled class="bg-slate-200 text-slate-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-not-allowed">
+                <i data-lucide="download" class="w-4 h-4 stroke-[1.75]"></i> Exportar Papel de Trabajo (CSV)
               </button>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
               <div>
                 <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
                   <label>Tolerancia en Texto / Concepto</label>
-                  <span id="lbl-val-umbral" class="text-indigo-600">80%</span>
+                  <span id="lbl-val-umbral" class="text-indigo-600 font-bold">80%</span>
                 </div>
                 <input type="range" id="param-umbral-texto" min="50" max="100" value="80" oninput="document.getElementById('lbl-val-umbral').textContent = this.value + '%'" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
               </div>
               <div>
                 <div class="flex justify-between text-xs font-semibold text-slate-600 mb-1">
                   <label>Margen de Fechas (Días)</label>
-                  <span id="lbl-val-dias" class="text-indigo-600">± 3 días</span>
+                  <span id="lbl-val-dias" class="text-indigo-600 font-bold">± 3 días</span>
                 </div>
                 <input type="range" id="param-margen-dias" min="0" max="10" value="3" oninput="document.getElementById('lbl-val-dias').textContent = '± ' + this.value + ' días'" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="border border-slate-200 rounded-xl p-4 space-y-2">
+              <div class="border border-slate-200/80 rounded-xl p-4 space-y-2">
                 <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs">
-                  <i data-lucide="landmark" class="w-4 h-4"></i>
+                  <i data-lucide="landmark" class="w-4 h-4 stroke-[1.75]"></i>
                   <span>1. Extracto del Banco (CSV/Excel)</span>
                 </div>
                 <input type="file" id="file-banco-csv" accept=".csv, .txt" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
               </div>
 
-              <div class="border border-slate-200 rounded-xl p-4 space-y-2">
+              <div class="border border-slate-200/80 rounded-xl p-4 space-y-2">
                 <div class="flex items-center gap-2 text-emerald-700 font-bold text-xs">
-                  <i data-lucide="book-open" class="w-4 h-4"></i>
+                  <i data-lucide="book-open" class="w-4 h-4 stroke-[1.75]"></i>
                   <span>2. Libro Diario Interno / Mayor Banco</span>
                 </div>
                 <input type="file" id="file-libro-csv" accept=".csv, .txt" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
@@ -1476,39 +1441,38 @@
 
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
               <span class="text-[11px] text-slate-400 italic">* Si no cargás archivos, ejecutará una demostración guiada.</span>
-              <button onclick="ejecutarConciliacionBancaria()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition-all shadow cursor-pointer flex items-center justify-center gap-2">
-                <i data-lucide="scale" class="w-4 h-4"></i> Ejecutar Conciliación
+              <button onclick="ejecutarConciliacionBancaria()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition shadow-xs cursor-pointer flex items-center justify-center gap-2">
+                <i data-lucide="scale" class="w-4 h-4 stroke-[1.75]"></i> Ejecutar Conciliación
               </button>
             </div>
           </div>
 
           <div id="panel-resumen-conciliacion" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Coincidentes (Conciliados)</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Coincidentes (Conciliados)</p>
               <h4 id="stat-coincidentes" class="text-xl font-bold text-emerald-600 mt-1">0</h4>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Pendientes en Banco</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Pendientes en Banco</p>
               <h4 id="stat-pend-banco" class="text-xl font-bold text-amber-600 mt-1">0</h4>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Pendientes en Libro Contable</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Pendientes en Libro Contable</p>
               <h4 id="stat-pend-libro" class="text-xl font-bold text-rose-600 mt-1">0</h4>
             </div>
           </div>
 
-          <div id="contenedor-resultado-conciliacion" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[120px] p-4 flex items-center justify-center text-slate-400 text-xs">
+          <div id="contenedor-resultado-conciliacion" class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden min-h-[120px] p-4 flex items-center justify-center text-slate-400 text-xs">
             Presioná "Ejecutar Conciliación" para procesar la coincidencia de movimientos.
           </div>
         </div>
 
-        <!-- 4.2: Cuentas Corrientes (Aging) -->
         <div id="panel-subtab-conciliaciones-ctacte" class="hidden space-y-6">
-          <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+          <div class="bg-white border border-slate-200/80 p-5 rounded-xl space-y-4 shadow-2xs">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 class="text-sm font-semibold text-slate-800">Cálculo de Deuda por Antigüedad</h3>
-              <button id="btn-exportar-ctacte" onclick="exportarCtaCteCSV()" disabled class="bg-slate-200 text-slate-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-not-allowed">
-                <i data-lucide="download" class="w-4 h-4"></i> Exportar Cartera (CSV)
+              <button id="btn-exportar-ctacte" onclick="exportarCtaCteCSV()" disabled class="bg-slate-200 text-slate-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-not-allowed">
+                <i data-lucide="download" class="w-4 h-4 stroke-[1.75]"></i> Exportar Cartera (CSV)
               </button>
             </div>
 
@@ -1528,69 +1492,66 @@
 
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
               <span class="text-[11px] text-slate-400 italic">* Si no cargás archivo, ejecutará el motor con datos demostrativos.</span>
-              <button onclick="ejecutarCalculoCtacte()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition-all shadow cursor-pointer flex items-center justify-center gap-2">
-                <i data-lucide="calculator" class="w-4 h-4"></i> Calcular Saldos FIFO & Aging
+              <button onclick="ejecutarCalculoCtacte()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition shadow-xs cursor-pointer flex items-center justify-center gap-2">
+                <i data-lucide="calculator" class="w-4 h-4 stroke-[1.75]"></i> Calcular Saldos FIFO & Aging
               </button>
             </div>
           </div>
 
           <div id="panel-resumen-ctacte" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Total Pendiente Cartera</p>
-              <h4 id="stat-ctacte-total" class="text-xl font-bold text-slate-800 mt-1">$ 0.00</h4>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Total Pendiente Cartera</p>
+              <h4 id="stat-ctacte-total" class="text-xl font-bold text-slate-900 mt-1">$ 0.00</h4>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Al Día / A Vencer (0-30 días)</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Al Día / A Vencer (0-30 días)</p>
               <h4 id="stat-ctacte-aldia" class="text-xl font-bold text-emerald-600 mt-1">$ 0.00</h4>
             </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-              <p class="text-xs font-semibold text-slate-400">Vencido (+30 días)</p>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+              <p class="text-xs font-medium text-slate-500">Vencido (+30 días)</p>
               <h4 id="stat-ctacte-vencido" class="text-xl font-bold text-rose-600 mt-1">$ 0.00</h4>
             </div>
           </div>
 
-          <div id="cta-corriente-results" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[120px] p-4 flex items-center justify-center text-slate-400 text-xs">
+          <div id="cta-corriente-results" class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden min-h-[120px] p-4 flex items-center justify-center text-slate-400 text-xs">
             Presioná "Calcular Saldos FIFO & Aging" para visualizar el resumen por cuenta.
           </div>
         </div>
       </section>
 
-      <!-- ========================================== -->
-      <!-- VISTA 5: AUDITORÍA FISCAL (ARCA & RG 830) -->
-      <!-- ========================================== -->
+      <!-- 5: AUDITORÍA FISCAL -->
       <section id="tab-auditoria-fiscal" class="hidden space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-4">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Auditoría Fiscal & Retenciones</h2>
-            <p class="text-xs text-slate-500">Cruce de libros contra Mis Comprobantes de ARCA y cálculo de retenciones RG 830.</p>
+            <h2 class="text-xl font-bold tracking-tight text-slate-900">Auditoría Fiscal & Retenciones</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Cruce de libros contra Mis Comprobantes de ARCA y cálculo de retenciones RG 830.</p>
           </div>
-          <div class="inline-flex bg-slate-200/80 p-1 rounded-xl border border-slate-300">
-            <button type="button" id="btn-subtab-aud-cruzador" onclick="switchSubTab('auditoria', 'cruzador')" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-sky-700 shadow-xs transition-all cursor-pointer">
-              🔍 Cruzador IVA Digital
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+            <button type="button" id="btn-subtab-aud-cruzador" onclick="switchSubTab('auditoria', 'cruzador')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="check-check" class="w-3.5 h-3.5 stroke-[2] text-sky-600"></i> Cruzador IVA Digital
             </button>
-            <button type="button" id="btn-subtab-aud-retenciones" onclick="switchSubTab('auditoria', 'retenciones')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              🧮 Calculador RG 830
+            <button type="button" id="btn-subtab-aud-retenciones" onclick="switchSubTab('auditoria', 'retenciones')" class="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="calculator" class="w-3.5 h-3.5 stroke-[2] text-indigo-600"></i> Calculador RG 830
             </button>
           </div>
         </div>
 
-        <!-- 5.1: Cruzador IVA Digital -->
         <div id="panel-subtab-auditoria-cruzador" class="space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-3">
               <div class="flex items-center gap-2 border-b pb-2">
-                <i data-lucide="file-text" class="w-5 h-5 text-sky-600"></i>
-                <h3 class="font-bold text-slate-700 text-sm">1. Archivo Mis Comprobantes (ARCA)</h3>
+                <i data-lucide="file-text" class="w-4 h-4 text-sky-600 stroke-[1.75]"></i>
+                <h3 class="font-bold text-slate-800 text-sm">1. Archivo Mis Comprobantes (ARCA)</h3>
               </div>
               <p class="text-xs text-slate-500">Subí el CSV / TXT oficial descargado del portal de ARCA.</p>
               <input type="file" id="file-arca-iva" accept=".csv, .txt" onchange="procesarArchivoArca(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer border border-slate-200 rounded-lg p-1">
               <span id="status-arca-file" class="block text-[11px] text-slate-400 italic">Esperando archivo ARCA...</span>
             </div>
 
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-3">
               <div class="flex items-center gap-2 border-b pb-2">
-                <i data-lucide="file-spreadsheet" class="w-5 h-5 text-indigo-600"></i>
-                <h3 class="font-bold text-slate-700 text-sm">2. Planilla/CSV IVA Interno</h3>
+                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-indigo-600 stroke-[1.75]"></i>
+                <h3 class="font-bold text-slate-800 text-sm">2. Planilla/CSV IVA Interno</h3>
               </div>
               <p class="text-xs text-slate-500">Subí el CSV exportado de tu sistema contable interno.</p>
               <input type="file" id="file-interno-iva" accept=".csv, .txt" onchange="procesarArchivoInternoIVA(this)" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-slate-200 rounded-lg p-1">
@@ -1599,22 +1560,21 @@
           </div>
 
           <div class="flex justify-end">
-            <button onclick="ejecutarCruceIvaReal()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-6 py-2.5 rounded-lg shadow-sm transition flex items-center gap-2 cursor-pointer">
-              <i data-lucide="search-check" class="w-4 h-4"></i>
+            <button onclick="ejecutarCruceIvaReal()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-6 py-2.5 rounded-lg shadow-xs transition flex items-center gap-2 cursor-pointer">
+              <i data-lucide="search-check" class="w-4 h-4 stroke-[1.75]"></i>
               <span>Auditar y Cruzar Registros</span>
             </button>
           </div>
 
-          <div id="cruzador-iva-results" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-slate-500 text-xs">
+          <div id="cruzador-iva-results" class="bg-white p-6 rounded-xl border border-slate-200/80 shadow-2xs text-slate-500 text-xs">
             Cargá ambos archivos CSV y presioná "Auditar y Cruzar Registros" para detectar inconsistencias.
           </div>
         </div>
 
-        <!-- 5.2: Calculador RG 830 -->
         <div id="panel-subtab-auditoria-retenciones" class="hidden space-y-6">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-              <h3 class="font-bold text-slate-700 text-sm border-b pb-2">Ingreso de Datos de Factura</h3>
+            <div class="md:col-span-2 bg-white p-6 rounded-xl border border-slate-200/80 shadow-2xs space-y-4">
+              <h3 class="font-bold text-slate-800 text-sm border-b pb-2">Ingreso de Datos de Factura</h3>
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs font-semibold text-slate-500 mb-1">Neto Comprobante ($)</label>
@@ -1636,10 +1596,10 @@
                 <p class="text-xs text-slate-400">Ingresá los montos y presioná "Calcular Retención".</p>
               </div>
               <div class="mt-4 flex gap-2">
-                <button onclick="downloadPDF()" class="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition cursor-pointer">
+                <button onclick="downloadPDF()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition cursor-pointer">
                    Descargar PDF
                 </button>
-                <button onclick="downloadCSV()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition cursor-pointer">
+                <button onclick="downloadCSV()" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold py-2 px-3 rounded-lg transition cursor-pointer">
                    Descargar CSV
                 </button>
               </div>
@@ -1648,37 +1608,34 @@
         </div>
       </section>
 
-      <!-- ========================================== -->
-      <!-- VISTA 6: CONTABILIDAD GENERAL -->
-      <!-- ========================================== -->
+      <!-- 6: CONTABILIDAD GENERAL -->
       <section id="tab-contabilidad" class="hidden space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-3">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-4">
           <div>
-            <h2 class="text-xl font-bold text-slate-800">Contabilidad General</h2>
-            <p class="text-xs text-slate-500">Libro Diario, Mayor analítico, Balance de Sumas y Saldos y Plan de Cuentas Maestro.</p>
+            <h2 class="text-xl font-bold tracking-tight text-slate-900">Contabilidad General</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Libro Diario, Mayor analítico, Balance de Sumas y Saldos y Plan de Cuentas Maestro.</p>
           </div>
-          <div class="inline-flex bg-slate-200/80 p-1 rounded-xl border border-slate-300">
-            <button type="button" id="btn-subtab-cont-diario" onclick="switchSubTab('contabilidad', 'diario')" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
-              📖 Libro Diario
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+            <button type="button" id="btn-subtab-cont-diario" onclick="switchSubTab('contabilidad', 'diario')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="book" class="w-3.5 h-3.5 stroke-[2] text-indigo-600"></i> Libro Diario
             </button>
-            <button type="button" id="btn-subtab-cont-mayor" onclick="switchSubTab('contabilidad', 'mayor')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              📊 Mayor & Balance
+            <button type="button" id="btn-subtab-cont-mayor" onclick="switchSubTab('contabilidad', 'mayor')" class="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 stroke-[2] text-emerald-600"></i> Mayor & Balance
             </button>
-            <button type="button" id="btn-subtab-cont-plancuentas" onclick="switchSubTab('contabilidad', 'plancuentas')" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-              🌳 Plan de Cuentas
+            <button type="button" id="btn-subtab-cont-plancuentas" onclick="switchSubTab('contabilidad', 'plancuentas')" class="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="git-branch" class="w-3.5 h-3.5 stroke-[2] text-purple-600"></i> Plan de Cuentas
             </button>
           </div>
         </div>
 
-        <!-- 6.1: Libro Diario -->
         <div id="panel-subtab-contabilidad-diario" class="space-y-6">
-          <div class="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
+          <div class="bg-white border border-slate-200/80 p-5 rounded-xl space-y-4 shadow-2xs">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 class="text-sm font-semibold text-slate-800">Nuevo Asiento Contable</h3>
               <div class="flex items-center gap-2">
                 <span class="text-xs text-slate-400 font-medium">Partida Doble estricta</span>
-                <button onclick="exportarLibroDiarioCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
-                  <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar Diario (CSV)
+                <button onclick="exportarLibroDiarioCSV()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-xs">
+                  <i data-lucide="download" class="w-3.5 h-3.5 stroke-[1.75]"></i> Exportar Diario (CSV)
                 </button>
               </div>
             </div>
@@ -1715,7 +1672,7 @@
               <div id="contenedor-lineas-asiento" class="space-y-2"></div>
 
               <button type="button" onclick="agregarLineaAsiento()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 pt-1 cursor-pointer">
-                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Agregar otra cuenta
+                <i data-lucide="plus-circle" class="w-3.5 h-3.5 stroke-[2]"></i> Agregar otra cuenta
               </button>
             </div>
 
@@ -1731,41 +1688,40 @@
             </div>
 
             <div class="pt-2">
-              <button id="btn-guardar-asiento" onclick="guardarAsientoValidado()" disabled class="w-full bg-slate-300 text-slate-500 text-xs font-semibold px-4 py-2.5 rounded-lg transition-all cursor-not-allowed flex items-center justify-center gap-2">
-                <i data-lucide="check-circle" class="w-4 h-4"></i> Validar y Guardar Asiento
+              <button id="btn-guardar-asiento" onclick="guardarAsientoValidado()" disabled class="w-full bg-slate-300 text-slate-500 text-xs font-semibold px-4 py-2.5 rounded-lg transition cursor-not-allowed flex items-center justify-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4 stroke-[1.75]"></i> Validar y Guardar Asiento
               </button>
             </div>
           </div>
 
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <h3 class="text-sm font-bold text-slate-700">Libro Diario General</h3>
+              <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Libro Diario General</h3>
               <div class="relative w-full sm:w-64">
                 <input id="asiento-buscar-historial" type="text" oninput="renderLibroDiario()" placeholder="Buscar asiento..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 stroke-[1.75]"></i>
               </div>
             </div>
             <div id="contenedor-libro-diario" class="divide-y divide-slate-200 text-xs"></div>
           </div>
         </div>
 
-        <!-- 6.2: Mayor & Balance -->
         <div id="panel-subtab-contabilidad-mayor" class="hidden space-y-6">
           <div class="flex items-center justify-between">
-            <div class="inline-flex bg-slate-200/70 p-1 rounded-xl border border-slate-300">
-              <button type="button" id="btn-subtab-sumas-saldos" onclick="cambiarVistaMayorBalance('SUMAS_SALDOS')" class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white text-indigo-700 shadow-xs transition-all cursor-pointer">
-                📊 Balance Sumas y Saldos
+            <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200/70">
+              <button type="button" id="btn-subtab-sumas-saldos" onclick="cambiarVistaMayorBalance('SUMAS_SALDOS')" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-white text-slate-900 shadow-2xs transition cursor-pointer">
+                Balance Sumas y Saldos
               </button>
-              <button type="button" id="btn-subtab-mayor" onclick="cambiarVistaMayorBalance('MAYOR')" class="px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all cursor-pointer">
-                📖 Mayor Analítico
+              <button type="button" id="btn-subtab-mayor" onclick="cambiarVistaMayorBalance('MAYOR')" class="px-4 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:text-slate-900 transition cursor-pointer">
+                Mayor Analítico
               </button>
             </div>
-            <button onclick="exportarReporteContableCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-all flex items-center gap-2 cursor-pointer shadow-sm">
-              <i data-lucide="download" class="w-4 h-4"></i> Exportar (CSV)
+            <button onclick="exportarReporteContableCSV()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-2 cursor-pointer shadow-xs">
+              <i data-lucide="download" class="w-4 h-4 stroke-[1.75]"></i> Exportar (CSV)
             </button>
           </div>
 
-          <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="bg-white border border-slate-200/80 p-4 rounded-xl shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="flex flex-wrap items-center gap-3">
               <div>
                 <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Fecha Desde</label>
@@ -1783,14 +1739,13 @@
               </div>
             </div>
             <button onclick="cargarMayorYBalance()" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-2 rounded-lg border border-indigo-200 flex items-center gap-1.5 cursor-pointer">
-              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Actualizar
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5 stroke-[1.75]"></i> Actualizar
             </button>
           </div>
 
-          <!-- Matriz Sumas y Saldos -->
-          <div id="panel-sumas-saldos" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div id="panel-sumas-saldos" class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <h3 class="text-sm font-bold text-slate-700">Matriz de Sumas y Saldos Consolidados</h3>
+              <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Sumas y Saldos Consolidados</h3>
               <span id="badge-balance-cuadre" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                 Cuadrado (Partida Doble)
               </span>
@@ -1798,7 +1753,7 @@
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                  <tr class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
                     <th class="p-3">Cuenta Contable</th>
                     <th class="p-3 text-right">Sumas Debe ($)</th>
                     <th class="p-3 text-right">Sumas Haber ($)</th>
@@ -1817,9 +1772,8 @@
             </div>
           </div>
 
-          <!-- Mayor Analítico -->
           <div id="panel-mayor-analitico" class="hidden space-y-4">
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <div>
                 <h3 id="mayor-cuenta-titulo" class="text-base font-bold text-indigo-800">Seleccione una cuenta para mayorizar</h3>
                 <p class="text-xs text-slate-500">Historial cronológico de débitos, créditos y saldo progresivo.</p>
@@ -1831,11 +1785,11 @@
               </div>
             </div>
 
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
               <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                    <tr class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
                       <th class="p-3">Fecha</th>
                       <th class="p-3">Asiento / Ref</th>
                       <th class="p-3">Concepto / Glosa</th>
@@ -1856,20 +1810,19 @@
           </div>
         </div>
 
-        <!-- 6.3: Plan de Cuentas Maestro -->
         <div id="panel-subtab-contabilidad-plancuentas" class="hidden space-y-6">
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-3">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
               <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs">
-                <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                <i data-lucide="upload-cloud" class="w-4 h-4 stroke-[1.75]"></i>
                 <span>Importación Masiva de Plan de Cuentas (CSV)</span>
               </div>
               <div class="flex items-center gap-2">
                 <button type="button" onclick="descargarPlantillaPlanCuentasCSV()" class="text-[11px] text-slate-500 hover:text-indigo-600 underline">
                   Descargar Plantilla CSV
                 </button>
-                <button onclick="exportarPlanCuentasCSV()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer">
-                  <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar Catálogo
+                <button onclick="exportarPlanCuentasCSV()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer">
+                  <i data-lucide="download" class="w-3.5 h-3.5 stroke-[1.75]"></i> Exportar Catálogo
                 </button>
               </div>
             </div>
@@ -1883,23 +1836,23 @@
                 <label class="block text-xs font-semibold text-slate-600 mb-1">Modo de Carga</label>
                 <select id="pc-modo-importacion" class="w-full text-xs border border-slate-300 rounded-lg p-2 font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
                   <option value="UPSERT">Fusionar / Actualizar existentes</option>
-                  <option value="REEMPLAZAR">⚠️ Reemplazo Total (Vaciar y Cargar)</option>
+                  <option value="REEMPLAZAR">Reemplazo Total (Vaciar y Cargar)</option>
                 </select>
               </div>
             </div>
 
             <div class="flex items-center justify-between pt-2">
               <span id="pc-status-import" class="text-xs text-slate-400 italic">Formato: codigo, nombre, tipo, saldo_habitual, es_imputable</span>
-              <button type="button" onclick="procesarArchivoPlanCuentasCSV()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all shadow-sm flex items-center gap-1.5 cursor-pointer">
-                <i data-lucide="file-up" class="w-3.5 h-3.5"></i> Procesar Importación
+              <button type="button" onclick="procesarArchivoPlanCuentasCSV()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-xs flex items-center gap-1.5 cursor-pointer">
+                <i data-lucide="file-up" class="w-3.5 h-3.5 stroke-[1.75]"></i> Procesar Importación
               </button>
             </div>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4 h-fit">
-              <h3 id="pc-form-titulo" class="text-sm font-bold text-slate-700 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i> Nueva Cuenta Contable
+            <div class="bg-white p-5 rounded-xl border border-slate-200/80 shadow-2xs space-y-4 h-fit">
+              <h3 id="pc-form-titulo" class="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600 stroke-[1.75]"></i> Nueva Cuenta Contable
               </h3>
 
               <form id="form-plan-cuenta" onsubmit="guardarCuentaContable(event)" class="space-y-3 text-xs">
@@ -1944,19 +1897,19 @@
                   <button type="button" id="btn-cancelar-pc" onclick="limpiarFormularioPlanCuenta()" class="hidden w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg transition text-xs">
                     Cancelar
                   </button>
-                  <button type="submit" id="btn-submit-pc" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
-                    <i data-lucide="save" class="w-4 h-4"></i> Guardar Cuenta
+                  <button type="submit" id="btn-submit-pc" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs cursor-pointer flex items-center justify-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4 stroke-[1.75]"></i> Guardar Cuenta
                   </button>
                 </div>
               </form>
             </div>
 
-            <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+            <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col justify-between">
               <div>
                 <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div class="flex items-center gap-2">
-                    <h3 class="text-sm font-bold text-slate-700">Catálogo de Cuentas</h3>
-                    <span id="badge-total-cuentas" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">0 cuentas</span>
+                    <h3 class="text-xs uppercase tracking-wider font-bold text-slate-600">Catálogo de Cuentas</h3>
+                    <span id="badge-total-cuentas" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/80">0 cuentas</span>
                   </div>
                   <div class="flex items-center gap-2 w-full sm:w-auto">
                     <select id="pc-filtro-tipo" onchange="renderizarTablaPlanCuentas()" class="text-xs border border-slate-300 rounded-lg p-1.5 outline-none bg-white font-medium">
@@ -1969,7 +1922,7 @@
                     </select>
                     <div class="relative w-full sm:w-44">
                       <input type="text" id="pc-buscar" oninput="renderizarTablaPlanCuentas()" placeholder="Buscar..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" />
-                      <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                      <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 stroke-[1.75]"></i>
                     </div>
                   </div>
                 </div>
@@ -1977,7 +1930,7 @@
                 <div class="overflow-x-auto">
                   <table class="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                      <tr class="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                         <th class="p-2.5 font-mono">Código</th>
                         <th class="p-2.5">Nombre de Cuenta</th>
                         <th class="p-2.5">Naturaleza</th>
@@ -2002,16 +1955,12 @@
     </main>
   </div>
 
-  <!-- ========================================== -->
-  <!-- MODALES DE TESORERÍA (LIQUIDACIÓN & RESUMEN) -->
-  <!-- ========================================== -->
-
-  <!-- Modal Liquidación de Cupones -->
+  <!-- MODAL: LIQUIDACIÓN TARJETAS -->
   <div id="modal-liquidacion-tarjetas" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden">
       <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
         <h3 class="text-sm font-bold flex items-center gap-2">
-          <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Liquidación Bancaria de Lote de Tarjetas
+          <i data-lucide="calculator" class="w-4 h-4 text-emerald-400 stroke-[1.75]"></i> Liquidación Bancaria de Lote de Tarjetas
         </h3>
         <button type="button" onclick="cerrarModalLiquidacionTarjetas()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
       </div>
@@ -2044,7 +1993,7 @@
           </div>
         </div>
 
-        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2">
           <h4 class="font-bold text-slate-700 pb-1 border-b border-slate-200 flex items-center justify-between">
             <span>Descuentos y Retenciones Impositivas</span>
             <span class="text-[10px] text-slate-400">A deducir del bruto</span>
@@ -2086,20 +2035,20 @@
           <button type="button" onclick="cerrarModalLiquidacionTarjetas()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 cursor-pointer">
             Cancelar
           </button>
-          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
-            <i data-lucide="check" class="w-4 h-4"></i> Confirmar y Asentar Acreditación
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="check" class="w-4 h-4 stroke-[1.75]"></i> Confirmar y Asentar Acreditación
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal Resumen de Tarjeta Corporativa -->
+  <!-- MODAL: RESUMEN TARJETA CORPORATIVA -->
   <div id="modal-cierre-tarjeta-corp" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
       <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
         <h3 class="text-sm font-bold flex items-center gap-2">
-          <i data-lucide="file-text" class="w-4 h-4 text-purple-400"></i> Registrar Resumen de Tarjeta Corporativa
+          <i data-lucide="file-text" class="w-4 h-4 text-purple-400 stroke-[1.75]"></i> Registrar Resumen de Tarjeta Corporativa
         </h3>
         <button type="button" onclick="cerrarModalCierreTarjetaCorp()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
       </div>
@@ -2140,7 +2089,7 @@
           </div>
         </div>
 
-        <div class="p-3 bg-purple-50 rounded-lg border border-purple-100 flex justify-between items-center text-xs">
+        <div class="p-3 bg-purple-50 rounded-xl border border-purple-100 flex justify-between items-center text-xs">
           <span class="font-bold text-purple-900">Total a Cancelar del Resumen:</span>
           <span id="rcorp-lbl-total" class="font-bold text-purple-900 text-sm font-mono">$ 0.00</span>
         </div>
@@ -2149,25 +2098,25 @@
           <button type="button" onclick="cerrarModalCierreTarjetaCorp()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 cursor-pointer">
             Cancelar
           </button>
-          <button type="submit" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
-            <i data-lucide="check" class="w-4 h-4"></i> Guardar Resumen
+          <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="check" class="w-4 h-4 stroke-[1.75]"></i> Guardar Resumen
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Modal Selección de Cuenta al Depositar Cheque -->
+  <!-- MODAL: DEPÓSITO DE CHEQUES -->
   <div id="modal-deposito-cheque" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
       <div class="p-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800">
         <h3 class="text-sm font-bold flex items-center gap-2">
-          <i data-lucide="landmark" class="w-4 h-4 text-emerald-400"></i> Depositar Cheque en Cuenta
+          <i data-lucide="landmark" class="w-4 h-4 text-emerald-400 stroke-[1.75]"></i> Depositar Cheque en Cuenta
         </h3>
         <button type="button" onclick="cerrarModalDepositoCheque()" class="text-slate-400 hover:text-white p-1 text-base cursor-pointer">✕</button>
       </div>
       <div class="p-5 space-y-4 text-xs">
-        <div id="info-cheque-deposito" class="p-3 bg-slate-50 rounded-lg border border-slate-200 font-mono"></div>
+        <div id="info-cheque-deposito" class="p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-mono"></div>
         <div>
           <label class="block font-bold text-slate-700 mb-1">Cuenta Bancaria de Acreditación *</label>
           <select id="deposito-chq-cuenta-select" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-semibold text-slate-800"></select>
@@ -2178,13 +2127,12 @@
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
           <button type="button" onclick="cerrarModalDepositoCheque()" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 cursor-pointer">Cancelar</button>
-          <button type="button" onclick="confirmarDepositoChequeModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-sm cursor-pointer">Confirmar Depósito</button>
+          <button type="button" onclick="confirmarDepositoChequeModal()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-xs cursor-pointer">Confirmar Depósito</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Carga de librerías externas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
